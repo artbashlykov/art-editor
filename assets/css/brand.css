@@ -1,0 +1,17 @@
+:root {
+	--art-editor-color-primary: #e66a15;
+	--art-editor-color-primary-hover: #cf5e12;
+	--art-editor-color-primary-text: #fff;
+}
+
+body.art-editor-screen :is( button, a, input, textarea, select ):focus,
+.art-editor-topbar-button:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+body.art-editor-screen :is( button, a, input, textarea, select ):focus:not( :focus-visible ),
+.art-editor-topbar-button:focus:not( :focus-visible ) {
+	outline: none;
+	box-shadow: none;
+}

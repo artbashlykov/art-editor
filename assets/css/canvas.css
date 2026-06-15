@@ -1,0 +1,31 @@
+html.art-editor-template-canvas,
+body.art-editor-template-canvas {
+	margin: 0;
+	padding: 0;
+}
+
+body.art-editor-template-canvas {
+	background: #fff;
+}
+
+.art-editor-canvas {
+	margin: 0;
+	padding: 0;
+}
+
+.art-editor-canvas__content {
+	margin: 0;
+	padding: 0;
+}
+
+.art-editor-canvas__content > :first-child {
+	margin-top: 0;
+}
+
+.art-editor-canvas__content img,
+.art-editor-canvas__content video,
+.art-editor-canvas__content iframe,
+.art-editor-canvas__content svg {
+	max-width: 100%;
+	height: auto;
+}

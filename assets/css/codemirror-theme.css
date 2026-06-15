@@ -1,0 +1,117 @@
+/**
+ * CodeMirror 5 theme for ART Editor.
+ * Palette: Atom One Dark (common dark-editor standard).
+ */
+
+.cm-s-art-editor-dark.CodeMirror {
+	background: #282c34;
+	color: #abb2bf;
+}
+
+.cm-s-art-editor-dark .CodeMirror-gutters {
+	border-right: 1px solid #181a1f;
+	background: #21252b;
+}
+
+.cm-s-art-editor-dark .CodeMirror-guttermarker {
+	color: #abb2bf;
+}
+
+.cm-s-art-editor-dark .CodeMirror-guttermarker-subtle {
+	color: #636d83;
+}
+
+.cm-s-art-editor-dark .CodeMirror-linenumber {
+	color: #636d83;
+}
+
+.cm-s-art-editor-dark .CodeMirror-cursor {
+	border-left-color: #528bff;
+}
+
+.cm-s-art-editor-dark div.CodeMirror-selected,
+.cm-s-art-editor-dark .CodeMirror-line::selection,
+.cm-s-art-editor-dark .CodeMirror-line > span::selection,
+.cm-s-art-editor-dark .CodeMirror-line > span > span::selection {
+	background: #3e4451;
+}
+
+.cm-s-art-editor-dark .CodeMirror-activeline-background {
+	background: rgba(99, 109, 131, 0.12);
+}
+
+.cm-s-art-editor-dark .CodeMirror-matchingbracket {
+	color: #abb2bf !important;
+	background: rgba(97, 175, 239, 0.18);
+	border-bottom: 1px solid #61afef;
+}
+
+.cm-s-art-editor-dark span.cm-comment {
+	color: #5c6370;
+	font-style: italic;
+}
+
+.cm-s-art-editor-dark span.cm-tag,
+.cm-s-art-editor-dark span.cm-header {
+	color: #e06c75;
+}
+
+.cm-s-art-editor-dark span.cm-bracket,
+.cm-s-art-editor-dark span.cm-punctuation,
+.cm-s-art-editor-dark span.cm-hr,
+.cm-s-art-editor-dark span.cm-meta {
+	color: #abb2bf;
+}
+
+.cm-s-art-editor-dark span.cm-attribute {
+	color: #d19a66;
+}
+
+.cm-s-art-editor-dark span.cm-property {
+	color: #56b6c2;
+}
+
+.cm-s-art-editor-dark span.cm-qualifier,
+.cm-s-art-editor-dark span.cm-builtin {
+	color: #e5c07b;
+}
+
+.cm-s-art-editor-dark span.cm-string,
+.cm-s-art-editor-dark span.cm-string-2 {
+	color: #98c379;
+}
+
+.cm-s-art-editor-dark span.cm-number,
+.cm-s-art-editor-dark span.cm-unit {
+	color: #d19a66;
+}
+
+.cm-s-art-editor-dark span.cm-atom {
+	color: #98c379;
+}
+
+.cm-s-art-editor-dark span.cm-keyword,
+.cm-s-art-editor-dark span.cm-operator {
+	color: #c678dd;
+}
+
+.cm-s-art-editor-dark span.cm-def {
+	color: #61afef;
+}
+
+.cm-s-art-editor-dark span.cm-variable,
+.cm-s-art-editor-dark span.cm-variable-2,
+.cm-s-art-editor-dark span.cm-variable-3,
+.cm-s-art-editor-dark span.cm-type {
+	color: #abb2bf;
+}
+
+.cm-s-art-editor-dark span.cm-link {
+	color: #61afef;
+	text-decoration: underline;
+}
+
+.cm-s-art-editor-dark span.cm-error,
+.cm-s-art-editor-dark span.cm-invalidchar {
+	color: #f44747;
+}

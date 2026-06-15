@@ -1,0 +1,87 @@
+.art-editor-admin > h1 {
+	margin-bottom: 10px;
+}
+
+.art-editor-panel {
+	box-sizing: border-box;
+	max-width: 960px;
+	margin-top: 10px;
+	padding: 16px 20px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+}
+
+.art-editor-panel__title {
+	margin: 0 0 10px;
+	padding: 0 0 10px;
+	border-bottom: 1px solid #dcdcde;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.art-editor-panel p {
+	margin: 0 0 10px;
+}
+
+.art-editor-panel p:last-child {
+	margin-bottom: 0;
+}
+
+.art-editor-settings-form {
+	max-width: 960px;
+}
+
+.art-editor-settings-section {
+	margin-top: 10px;
+}
+
+.art-editor-settings-row {
+	display: grid;
+	grid-template-columns: minmax( 120px, 220px ) minmax( 0, 1fr );
+	gap: 12px 20px;
+	align-items: start;
+}
+
+.art-editor-settings-row__label {
+	margin: 8px 0 0;
+	color: #1d2327;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.art-editor-settings-row__field {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+
+.art-editor-settings-checklist {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.art-editor-settings-checklist__item + .art-editor-settings-checklist__item {
+	margin-top: 8px;
+}
+
+.art-editor-settings-checklist__label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	color: #1d2327;
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+.art-editor-settings-checklist__input {
+	margin: 0;
+}
+
+.art-editor-settings-row__field .description {
+	margin: 10px 0 0;
+}

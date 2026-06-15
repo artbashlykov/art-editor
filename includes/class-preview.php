@@ -1,0 +1,419 @@
+<?php
+/**
+ * Preview document assembly and CSS scoping for HTML blocks.
+ *
+ * @package Art_Editor
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Class Art_Editor_Preview
+ */
+class Art_Editor_Preview {
+
+	/**
+	 * Current HTML block index while rendering frontend output.
+	 *
+	 * @var int
+	 */
+	private static $frontend_block_index = 0;
+
+	/**
+	 * Reset the frontend HTML block counter.
+	 */
+	public static function reset_frontend_block_index() {
+		self::$frontend_block_index = 0;
+	}
+
+	/**
+	 * Parse raw block HTML into body markup and style contents.
+	 *
+	 * @param string $html Block HTML.
+	 * @return array{styles:string[],body:string}
+	 */
+	public static function parse_block_parts( $html ) {
+		$html   = (string) $html;
+		$styles = array();
+		$body   = $html;
+
+		if ( '' === trim( $html ) || ! class_exists( 'DOMDocument' ) ) {
+			return array(
+				'styles' => $styles,
+				'body'   => $body,
+			);
+		}
+
+		$previous = libxml_use_internal_errors( true );
+		$document = new DOMDocument();
+		$loaded   = $document->loadHTML(
+			'<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' . $html . '</body></html>',
+			LIBXML_HTML_NODEFDTD | LIBXML_HTML_NODEFDTD
+		);
+
+		if ( $loaded ) {
+			$style_nodes = $document->getElementsByTagName( 'style' );
+
+			for ( $index = $style_nodes->length - 1; $index >= 0; $index-- ) {
+				$style_node = $style_nodes->item( $index );
+
+				if ( ! $style_node instanceof DOMNode ) {
+					continue;
+				}
+
+				$styles[] = $style_node->textContent;
+				$style_node->parentNode->removeChild( $style_node );
+			}
+
+			$body_node = $document->getElementsByTagName( 'body' )->item( 0 );
+
+			if ( $body_node instanceof DOMNode ) {
+				$body = '';
+
+				foreach ( $body_node->childNodes as $child ) {
+					$body .= $document->saveHTML( $child );
+				}
+			}
+		}
+
+		libxml_clear_errors();
+		libxml_use_internal_errors( $previous );
+
+		return array(
+			'styles' => $styles,
+			'body'   => $body,
+		);
+	}
+
+	/**
+	 * Scope one HTML block for safe multi-block rendering.
+	 *
+	 * @param string $html  Block HTML.
+	 * @param int    $index Block index.
+	 * @return string
+	 */
+	public static function scope_block_html( $html, $index ) {
+		$index = max( 0, (int) $index );
+		$parts = self::parse_block_parts( $html );
+		$scope = '.art-editor-html-block[data-art-editor-block="' . $index . '"]';
+		$css   = '';
+
+		foreach ( $parts['styles'] as $style_content ) {
+			$scoped = self::scope_stylesheet( $style_content, $scope );
+
+			if ( '' !== $scoped ) {
+				$css .= $scoped;
+			}
+		}
+
+		$markup = '<div class="art-editor-html-block" data-art-editor-block="' . $index . '">';
+
+		if ( '' !== $css ) {
+			$markup = '<style>' . $css . '</style>' . $markup;
+		}
+
+		$markup .= $parts['body'];
+		$markup .= '</div>';
+
+		return $markup;
+	}
+
+	/**
+	 * Prefix CSS selectors with a scope selector.
+	 *
+	 * @param string $css             Raw CSS.
+	 * @param string $scope_selector  Scope selector.
+	 * @return string
+	 */
+	public static function scope_stylesheet( $css, $scope_selector ) {
+		$css = trim( (string) $css );
+
+		if ( '' === $css ) {
+			return '';
+		}
+
+		return self::scope_css_chunk( $css, $scope_selector );
+	}
+
+	/**
+	 * Build a preview iframe document from HTML block contents.
+	 *
+	 * @param string[] $blocks  Block HTML strings.
+	 * @param array    $options Preview options.
+	 * @return string
+	 */
+	public static function build_document( $blocks, $options = array() ) {
+		$defaults = array(
+			'layout_mode'           => Art_Editor_Post_Meta::LAYOUT_CANVAS,
+			'style_mode'            => Art_Editor_Post_Meta::STYLE_EDITOR,
+			'block_link_navigation' => false,
+		);
+		$options  = wp_parse_args( $options, $defaults );
+		$blocks   = is_array( $blocks ) ? $blocks : array();
+		$body     = '';
+		$index    = 0;
+
+		foreach ( $blocks as $block_html ) {
+			$body .= self::scope_block_html( $block_html, $index );
+			++$index;
+		}
+
+		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
+			$body = '<div class="art-editor-canvas"><div class="art-editor-canvas__content">' . $body . '</div></div>';
+		}
+
+		$head_parts   = array();
+		$head_parts[] = '<meta charset="utf-8">';
+		$head_parts[] = '<meta name="viewport" content="width=device-width, initial-scale=1">';
+		$head_parts[] = Art_Editor_Editor_Screen::get_site_icon_head_markup();
+		$head_parts[] = '<style id="art-editor-preview-base">' . self::get_base_styles() . '</style>';
+
+		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
+			$head_parts[] = '<style id="art-editor-preview-canvas">' . self::get_canvas_styles() . '</style>';
+		}
+
+		if ( ! empty( $options['block_link_navigation'] ) ) {
+			$head_parts[] = self::get_link_guard_script();
+		}
+
+		return '<!doctype html><html><head>' . implode( '', $head_parts ) . '</head><body>' . $body . '</body></html>';
+	}
+
+	/**
+	 * Scope a rendered core/html block on the frontend.
+	 *
+	 * @param string $block_content Rendered block HTML.
+	 * @param array  $block         Parsed block.
+	 * @return string
+	 */
+	public static function maybe_scope_rendered_block( $block_content, $block ) {
+		if ( empty( $block['blockName'] ) || 'core/html' !== $block['blockName'] ) {
+			return $block_content;
+		}
+
+		$post_id = (int) get_the_ID();
+
+		if ( $post_id <= 0 || ! Art_Editor_Post_Meta::should_apply_frontend_settings( $post_id ) ) {
+			return $block_content;
+		}
+
+		$scoped = self::scope_block_html( $block_content, self::$frontend_block_index );
+		++self::$frontend_block_index;
+
+		return $scoped;
+	}
+
+	/**
+	 * Base preview reset styles shared with the editor iframe.
+	 *
+	 * @return string
+	 */
+	private static function get_base_styles() {
+		return 'html,body{margin:0;padding:0;box-sizing:border-box;}' .
+			'*,*::before,*::after{box-sizing:inherit;}' .
+			'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1e1e1e;}' .
+			'img,video,iframe,svg{max-width:100%;}';
+	}
+
+	/**
+	 * Canvas layout styles for preview/front parity.
+	 *
+	 * @return string
+	 */
+	private static function get_canvas_styles() {
+		$path = ART_EDITOR_PLUGIN_DIR . 'assets/css/canvas.css';
+
+		if ( ! file_exists( $path ) ) {
+			return '.art-editor-html-block img,.art-editor-html-block video,.art-editor-html-block iframe,.art-editor-html-block svg{max-width:100%;height:auto;}';
+		}
+
+		$css = file_get_contents( $path );
+
+		if ( false === $css ) {
+			return '';
+		}
+
+		return $css;
+	}
+
+	/**
+	 * Prevent anchor navigation inside preview iframes.
+	 *
+	 * @return string
+	 */
+	private static function get_link_guard_script() {
+		return '<script id="art-editor-preview-link-guard">(function(){"use strict";function preventAnchorNavigation(event){var node=event.target;while(node&&node!==document.body){if(node.tagName==="A"){event.preventDefault();event.stopPropagation();return;}node=node.parentElement;}}document.addEventListener("mousedown",preventAnchorNavigation,true);document.addEventListener("click",preventAnchorNavigation,true);})();</script>';
+	}
+
+	/**
+	 * Scope a CSS chunk, preserving unsupported at-rules.
+	 *
+	 * @param string $css             CSS chunk.
+	 * @param string $scope_selector  Scope selector.
+	 * @return string
+	 */
+	private static function scope_css_chunk( $css, $scope_selector ) {
+		$output = '';
+		$length = strlen( $css );
+		$index  = 0;
+
+		while ( $index < $length ) {
+			if ( preg_match( '/\G\s+/s', $css, $match, 0, $index ) ) {
+				$output .= $match[0];
+				$index  += strlen( $match[0] );
+				continue;
+			}
+
+			if ( '@' === $css[ $index ] ) {
+				$rule_end = self::find_css_block_end( $css, $index );
+
+				if ( false === $rule_end ) {
+					$output .= substr( $css, $index );
+					break;
+				}
+
+				$at_rule = substr( $css, $index, $rule_end - $index + 1 );
+				$output .= self::scope_at_rule( $at_rule, $scope_selector );
+				$index   = $rule_end + 1;
+				continue;
+			}
+
+			$rule_end = self::find_css_block_end( $css, $index );
+
+			if ( false === $rule_end ) {
+				$output .= substr( $css, $index );
+				break;
+			}
+
+			$rule    = substr( $css, $index, $rule_end - $index + 1 );
+			$output .= self::scope_css_rule( $rule, $scope_selector );
+			$index   = $rule_end + 1;
+		}
+
+		return $output;
+	}
+
+	/**
+	 * Scope or pass through an at-rule.
+	 *
+	 * @param string $at_rule         Full at-rule block.
+	 * @param string $scope_selector  Scope selector.
+	 * @return string
+	 */
+	private static function scope_at_rule( $at_rule, $scope_selector ) {
+		if ( preg_match( '/^@(charset|import)\b/i', $at_rule ) ) {
+			return $at_rule;
+		}
+
+		if ( preg_match( '/^@(-webkit-)?keyframes\b/i', $at_rule ) ) {
+			return $at_rule;
+		}
+
+		if ( preg_match( '/^@font-face\b/i', $at_rule ) ) {
+			return $at_rule;
+		}
+
+		$open_brace = strpos( $at_rule, '{' );
+
+		if ( false === $open_brace ) {
+			return $at_rule;
+		}
+
+		$prefix = substr( $at_rule, 0, $open_brace + 1 );
+		$suffix = substr( $at_rule, $open_brace + 1, -1 );
+
+		return $prefix . self::scope_css_chunk( $suffix, $scope_selector ) . '}';
+	}
+
+	/**
+	 * Scope one CSS rule block.
+	 *
+	 * @param string $rule            Full CSS rule.
+	 * @param string $scope_selector  Scope selector.
+	 * @return string
+	 */
+	private static function scope_css_rule( $rule, $scope_selector ) {
+		$open_brace = strpos( $rule, '{' );
+
+		if ( false === $open_brace ) {
+			return $rule;
+		}
+
+		$selectors = trim( substr( $rule, 0, $open_brace ) );
+		$body      = substr( $rule, $open_brace );
+
+		if ( '' === $selectors ) {
+			return $rule;
+		}
+
+		return self::prefix_selectors( $selectors, $scope_selector ) . $body;
+	}
+
+	/**
+	 * Prefix a selector list with the scope selector.
+	 *
+	 * @param string $selectors       Selector list.
+	 * @param string $scope_selector  Scope selector.
+	 * @return string
+	 */
+	private static function prefix_selectors( $selectors, $scope_selector ) {
+		$parts  = explode( ',', $selectors );
+		$scoped = array();
+
+		foreach ( $parts as $selector ) {
+			$selector = trim( $selector );
+
+			if ( '' === $selector ) {
+				continue;
+			}
+
+			if ( preg_match( '/^(html|body|:root)$/i', $selector ) ) {
+				$scoped[] = $scope_selector;
+				continue;
+			}
+
+			if ( preg_match( '/^(html|body|:root)\s+/i', $selector ) ) {
+				$scoped[] = preg_replace( '/^(html|body|:root)\s+/i', $scope_selector . ' ', $selector );
+				continue;
+			}
+
+			$scoped[] = $scope_selector . ' ' . $selector;
+		}
+
+		return implode( ', ', $scoped );
+	}
+
+	/**
+	 * Find the closing brace for a CSS block starting at an offset.
+	 *
+	 * @param string $css    CSS string.
+	 * @param int    $start  Start offset.
+	 * @return int|false
+	 */
+	private static function find_css_block_end( $css, $start ) {
+		$length = strlen( $css );
+		$depth  = 0;
+		$index  = $start;
+
+		for ( ; $index < $length; $index++ ) {
+			$char = $css[ $index ];
+
+			if ( '{' === $char ) {
+				++$depth;
+				continue;
+			}
+
+			if ( '}' !== $char ) {
+				continue;
+			}
+
+			--$depth;
+
+			if ( 0 === $depth ) {
+				return $index;
+			}
+		}
+
+		return false;
+	}
+}
