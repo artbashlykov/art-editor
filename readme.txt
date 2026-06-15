@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,11 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.1 =
+* Auto-switch to the Code tab when creating a new HTML block.
+* Keep the selected block after save instead of jumping to the first block.
+* Lock the editor UI while save is in progress.
 
 = 0.2.0 =
 * Custom post type «Лендинги» with `/lp/{slug}` URLs.

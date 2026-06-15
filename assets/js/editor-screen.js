@@ -48,6 +48,7 @@
 	var codeElementHighlightMark = null;
 
 	var elementEditorController = null;
+	var activateCanvasTab = null;
 	var pendingElementSelectionPath = null;
 	var pendingElementSelectionGeneration = 0;
 	var previewRestoreGeneration = 0;
@@ -204,6 +205,7 @@
 		}
 
 		var settings = options || {};
+		var manageSaveLock = false !== settings.manageSaveLock;
 		var payload = {
 			title: pageSettings.title,
 			slug: pageSettings.slug,
@@ -215,7 +217,9 @@
 			payload.status = settings.status || pageSettings.status;
 		}
 
-		beginSaving();
+		if ( manageSaveLock ) {
+			beginSaving();
+		}
 
 		return window.fetch( config.saveSettingsUrl, {
 			method: 'POST',
@@ -256,7 +260,9 @@
 				return data;
 			} )
 			.finally( function() {
-				endSaving();
+				if ( manageSaveLock ) {
+					endSaving();
+				}
 			} );
 	}
 
@@ -1405,7 +1411,7 @@
 	function startBlockRename( blockId, label ) {
 		var block = getBlockById( blockId );
 
-		if ( ! block || ! label || editorState.renamingBlockId ) {
+		if ( isSaving() || ! block || ! label || editorState.renamingBlockId ) {
 			return;
 		}
 
@@ -1424,6 +1430,10 @@
 		var draggedIndex;
 		var targetIndex;
 		var movedBlock;
+
+		if ( isSaving() ) {
+			return;
+		}
 
 		if ( ! draggedId || ! targetId || draggedId === targetId ) {
 			return;
@@ -1449,6 +1459,10 @@
 	function deleteBlock( blockId ) {
 		var index;
 		var nextIndex;
+
+		if ( isSaving() ) {
+			return;
+		}
 
 		index = getBlockIndex( blockId );
 
@@ -1478,7 +1492,7 @@
 		item.draggable = true;
 
 		item.addEventListener( 'dragstart', function( event ) {
-			if ( editorState.renamingBlockId ) {
+			if ( isSaving() || editorState.renamingBlockId ) {
 				event.preventDefault();
 				return;
 			}
@@ -1514,6 +1528,11 @@
 
 		item.addEventListener( 'drop', function( event ) {
 			var draggedId = event.dataTransfer.getData( 'text/plain' );
+
+			if ( isSaving() ) {
+				event.preventDefault();
+				return;
+			}
 
 			event.preventDefault();
 			item.classList.remove( 'is-drag-over' );
@@ -1708,16 +1727,68 @@
 		return persistenceState.saveInFlight > 0;
 	}
 
+	function setElementsDisabledForSave( elements, disabled ) {
+		elements.forEach( function( element ) {
+			if ( ! element ) {
+				return;
+			}
+
+			if ( disabled ) {
+				if ( undefined === element.dataset.artEditorSaveDisabled ) {
+					element.dataset.artEditorSaveDisabled = element.disabled ? '1' : '0';
+				}
+
+				element.disabled = true;
+				return;
+			}
+
+			if ( undefined !== element.dataset.artEditorSaveDisabled ) {
+				element.disabled = '1' === element.dataset.artEditorSaveDisabled;
+				delete element.dataset.artEditorSaveDisabled;
+			}
+		} );
+	}
+
+	function updateEditorSaveLock() {
+		var locked = isSaving();
+		var workspace = document.querySelector( '.art-editor-screen__workspace' );
+		var previewFrames = document.querySelectorAll( '.art-editor-screen__preview-frame' );
+		var interactiveElements = [
+			document.getElementById( 'art-editor-settings-toggle' ),
+			document.getElementById( 'art-editor-preview-button' ),
+			document.getElementById( 'art-editor-create-html' ),
+		].concat(
+			Array.prototype.slice.call( document.querySelectorAll( '.art-editor-screen__history-button' ) ),
+			Array.prototype.slice.call( document.querySelectorAll( '.art-editor-screen__canvas-tab' ) ),
+			Array.prototype.slice.call( document.querySelectorAll( '.art-editor-screen__device-button' ) )
+		);
+
+		document.body.classList.toggle( 'art-editor-screen--saving', locked );
+
+		if ( workspace ) {
+			workspace.setAttribute( 'aria-busy', locked ? 'true' : 'false' );
+		}
+
+		setCodeEditorEnabled( ! locked && editorState.blocks.length > 0 );
+		setElementsDisabledForSave( interactiveElements, locked );
+
+		previewFrames.forEach( function( frame ) {
+			frame.style.pointerEvents = locked ? 'none' : '';
+		} );
+	}
+
 	function shouldWarnBeforeLeave() {
 		return isDirty() || isSaving();
 	}
 
 	function beginSaving() {
 		persistenceState.saveInFlight += 1;
+		updateEditorSaveLock();
 	}
 
 	function endSaving() {
 		persistenceState.saveInFlight = Math.max( 0, persistenceState.saveInFlight - 1 );
+		updateEditorSaveLock();
 	}
 
 	function initUnsavedChangesGuard() {
@@ -1874,7 +1945,7 @@
 	function undoChange() {
 		var previous;
 
-		if ( ! historyState.past.length ) {
+		if ( isSaving() || ! historyState.past.length ) {
 			return;
 		}
 
@@ -1889,7 +1960,7 @@
 	function redoChange() {
 		var next;
 
-		if ( ! historyState.future.length ) {
+		if ( isSaving() || ! historyState.future.length ) {
 			return;
 		}
 
@@ -1942,6 +2013,10 @@
 	}
 
 	function handleElementDeleteShortcut( event ) {
+		if ( isSaving() ) {
+			return;
+		}
+
 		if ( 'Backspace' !== event.key && 'Delete' !== event.key ) {
 			return;
 		}
@@ -1995,7 +2070,7 @@
 	function handleHistoryShortcut( event ) {
 		var isMeta = event.ctrlKey || event.metaKey;
 
-		if ( ! isMeta || editorState.renamingBlockId ) {
+		if ( isSaving() || ! isMeta || editorState.renamingBlockId ) {
 			return;
 		}
 
@@ -3336,6 +3411,10 @@
 	function selectBlock( blockId ) {
 		var isSameBlock = editorState.selectedId === blockId;
 
+		if ( isSaving() ) {
+			return;
+		}
+
 		showStructureSidebar();
 
 		if ( isSameBlock ) {
@@ -3354,9 +3433,19 @@
 		syncCodeFromSelection();
 	}
 
+	function switchToCodeTab() {
+		if ( typeof activateCanvasTab === 'function' ) {
+			activateCanvasTab( 'code' );
+		}
+	}
+
 	function createHtmlBlock() {
 		var index = editorState.blocks.length;
 		var block;
+
+		if ( isSaving() ) {
+			return;
+		}
 
 		showStructureSidebar();
 
@@ -3364,6 +3453,7 @@
 			pushHistory();
 			ensureBlockForCode();
 			scheduleUnsavedIndicatorUpdate();
+			switchToCodeTab();
 			return;
 		}
 
@@ -3381,6 +3471,7 @@
 		renderStructure();
 		syncCodeFromSelection();
 		scheduleUnsavedIndicatorUpdate();
+		switchToCodeTab();
 	}
 
 	function initStructure() {
@@ -3661,7 +3752,7 @@
 		function activateTab( tabName ) {
 			var currentTab = getActiveCanvasTabName();
 
-			if ( ! tabName || tabName === currentTab ) {
+			if ( isSaving() || ! tabName || tabName === currentTab ) {
 				return;
 			}
 
@@ -3691,6 +3782,8 @@
 				}
 			} );
 		} );
+
+		activateCanvasTab = activateTab;
 	}
 
 	function initSaveAndPreview() {
@@ -3725,9 +3818,15 @@
 			}, 1800 );
 		}
 
-		function saveBlocks( status ) {
+		function saveBlocks( status, options ) {
+			var settings = options || {};
+			var manageSaveLock = false !== settings.manageSaveLock;
+
 			commitCodeToSelectedBlock();
-			beginSaving();
+
+			if ( manageSaveLock ) {
+				beginSaving();
+			}
 
 			return window.fetch( saveUrl, {
 				method: 'POST',
@@ -3754,10 +3853,23 @@
 				} )
 				.then( function( data ) {
 					if ( data && Array.isArray( data.htmlBlocks ) ) {
+						var previousSelectedIndex = getBlockIndex( editorState.selectedId );
+
 						editorState.blocks = data.htmlBlocks;
 
-						if ( editorState.selectedId && ! getBlockById( editorState.selectedId ) && editorState.blocks.length ) {
-							editorState.selectedId = editorState.blocks[ 0 ].id;
+						if ( previousSelectedIndex >= 0 && editorState.blocks.length ) {
+							editorState.selectedId = editorState.blocks[
+								Math.min( previousSelectedIndex, editorState.blocks.length - 1 )
+							].id;
+						} else if ( editorState.selectedId && ! getBlockById( editorState.selectedId ) ) {
+							editorState.selectedId = editorState.blocks.length ? editorState.blocks[ 0 ].id : null;
+						}
+
+						if (
+							editorState.selectedElementLocator &&
+							editorState.selectedElementLocator.blockId !== editorState.selectedId
+						) {
+							editorState.selectedElementLocator.blockId = editorState.selectedId;
 						}
 
 						renderStructure();
@@ -3774,7 +3886,9 @@
 					return data;
 				} )
 				.finally( function() {
-					endSaving();
+					if ( manageSaveLock ) {
+						endSaving();
+					}
 				} );
 		}
 
@@ -3787,12 +3901,15 @@
 				pageSettings.status = targetStatus;
 			}
 
+			beginSaving();
+
 			return savePageSettings( pageSettings, {
 				includeStatus: includeStatus,
 				status: targetStatus,
+				manageSaveLock: false,
 			} )
 				.then( function() {
-					return saveBlocks( blocksStatus );
+					return saveBlocks( blocksStatus, { manageSaveLock: false } );
 				} )
 				.then( function( data ) {
 					if ( data && data.status ) {
@@ -3803,6 +3920,9 @@
 					updateSavedSettingsBaseline();
 
 					return data;
+				} )
+				.finally( function() {
+					endSaving();
 				} );
 		}
 
@@ -3823,6 +3943,10 @@
 
 		if ( saveButton ) {
 			saveButton.addEventListener( 'click', function() {
+				if ( isSaving() ) {
+					return;
+				}
+
 				runSaveAction( saveButton, {
 					default: i18n.save || 'Save',
 					saving: i18n.saving || 'Saving…',
@@ -3834,6 +3958,10 @@
 
 		if ( publishButton ) {
 			publishButton.addEventListener( 'click', function() {
+				if ( isSaving() ) {
+					return;
+				}
+
 				runSaveAction( publishButton, {
 					default: i18n.publish || 'Publish',
 					saving: i18n.publishing || 'Publishing…',
@@ -3845,6 +3973,10 @@
 
 		if ( previewButton ) {
 			previewButton.addEventListener( 'click', function() {
+				if ( isSaving() ) {
+					return;
+				}
+
 				var previewWindow = window.open( 'about:blank', 'art-editor-preview-' + config.postId );
 
 				previewButton.disabled = true;
@@ -4029,6 +4161,10 @@
 		}
 
 		settingsToggle.addEventListener( 'click', function() {
+			if ( isSaving() ) {
+				return;
+			}
+
 			toggleSettingsPanel( settingsPanel.hidden );
 		} );
 

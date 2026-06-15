@@ -1164,6 +1164,19 @@ body.art-editor-screen {
 	cursor: wait;
 }
 
+.art-editor-screen--saving .art-editor-screen__workspace {
+	position: relative;
+}
+
+.art-editor-screen--saving .art-editor-screen__workspace::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 200;
+	cursor: wait;
+	background: rgba(255, 255, 255, 0.45);
+}
+
 .art-editor-screen__canvas-panels {
 	display: flex;
 	flex: 1;
