@@ -1,3 +1,7 @@
+# Copy to .gitignore in this folder for local development:
+#   copy gitignore.template .gitignore   (Windows)
+#   cp gitignore.template .gitignore     (macOS/Linux)
+
 # Dev / IDE
 .cursor/
 .idea/

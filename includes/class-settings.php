@@ -19,6 +19,7 @@ class Art_Editor_Settings {
 	 */
 	public static function init() {
 		add_action( 'admin_init', array( __CLASS__, 'maybe_seed_defaults' ) );
+		add_action( 'admin_init', array( __CLASS__, 'maybe_migrate_post_types' ) );
 	}
 
 	/**
@@ -39,8 +40,33 @@ class Art_Editor_Settings {
 	 */
 	public static function get_default_settings() {
 		return array(
-			'post_types' => array( 'post', 'page' ),
+			'post_types' => array( 'art_landing', 'post', 'page' ),
 		);
+	}
+
+	/**
+	 * Ensure landing post type is enabled for existing installations.
+	 */
+	public static function maybe_migrate_post_types() {
+		$settings = get_option( self::OPTION, false );
+
+		if ( false === $settings || ! is_array( $settings ) ) {
+			return;
+		}
+
+		$post_types = isset( $settings['post_types'] ) && is_array( $settings['post_types'] )
+			? $settings['post_types']
+			: array();
+
+		if ( in_array( Art_Editor_Landing_Post_Type::POST_TYPE, $post_types, true ) ) {
+			return;
+		}
+
+		$post_types[]               = Art_Editor_Landing_Post_Type::POST_TYPE;
+		$settings['post_types']     = array_values( array_unique( array_map( 'sanitize_key', $post_types ) ) );
+		$settings['post_types']     = self::sanitize_settings( $settings )['post_types'];
+
+		update_option( self::OPTION, $settings, false );
 	}
 
 	/**
@@ -128,6 +154,14 @@ class Art_Editor_Settings {
 				}
 
 				if ( 'page' === $right_name ) {
+					return 1;
+				}
+
+				if ( Art_Editor_Landing_Post_Type::POST_TYPE === $left_name ) {
+					return -1;
+				}
+
+				if ( Art_Editor_Landing_Post_Type::POST_TYPE === $right_name ) {
 					return 1;
 				}
 

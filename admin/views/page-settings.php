@@ -7,9 +7,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$settings_option = Art_Editor_Settings::OPTION;
-$enabled_types   = Art_Editor_Settings::get_enabled_post_types();
-$post_types      = Art_Editor_Settings::get_selectable_post_types();
+$art_editor_settings_option = Art_Editor_Settings::OPTION;
+$art_editor_enabled_types   = Art_Editor_Settings::get_enabled_post_types();
+$art_editor_post_types      = Art_Editor_Settings::get_selectable_post_types();
 
 ?>
 <div class="wrap art-editor-admin">
@@ -32,21 +32,21 @@ $post_types      = Art_Editor_Settings::get_selectable_post_types();
 					<fieldset class="art-editor-settings-row__field" aria-labelledby="art-editor-settings-post-types-label">
 						<legend class="screen-reader-text"><?php echo esc_html__( 'Типы записей', 'art-editor' ); ?></legend>
 						<ul class="art-editor-settings-checklist">
-							<?php foreach ( $post_types as $post_type_object ) : ?>
-								<?php if ( ! $post_type_object instanceof WP_Post_Type ) : ?>
+							<?php foreach ( $art_editor_post_types as $art_editor_post_type_object ) : ?>
+								<?php if ( ! $art_editor_post_type_object instanceof WP_Post_Type ) : ?>
 									<?php continue; ?>
 								<?php endif; ?>
 								<li class="art-editor-settings-checklist__item">
-									<label class="art-editor-settings-checklist__label" for="art-editor-post-type-<?php echo esc_attr( $post_type_object->name ); ?>">
+									<label class="art-editor-settings-checklist__label" for="art-editor-post-type-<?php echo esc_attr( $art_editor_post_type_object->name ); ?>">
 										<input
 											type="checkbox"
 											class="art-editor-settings-checklist__input"
-											id="art-editor-post-type-<?php echo esc_attr( $post_type_object->name ); ?>"
-											name="<?php echo esc_attr( $settings_option ); ?>[post_types][]"
-											value="<?php echo esc_attr( $post_type_object->name ); ?>"
-											<?php checked( in_array( $post_type_object->name, $enabled_types, true ) ); ?>
+											id="art-editor-post-type-<?php echo esc_attr( $art_editor_post_type_object->name ); ?>"
+											name="<?php echo esc_attr( $art_editor_settings_option ); ?>[post_types][]"
+											value="<?php echo esc_attr( $art_editor_post_type_object->name ); ?>"
+											<?php checked( in_array( $art_editor_post_type_object->name, $art_editor_enabled_types, true ) ); ?>
 										/>
-										<span><?php echo esc_html( $post_type_object->labels->name ); ?></span>
+										<span><?php echo esc_html( $art_editor_post_type_object->labels->name ); ?></span>
 									</label>
 								</li>
 							<?php endforeach; ?>

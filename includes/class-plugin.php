@@ -41,6 +41,7 @@ class Art_Editor_Plugin {
 	 * Load required class files.
 	 */
 	private function load_dependencies() {
+		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-landing-post-type.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-post-meta.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-content.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-preview.php';
@@ -58,7 +59,7 @@ class Art_Editor_Plugin {
 	 * Register hooks and initialize modules.
 	 */
 	public function run() {
-		add_action( 'init', array( $this, 'load_textdomain' ) );
+		Art_Editor_Landing_Post_Type::init();
 		Art_Editor_Post_Meta::init();
 		Art_Editor_Settings::init();
 		Art_Editor_Rest::init();
@@ -68,16 +69,5 @@ class Art_Editor_Plugin {
 		Art_Editor_Block_Editor::init();
 		Art_Editor_Editor_Screen::init();
 		Art_Editor_Frontend::init();
-	}
-
-	/**
-	 * Load plugin translations.
-	 */
-	public function load_textdomain() {
-		load_plugin_textdomain(
-			'art-editor',
-			false,
-			dirname( ART_EDITOR_PLUGIN_BASENAME ) . '/languages'
-		);
 	}
 }

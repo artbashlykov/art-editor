@@ -15,27 +15,27 @@ if ( ! $post instanceof WP_Post ) {
 	wp_die( esc_html__( 'Запись не найдена.', 'art-editor' ) );
 }
 
-$document_title = Art_Editor_Editor_Screen::get_document_title( $post );
-$status_label   = Art_Editor_Editor_Screen::get_post_status_label( $post );
-$page_title     = sprintf(
+$art_editor_document_title = Art_Editor_Editor_Screen::get_document_title( $post );
+$art_editor_status_label   = Art_Editor_Editor_Screen::get_post_status_label( $post );
+$art_editor_page_title     = sprintf(
 	/* translators: %s: post title */
 	__( 'АРТ Редактор: %s', 'art-editor' ),
-	$document_title
+	$art_editor_document_title
 );
-$settings_status       = $post->post_status;
-$settings_title_value  = $post->post_title;
-$settings_layout_mode  = Art_Editor_Post_Meta::get_layout_mode( $post->ID );
-$settings_style_mode   = Art_Editor_Post_Meta::get_style_mode( $post->ID );
-$settings_statuses     = Art_Editor_Editor_Screen::get_available_post_statuses( $post );
-$permalink_settings    = Art_Editor_Editor_Screen::get_permalink_settings_data( $post );
-$settings_slug_value   = $permalink_settings['slug'];
-$settings_permalink_prefix = $permalink_settings['permalinkPrefix'];
-$settings_show_slug_hint = in_array( $settings_status, array( 'publish', 'private' ), true );
-$can_publish           = current_user_can( 'publish_post', $post->ID );
-$show_publish_button   = $can_publish && ! in_array( $settings_status, array( 'publish', 'private' ), true );
+$art_editor_settings_status       = $post->post_status;
+$art_editor_settings_title_value  = $post->post_title;
+$art_editor_settings_layout_mode  = Art_Editor_Post_Meta::get_layout_mode( $post->ID );
+$art_editor_settings_style_mode   = Art_Editor_Post_Meta::get_style_mode( $post->ID );
+$art_editor_settings_statuses     = Art_Editor_Editor_Screen::get_available_post_statuses( $post );
+$art_editor_permalink_settings    = Art_Editor_Editor_Screen::get_permalink_settings_data( $post );
+$art_editor_settings_slug_value   = $art_editor_permalink_settings['slug'];
+$art_editor_settings_permalink_prefix = $art_editor_permalink_settings['permalinkPrefix'];
+$art_editor_settings_show_slug_hint = in_array( $art_editor_settings_status, array( 'publish', 'private' ), true );
+$art_editor_can_publish           = current_user_can( 'publish_post', $post->ID );
+$art_editor_show_publish_button   = $art_editor_can_publish && ! in_array( $art_editor_settings_status, array( 'publish', 'private' ), true );
 
-if ( 'auto-draft' === $settings_status ) {
-	$settings_status = 'draft';
+if ( 'auto-draft' === $art_editor_settings_status ) {
+	$art_editor_settings_status = 'draft';
 }
 
 ?><!DOCTYPE html>
@@ -43,7 +43,7 @@ if ( 'auto-draft' === $settings_status ) {
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title><?php echo esc_html( $page_title ); ?></title>
+	<title><?php echo esc_html( $art_editor_page_title ); ?></title>
 	<?php
 	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Core site icon markup from wp_site_icon().
 	echo Art_Editor_Editor_Screen::get_site_icon_head_markup();
@@ -105,13 +105,13 @@ if ( 'auto-draft' === $settings_status ) {
 				</svg>
 			</button>
 			<span class="art-editor-screen__document-title" id="art-editor-document-title">
-				<?php echo esc_html( $document_title ); ?>
+				<?php echo esc_html( $art_editor_document_title ); ?>
 			</span>
 			<span class="art-editor-screen__document-status" id="art-editor-document-status">
 				<?php
 				printf(
 					'(%s)',
-					esc_html( $status_label )
+					esc_html( $art_editor_status_label )
 				);
 				?>
 			</span>
@@ -137,15 +137,15 @@ if ( 'auto-draft' === $settings_status ) {
 					<path d="M4 20l10-10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
 				</svg>
 			</button>
-			<button type="button" class="art-editor-screen__save-button<?php echo $show_publish_button ? ' art-editor-screen__save-button--secondary' : ''; ?>" id="art-editor-save-button">
+			<button type="button" class="art-editor-screen__save-button<?php echo $art_editor_show_publish_button ? ' art-editor-screen__save-button--secondary' : ''; ?>" id="art-editor-save-button">
 				<?php echo esc_html__( 'Сохранить', 'art-editor' ); ?>
 			</button>
-			<?php if ( $can_publish ) : ?>
+			<?php if ( $art_editor_can_publish ) : ?>
 				<button
 					type="button"
 					class="art-editor-screen__save-button art-editor-screen__publish-button"
 					id="art-editor-publish-button"
-					<?php echo $show_publish_button ? '' : 'hidden'; ?>
+					<?php echo $art_editor_show_publish_button ? '' : 'hidden'; ?>
 				>
 					<?php echo esc_html__( 'Опубликовать', 'art-editor' ); ?>
 				</button>
@@ -232,7 +232,7 @@ if ( 'auto-draft' === $settings_status ) {
 								class="art-editor-screen__settings-input"
 								id="art-editor-page-title"
 								name="art-editor-page-title"
-								value="<?php echo esc_attr( $settings_title_value ); ?>"
+								value="<?php echo esc_attr( $art_editor_settings_title_value ); ?>"
 								placeholder="<?php echo esc_attr__( 'Без названия', 'art-editor' ); ?>"
 								autocomplete="off"
 							/>
@@ -245,16 +245,16 @@ if ( 'auto-draft' === $settings_status ) {
 								<span
 									class="art-editor-screen__permalink-prefix"
 									id="art-editor-permalink-prefix"
-									title="<?php echo esc_attr( $settings_permalink_prefix . $settings_slug_value ); ?>"
+									title="<?php echo esc_attr( $art_editor_settings_permalink_prefix . $art_editor_settings_slug_value ); ?>"
 								>
-									<?php echo esc_html( $settings_permalink_prefix ); ?>
+									<?php echo esc_html( $art_editor_settings_permalink_prefix ); ?>
 								</span>
 								<input
 									type="text"
 									class="art-editor-screen__settings-input art-editor-screen__permalink-slug"
 									id="art-editor-page-slug"
 									name="art-editor-page-slug"
-									value="<?php echo esc_attr( $settings_slug_value ); ?>"
+									value="<?php echo esc_attr( $art_editor_settings_slug_value ); ?>"
 									placeholder="<?php echo esc_attr__( 'ярлык-страницы', 'art-editor' ); ?>"
 									autocomplete="off"
 									spellcheck="false"
@@ -263,7 +263,7 @@ if ( 'auto-draft' === $settings_status ) {
 							<p
 								class="art-editor-screen__permalink-hint"
 								id="art-editor-permalink-hint"
-								<?php echo $settings_show_slug_hint ? '' : 'hidden'; ?>
+								<?php echo $art_editor_settings_show_slug_hint ? '' : 'hidden'; ?>
 							>
 								<?php echo esc_html__( 'После сохранения старый адрес перестанет работать.', 'art-editor' ); ?>
 							</p>
@@ -280,9 +280,9 @@ if ( 'auto-draft' === $settings_status ) {
 								aria-disabled="true"
 								title="<?php echo esc_attr__( 'Статус меняется кнопкой «Опубликовать» в шапке.', 'art-editor' ); ?>"
 							>
-								<?php foreach ( $settings_statuses as $status_key => $status_name ) : ?>
-									<option value="<?php echo esc_attr( $status_key ); ?>" <?php selected( $settings_status, $status_key ); ?>>
-										<?php echo esc_html( $status_name ); ?>
+								<?php foreach ( $art_editor_settings_statuses as $art_editor_status_key => $art_editor_status_name ) : ?>
+									<option value="<?php echo esc_attr( $art_editor_status_key ); ?>" <?php selected( $art_editor_settings_status, $art_editor_status_key ); ?>>
+										<?php echo esc_html( $art_editor_status_name ); ?>
 									</option>
 								<?php endforeach; ?>
 							</select>
@@ -292,10 +292,10 @@ if ( 'auto-draft' === $settings_status ) {
 								<?php echo esc_html__( 'Шаблон', 'art-editor' ); ?>
 							</label>
 							<select class="art-editor-screen__settings-select" id="art-editor-layout-mode" name="art-editor-layout-mode">
-								<option value="theme" <?php selected( $settings_layout_mode, 'theme' ); ?>>
+								<option value="theme" <?php selected( $art_editor_settings_layout_mode, 'theme' ); ?>>
 									<?php echo esc_html__( 'Наследовать тему', 'art-editor' ); ?>
 								</option>
-								<option value="canvas" <?php selected( $settings_layout_mode, 'canvas' ); ?>>
+								<option value="canvas" <?php selected( $art_editor_settings_layout_mode, 'canvas' ); ?>>
 									<?php echo esc_html__( 'Без шапки и подвала', 'art-editor' ); ?>
 								</option>
 							</select>
@@ -305,10 +305,10 @@ if ( 'auto-draft' === $settings_status ) {
 								<?php echo esc_html__( 'Стили', 'art-editor' ); ?>
 							</label>
 							<select class="art-editor-screen__settings-select" id="art-editor-style-mode" name="art-editor-style-mode">
-								<option value="theme" <?php selected( $settings_style_mode, 'theme' ); ?>>
+								<option value="theme" <?php selected( $art_editor_settings_style_mode, 'theme' ); ?>>
 									<?php echo esc_html__( 'Стили темы', 'art-editor' ); ?>
 								</option>
-								<option value="editor" <?php selected( $settings_style_mode, 'editor' ); ?>>
+								<option value="editor" <?php selected( $art_editor_settings_style_mode, 'editor' ); ?>>
 									<?php echo esc_html__( 'Стили редактора', 'art-editor' ); ?>
 								</option>
 							</select>
@@ -598,13 +598,13 @@ if ( 'auto-draft' === $settings_status ) {
 		</section>
 	</main>
 	<?php
-	$editor_scripts = array(
+	$art_editor_editor_scripts = array(
 		'jquery',
 		'art-editor-screen',
 	);
 
 	if ( wp_script_is( 'code-editor', 'enqueued' ) ) {
-		$editor_scripts = array(
+		$art_editor_editor_scripts = array(
 			'jquery',
 			'underscore',
 			'wp-codemirror',
@@ -613,7 +613,7 @@ if ( 'auto-draft' === $settings_status ) {
 		);
 	}
 
-	wp_print_scripts( $editor_scripts );
+	wp_print_scripts( $art_editor_editor_scripts );
 	wp_print_footer_scripts();
 
 	if ( function_exists( 'wp_print_media_templates' ) ) {

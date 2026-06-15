@@ -12,6 +12,7 @@
 	var createPortal = wp.element.createPortal;
 	var registerPlugin = wp.plugins.registerPlugin;
 	var config = window.artEditorConfig || {};
+	var mountRegistry = {};
 
 	function findEditorToolbar() {
 		var selectors = [
@@ -80,27 +81,36 @@
 			|| document.getElementById( 'elementor-edit-button-gutenberg' );
 	}
 
-	function ensureMount( mountId, parent, insertBeforeNode ) {
-		var existing = document.getElementById( mountId );
+	function getOrCreateMount( mountId, parent, insertBeforeNode ) {
+		var mount = mountRegistry[ mountId ] || document.getElementById( mountId );
 
-		if ( existing && existing.parentNode ) {
-			return existing;
+		if ( ! mount ) {
+			mount = document.createElement( 'div' );
+			mount.id = mountId;
+			mount.className = 'art-editor-topbar-button-slot';
 		}
+
+		mountRegistry[ mountId ] = mount;
 
 		if ( ! parent ) {
-			return null;
+			return mount.isConnected ? mount : null;
 		}
 
-		existing = document.createElement( 'div' );
-		existing.id = mountId;
+		if ( mount.isConnected && mount.parentNode === parent ) {
+			return mount;
+		}
+
+		if ( mount.isConnected && parent.contains( mount ) ) {
+			return mount;
+		}
 
 		if ( insertBeforeNode && insertBeforeNode.parentNode === parent ) {
-			parent.insertBefore( existing, insertBeforeNode );
+			parent.insertBefore( mount, insertBeforeNode );
 		} else {
-			parent.appendChild( existing );
+			parent.appendChild( mount );
 		}
 
-		return existing;
+		return mount;
 	}
 
 	function redirectWhenSaved( editUrl ) {
@@ -243,31 +253,84 @@
 		var setMountNode = mountState[ 1 ];
 
 		useEffect( function() {
-			var timer;
+			var observer;
+			var observedTarget = null;
+			var rafId = 0;
+
+			function getObserverTarget() {
+				return document.querySelector( '.interface-interface-skeleton__header' )
+					|| document.querySelector( '.edit-post-header' )
+					|| document.querySelector( '.editor-header' )
+					|| document.body;
+			}
+
+			function ensureObserver() {
+				var target = getObserverTarget();
+
+				if ( ! window.MutationObserver || observedTarget === target ) {
+					return;
+				}
+
+				if ( observer ) {
+					observer.disconnect();
+				}
+
+				observer = new window.MutationObserver( scheduleSync );
+				observer.observe( target, {
+					childList: true,
+					subtree: true,
+				} );
+				observedTarget = target;
+			}
 
 			function syncMount() {
 				var parent = getParent();
 				var insertBeforeNode = insertBeforeSelector ? document.querySelector( insertBeforeSelector ) : null;
-				var node;
+				var node = getOrCreateMount( mountId, parent, insertBeforeNode );
 
-				if ( ! parent ) {
+				ensureObserver();
+
+				if ( ! node ) {
 					return;
 				}
 
-				node = ensureMount( mountId, parent, insertBeforeNode );
-
-				if ( node ) {
-					setMountNode( node );
-				}
+				setMountNode( function( current ) {
+					return current === node ? current : node;
+				} );
 			}
 
-			syncMount();
-			timer = window.setInterval( syncMount, 1000 );
+			function scheduleSync() {
+				if ( rafId ) {
+					window.cancelAnimationFrame( rafId );
+				}
+
+				rafId = window.requestAnimationFrame( syncMount );
+			}
+
+			scheduleSync();
+
+			if ( ! window.MutationObserver ) {
+				var timer = window.setInterval( syncMount, 1000 );
+
+				return function() {
+					window.clearInterval( timer );
+
+					if ( rafId ) {
+						window.cancelAnimationFrame( rafId );
+					}
+				};
+			}
 
 			return function() {
-				window.clearInterval( timer );
+				if ( observer ) {
+					observer.disconnect();
+				}
+
+				if ( rafId ) {
+					window.cancelAnimationFrame( rafId );
+				}
 			};
-		}, [] );
+		}, [ mountId, insertBeforeSelector ] );
 
 		return mountNode;
 	}
@@ -281,7 +344,8 @@
 
 		return createPortal(
 			createElement( HtmlLauncherButton, { onClick: openEditorScreen } ),
-			mountNode
+			mountNode,
+			'art-editor-html-launcher'
 		);
 	}
 
@@ -303,15 +367,18 @@
 			null,
 			toolbarMount && createPortal(
 				createElement( BackToWordPressButton, { onClick: returnToWordPressEditor } ),
-				toolbarMount
+				toolbarMount,
+				'art-editor-switch-mode-portal'
 			),
 			centerMount && createPortal(
 				createElement( CenterEditButton, { onClick: openEditorScreen } ),
-				centerMount
+				centerMount,
+				'art-editor-center-edit-portal'
 			),
 			panelMount && createPortal(
 				createElement( BuilderPanel, { onClick: openEditorScreen } ),
-				panelMount
+				panelMount,
+				'art-editor-builder-panel-portal'
 			)
 		);
 	}
