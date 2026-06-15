@@ -12,7 +12,9 @@ defined( 'ABSPATH' ) || exit;
  */
 class Art_Editor_Admin_Menu {
 
-	const PARENT_MENU_SLUG = 'edit.php?post_type=page';
+	const MENU_SLUG = ART_EDITOR_ADMIN_MENU_SLUG;
+
+	const MENU_POSITION = 21;
 
 	const SUBMENU_LANDINGS = 'edit.php?post_type=' . Art_Editor_Landing_Post_Type::POST_TYPE;
 
@@ -21,6 +23,7 @@ class Art_Editor_Admin_Menu {
 	 */
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 5 );
+		add_action( 'admin_menu', array( __CLASS__, 'finalize_menu' ), 999 );
 		add_filter( 'parent_file', array( __CLASS__, 'filter_parent_file' ) );
 		add_filter( 'submenu_file', array( __CLASS__, 'filter_submenu_file' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
@@ -32,8 +35,18 @@ class Art_Editor_Admin_Menu {
 	 * Register admin menu items.
 	 */
 	public static function register_menu() {
+		add_menu_page(
+			__( 'ART Editor', 'art-editor' ),
+			__( 'ART Editor', 'art-editor' ),
+			'edit_posts',
+			self::MENU_SLUG,
+			array( __CLASS__, 'render_menu_home' ),
+			'dashicons-layout',
+			self::MENU_POSITION
+		);
+
 		add_submenu_page(
-			self::PARENT_MENU_SLUG,
+			self::MENU_SLUG,
 			__( 'Лендинги', 'art-editor' ),
 			__( 'Лендинги', 'art-editor' ),
 			'edit_posts',
@@ -41,9 +54,9 @@ class Art_Editor_Admin_Menu {
 		);
 
 		add_submenu_page(
-			self::PARENT_MENU_SLUG,
-			__( 'ART Editor', 'art-editor' ),
-			__( 'ART Editor', 'art-editor' ),
+			self::MENU_SLUG,
+			__( 'Настройки', 'art-editor' ),
+			__( 'Настройки', 'art-editor' ),
 			'manage_options',
 			Art_Editor_Admin_Settings::PAGE_SETTINGS,
 			array( 'Art_Editor_Admin_Settings', 'render_settings_page' )
@@ -51,21 +64,40 @@ class Art_Editor_Admin_Menu {
 	}
 
 	/**
-	 * Keep the Pages menu open on ART Editor screens.
+	 * Remove duplicate top-level submenu entry.
+	 */
+	public static function finalize_menu() {
+		remove_submenu_page( self::MENU_SLUG, self::MENU_SLUG );
+	}
+
+	/**
+	 * Default landing page for ART Editor menu.
+	 */
+	public static function render_menu_home() {
+		if ( current_user_can( 'edit_posts' ) ) {
+			wp_safe_redirect( admin_url( self::SUBMENU_LANDINGS ) );
+			exit;
+		}
+
+		Art_Editor_Admin_Settings::render_settings_page();
+	}
+
+	/**
+	 * Keep ART Editor menu open on plugin admin screens.
 	 *
 	 * @param string $parent_file Parent file.
 	 * @return string
 	 */
 	public static function filter_parent_file( $parent_file ) {
 		if ( self::is_plugin_admin_screen() ) {
-			return self::PARENT_MENU_SLUG;
+			return self::MENU_SLUG;
 		}
 
 		return $parent_file;
 	}
 
 	/**
-	 * Highlight the matching submenu entry on ART Editor screens.
+	 * Highlight the matching submenu entry on plugin admin screens.
 	 *
 	 * @param string $submenu_file Submenu file.
 	 * @return string
