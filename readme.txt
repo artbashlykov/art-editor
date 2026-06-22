@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.3
+Stable tag: 0.2.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,14 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.4 =
+* Anchor blocks: «Добавить якорь» button, dedicated anchor panel, disabled Code/Edit tabs for anchors.
+* Editor: gray Save button when there are no unsaved changes (including hover); orange when dirty.
+* Editor: font weight control (100–900); text styles hidden for block-level elements like div/section.
+* Editor: fix link options collapse animation; fix styles reset when adding a link.
+* Editor: active element highlight uses outline only (no gray fill).
+* Editor: flush pending element edits only on save (fixes font size/color regression).
 
 = 0.2.3 =
 * Frontend admin bar button «Редактор HTML» on published ART Editor pages.

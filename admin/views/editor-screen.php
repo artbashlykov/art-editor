@@ -195,6 +195,9 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					<ul class="art-editor-screen__structure-list" id="art-editor-structure-list"></ul>
 				</div>
 				<div class="art-editor-screen__sidebar-footer">
+					<button type="button" class="art-editor-screen__sidebar-button art-editor-screen__sidebar-button--secondary" id="art-editor-create-anchor">
+						<?php echo esc_html__( 'Добавить якорь', 'art-editor' ); ?>
+					</button>
 					<button type="button" class="art-editor-screen__sidebar-button" id="art-editor-create-html">
 						<?php echo esc_html__( 'Создать HTML', 'art-editor' ); ?>
 					</button>
@@ -389,6 +392,34 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 									</button>
 								</div>
 							</div>
+							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-font-weight-row" hidden>
+								<label class="art-editor-screen__element-editor-field-label" for="art-editor-element-font-weight">
+									<?php echo esc_html__( 'Жирность', 'art-editor' ); ?>
+								</label>
+								<div class="art-editor-screen__element-editor-style-control">
+									<select
+										class="art-editor-screen__element-editor-style-select"
+										id="art-editor-element-font-weight"
+										name="art-editor-element-font-weight"
+										aria-label="<?php echo esc_attr__( 'Жирность', 'art-editor' ); ?>"
+									>
+										<option value=""><?php echo esc_html__( '—', 'art-editor' ); ?></option>
+										<?php foreach ( array( 100, 200, 300, 400, 500, 600, 700, 800, 900 ) as $art_editor_font_weight ) : ?>
+											<option value="<?php echo esc_attr( (string) $art_editor_font_weight ); ?>">
+												<?php echo esc_html( (string) $art_editor_font_weight ); ?>
+											</option>
+										<?php endforeach; ?>
+									</select>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-style-reset"
+										id="art-editor-element-font-weight-reset"
+										disabled
+									>
+										<?php echo esc_html__( 'Сбросить', 'art-editor' ); ?>
+									</button>
+								</div>
+							</div>
 							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-background-color-row" hidden>
 								<label class="art-editor-screen__element-editor-field-label" for="art-editor-element-background-color">
 									<?php echo esc_html__( 'Цвет фона', 'art-editor' ); ?>
@@ -456,18 +487,20 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 								</button>
 							</div>
 							<div class="art-editor-screen__element-editor-link-options" id="art-editor-element-link-options">
-								<label class="art-editor-screen__element-editor-checkbox" for="art-editor-element-link-blank">
-									<input
-										type="checkbox"
-										class="art-editor-screen__element-editor-checkbox-input"
-										id="art-editor-element-link-blank"
-										name="art-editor-element-link-blank"
-										value="1"
-									/>
-									<span class="art-editor-screen__element-editor-checkbox-label">
-										<?php echo esc_html__( 'Открывать в новом окне', 'art-editor' ); ?>
-									</span>
-								</label>
+								<div class="art-editor-screen__element-editor-link-options-inner">
+									<label class="art-editor-screen__element-editor-checkbox" for="art-editor-element-link-blank">
+										<input
+											type="checkbox"
+											class="art-editor-screen__element-editor-checkbox-input"
+											id="art-editor-element-link-blank"
+											name="art-editor-element-link-blank"
+											value="1"
+										/>
+										<span class="art-editor-screen__element-editor-checkbox-label">
+											<?php echo esc_html__( 'Открывать в новом окне', 'art-editor' ); ?>
+										</span>
+									</label>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -542,6 +575,36 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 				</div>
 			</div>
 			<div class="art-editor-screen__canvas-panels">
+				<div
+					class="art-editor-screen__canvas-panel"
+					id="art-editor-panel-anchor"
+					role="tabpanel"
+					aria-labelledby="art-editor-tab-code"
+					hidden
+				>
+					<div class="art-editor-screen__anchor-panel">
+						<label class="art-editor-screen__anchor-label" for="art-editor-anchor-id">
+							<?php echo esc_html__( 'Добавьте якорную ссылку', 'art-editor' ); ?>
+						</label>
+						<div class="art-editor-screen__anchor-input-row">
+							<span class="art-editor-screen__anchor-prefix" aria-hidden="true">#</span>
+							<input
+								type="text"
+								class="art-editor-screen__anchor-input"
+								id="art-editor-anchor-id"
+								name="art-editor-anchor-id"
+								value=""
+								autocomplete="off"
+								spellcheck="false"
+								placeholder="<?php echo esc_attr__( 'pricing', 'art-editor' ); ?>"
+								aria-describedby="art-editor-anchor-hint"
+							/>
+						</div>
+						<p class="art-editor-screen__anchor-hint" id="art-editor-anchor-hint">
+							<?php echo esc_html__( 'Используйте короткое латинское имя: буквы, цифры и дефис. В ссылках на лендинге указывайте #имя, например #pricing.', 'art-editor' ); ?>
+						</p>
+					</div>
+				</div>
 				<div
 					class="art-editor-screen__canvas-panel is-active"
 					id="art-editor-panel-code"

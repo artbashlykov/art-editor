@@ -38,6 +38,8 @@
 	var structureList = document.getElementById( 'art-editor-structure-list' );
 	var structureEmpty = document.getElementById( 'art-editor-structure-empty' );
 	var createHtmlButton = document.getElementById( 'art-editor-create-html' );
+	var createAnchorButton = document.getElementById( 'art-editor-create-anchor' );
+	var anchorIdInput = document.getElementById( 'art-editor-anchor-id' );
 	var codeEditorInstance = null;
 
 	var visualEditCommitState = {
@@ -72,6 +74,111 @@
 	};
 
 	var unsavedIndicatorTimer = null;
+
+	function isAnchorBlock( block ) {
+		return !! ( block && 'anchor' === block.type );
+	}
+
+	function normalizeAnchorId( value ) {
+		var normalized = String( value || '' ).trim().toLowerCase();
+
+		if ( ! normalized ) {
+			return '';
+		}
+
+		normalized = normalized.replace( /^#+/, '' );
+		normalized = normalized.replace( /[^a-z0-9\-_]+/g, '-' );
+		normalized = normalized.replace( /-+/g, '-' );
+		normalized = normalized.replace( /^-+|-+$/g, '' );
+
+		return normalized;
+	}
+
+	function buildAnchorBlockContent( anchorId ) {
+		if ( ! anchorId ) {
+			return '';
+		}
+
+		return '<div id="' + anchorId + '" class="art-editor-anchor" aria-hidden="true"></div>';
+	}
+
+	function parseAnchorIdFromContent( content ) {
+		var doc;
+		var target;
+
+		if ( ! content || ! window.DOMParser ) {
+			return '';
+		}
+
+		try {
+			doc = new window.DOMParser().parseFromString( content, 'text/html' );
+			target = doc.querySelector( 'div.art-editor-anchor[id]' );
+
+			if ( ! target || ! target.id ) {
+				return '';
+			}
+
+			return normalizeAnchorId( target.id );
+		} catch ( error ) {
+			return '';
+		}
+	}
+
+	function getAnchorBlockTitle( anchorId ) {
+		if ( ! anchorId ) {
+			return i18n.emptyAnchor || 'Пустой якорь';
+		}
+
+		return ( i18n.anchorBlock || 'Якорь' ) + ': ' + anchorId;
+	}
+
+	function normalizeLoadedBlock( block, index ) {
+		block.type = block.type || 'html';
+
+		if ( 'anchor' === block.type ) {
+			block.anchorId = normalizeAnchorId( block.anchorId || parseAnchorIdFromContent( block.content || '' ) );
+			block.content = buildAnchorBlockContent( block.anchorId );
+			block.title = getAnchorBlockTitle( block.anchorId );
+			block.titleLocked = true;
+			return block;
+		}
+
+		block.type = 'html';
+		block.titleLocked = !! block.titleLocked;
+		block.title = block.title || getBlockTitle( block.content, index );
+
+		return block;
+	}
+
+	function mapBlockForSave( block ) {
+		var payload = {
+			content: block.content || '',
+			title: block.titleLocked ? ( block.title || '' ) : '',
+		};
+
+		if ( isAnchorBlock( block ) ) {
+			payload.type = 'anchor';
+			payload.anchorId = block.anchorId || '';
+		}
+
+		return payload;
+	}
+
+	function mapBlockForSnapshot( block ) {
+		var snapshot = {
+			id: block.id,
+			title: block.title,
+			titleLocked: !! block.titleLocked,
+			content: block.content || '',
+			type: block.type || 'html',
+		};
+
+		if ( isAnchorBlock( block ) ) {
+			snapshot.anchorId = block.anchorId || '';
+		}
+
+		return snapshot;
+	}
 
 	function getPageSettingsFromDom() {
 		var titleInput = document.getElementById( 'art-editor-page-title' );
@@ -115,6 +222,8 @@
 		if ( saveButton ) {
 			saveButton.classList.toggle( 'art-editor-screen__save-button--secondary', showPublishButton );
 		}
+
+		updateSaveStateUi();
 	}
 
 	function syncStatusInputFromConfig() {
@@ -357,6 +466,7 @@
 		index = 0;
 		block = {
 			id: 'html-' + Date.now(),
+			type: 'html',
 			title: getBlockTitle( code, index ),
 			titleLocked: false,
 			content: code || '',
@@ -376,6 +486,10 @@
 
 	function applyCodeChangeToBlock() {
 		var block = getBlockById( editorState.selectedId );
+
+		if ( isAnchorBlock( block ) ) {
+			return;
+		}
 
 		if ( ! block ) {
 			block = ensureBlockForCode();
@@ -473,11 +587,14 @@
 		var styleControls = document.getElementById( 'art-editor-element-style-controls' );
 		var fontSizeRow = document.getElementById( 'art-editor-element-font-size-row' );
 		var textColorRow = document.getElementById( 'art-editor-element-text-color-row' );
+		var fontWeightRow = document.getElementById( 'art-editor-element-font-weight-row' );
 		var backgroundColorRow = document.getElementById( 'art-editor-element-background-color-row' );
 		var fontSizeInput = document.getElementById( 'art-editor-element-font-size' );
 		var fontSizeResetButton = document.getElementById( 'art-editor-element-font-size-reset' );
 		var textColorInput = document.getElementById( 'art-editor-element-text-color' );
 		var textColorResetButton = document.getElementById( 'art-editor-element-text-color-reset' );
+		var fontWeightInput = document.getElementById( 'art-editor-element-font-weight' );
+		var fontWeightResetButton = document.getElementById( 'art-editor-element-font-weight-reset' );
 		var backgroundColorInput = document.getElementById( 'art-editor-element-background-color' );
 		var backgroundColorResetButton = document.getElementById( 'art-editor-element-background-color-reset' );
 		var imageControls = document.getElementById( 'art-editor-element-image-controls' );
@@ -491,9 +608,104 @@
 		var isSyncingTextStyleControls = false;
 		var linkApplyTimer = null;
 		var textStyleApplyTimer = null;
+		var lastSyncedTextStyleState = {
+			fontSize: '',
+			color: '',
+			fontWeight: '',
+			backgroundColor: '',
+		};
 
 		if ( ! elementPanel || ! structureView ) {
 			return null;
+		}
+
+		function updateLastSyncedTextStyleState( textStyleState ) {
+			lastSyncedTextStyleState = {
+				fontSize: textStyleState && textStyleState.fontSize ? textStyleState.fontSize : '',
+				color: textStyleState && textStyleState.color ? textStyleState.color : '',
+				fontWeight: textStyleState && textStyleState.fontWeight ? textStyleState.fontWeight : '',
+				backgroundColor: textStyleState && textStyleState.backgroundColor ? textStyleState.backgroundColor : '',
+			};
+		}
+
+		function shouldApplyTextStyleProperty( property, inputValue, syncedValue ) {
+			var normalizedInput;
+			var normalizedSynced;
+
+			if ( 'fontSize' === property ) {
+				normalizedInput = normalizeFontSizeInput( inputValue );
+				normalizedSynced = normalizeFontSizeInput( syncedValue );
+				return normalizedInput !== normalizedSynced;
+			}
+
+			if ( 'fontWeight' === property ) {
+				normalizedInput = normalizeFontWeightInput( inputValue );
+				normalizedSynced = normalizeFontWeightInput( syncedValue );
+				return normalizedInput !== normalizedSynced;
+			}
+
+			if ( 'color' === property ) {
+				normalizedInput = cssColorToHex( inputValue );
+				normalizedSynced = cssColorToHex( syncedValue || '' );
+
+				if ( ! syncedValue && '#000000' === normalizedInput ) {
+					return false;
+				}
+
+				return normalizedInput !== normalizedSynced;
+			}
+
+			if ( 'backgroundColor' === property ) {
+				normalizedInput = cssColorToHex( inputValue );
+				normalizedSynced = cssColorToHex( syncedValue || '' );
+
+				if ( ! syncedValue && '#ffffff' === normalizedInput ) {
+					return false;
+				}
+
+				return normalizedInput !== normalizedSynced;
+			}
+
+			return true;
+		}
+
+		function getEffectiveChangedTextStyleProperties( changedProperties, overrides, values ) {
+			var effective = {};
+
+			if ( overrides ) {
+				return changedProperties || {
+					fontSize: true,
+					color: true,
+					fontWeight: true,
+					backgroundColor: true,
+				};
+			}
+
+			if ( ! changedProperties || changedProperties.fontSize ) {
+				if ( shouldApplyTextStyleProperty( 'fontSize', values.fontSize, lastSyncedTextStyleState.fontSize ) ) {
+					effective.fontSize = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.color ) {
+				if ( shouldApplyTextStyleProperty( 'color', values.color, lastSyncedTextStyleState.color ) ) {
+					effective.color = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.fontWeight ) {
+				if ( shouldApplyTextStyleProperty( 'fontWeight', values.fontWeight, lastSyncedTextStyleState.fontWeight ) ) {
+					effective.fontWeight = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.backgroundColor ) {
+				if ( shouldApplyTextStyleProperty( 'backgroundColor', values.backgroundColor, lastSyncedTextStyleState.backgroundColor ) ) {
+					effective.backgroundColor = true;
+				}
+			}
+
+			return Object.keys( effective ).length ? effective : null;
 		}
 
 		function setLinkOptionsOpen( isOpen ) {
@@ -556,6 +768,7 @@
 		function updateTextStyleResetButtons( textStyleState ) {
 			var hasFontSize = !! ( textStyleState && textStyleState.fontSize );
 			var hasColor = !! ( textStyleState && textStyleState.color );
+			var hasFontWeight = !! ( textStyleState && textStyleState.fontWeight );
 			var hasBackgroundColor = !! ( textStyleState && textStyleState.backgroundColor );
 
 			if ( fontSizeResetButton ) {
@@ -564,6 +777,10 @@
 
 			if ( textColorResetButton ) {
 				textColorResetButton.disabled = ! hasColor;
+			}
+
+			if ( fontWeightResetButton ) {
+				fontWeightResetButton.disabled = ! hasFontWeight;
 			}
 
 			if ( backgroundColorResetButton ) {
@@ -580,7 +797,7 @@
 			var linkState;
 			var textStyleState;
 			var isImage = isImageElementLocator( locator );
-			var isText = isTextElementLocator( locator );
+			var isInlineTextStyleable = isInlineTextStyleableLocator( locator );
 			var canSetBackground = isBackgroundStyleableLocator( locator );
 
 			if ( imageControls ) {
@@ -588,11 +805,15 @@
 			}
 
 			if ( fontSizeRow ) {
-				fontSizeRow.hidden = ! isText;
+				fontSizeRow.hidden = ! isInlineTextStyleable;
 			}
 
 			if ( textColorRow ) {
-				textColorRow.hidden = ! isText;
+				textColorRow.hidden = ! isInlineTextStyleable;
+			}
+
+			if ( fontWeightRow ) {
+				fontWeightRow.hidden = ! isInlineTextStyleable;
 			}
 
 			if ( backgroundColorRow ) {
@@ -600,7 +821,7 @@
 			}
 
 			if ( styleControls ) {
-				styleControls.hidden = ! isText && ! canSetBackground;
+				styleControls.hidden = ! isInlineTextStyleable && ! canSetBackground;
 			}
 
 			if ( ! locator || ! locator.path || ! locator.path.length ) {
@@ -610,6 +831,10 @@
 
 				if ( textColorRow ) {
 					textColorRow.hidden = true;
+				}
+
+				if ( fontWeightRow ) {
+					fontWeightRow.hidden = true;
 				}
 
 				if ( backgroundColorRow ) {
@@ -640,10 +865,15 @@
 					textColorInput.value = '#000000';
 				}
 
+				if ( fontWeightInput ) {
+					fontWeightInput.value = '';
+				}
+
 				if ( backgroundColorInput ) {
 					backgroundColorInput.value = '#ffffff';
 				}
 
+				updateLastSyncedTextStyleState( null );
 				updateTextStyleResetButtons( null );
 				closeLinkOptions();
 				return;
@@ -651,14 +881,15 @@
 
 			block = getBlockById( editorState.selectedId );
 
-			if ( ( isText && fontSizeInput && textColorInput ) || ( canSetBackground && backgroundColorInput ) ) {
+			if ( ( isInlineTextStyleable && fontSizeInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) ) {
 				textStyleState = getElementTextStyleStateFromHtml( block ? block.content || '' : '', locator.path );
 
 				isSyncingTextStyleControls = true;
 
-				if ( isText && fontSizeInput && textColorInput ) {
+				if ( isInlineTextStyleable && fontSizeInput && textColorInput && fontWeightInput ) {
 					fontSizeInput.value = textStyleState.fontSize || '';
 					textColorInput.value = textStyleState.color || '#000000';
+					fontWeightInput.value = textStyleState.fontWeight || '';
 				}
 
 				if ( canSetBackground && backgroundColorInput ) {
@@ -666,6 +897,7 @@
 				}
 
 				isSyncingTextStyleControls = false;
+				updateLastSyncedTextStyleState( textStyleState );
 				updateTextStyleResetButtons( textStyleState );
 			}
 
@@ -783,7 +1015,8 @@
 			syncElementControls( locator );
 		}
 
-		function applyLinkFromControls() {
+		function applyLinkFromControls( options ) {
+			var settings = options || {};
 			var block;
 			var locator;
 			var result;
@@ -791,6 +1024,8 @@
 			var rawHref;
 			var normalizedHref;
 			var openInNew;
+
+			cancelPendingTextStyleApply();
 
 			if ( isSyncingLinkControls || ! editorState.selectedId || ! isSelectedElementLocatorForCurrentBlock() ) {
 				return;
@@ -824,7 +1059,10 @@
 				return;
 			}
 
-			pushHistory();
+			if ( ! settings.skipHistory ) {
+				pushHistory();
+			}
+
 			block.content = result.html;
 			setCodeValue( result.html, { silent: true } );
 			nextLocator = buildLocatorFromHtml( result.html, result.selectionPath );
@@ -865,22 +1103,25 @@
 			var nextLocator;
 			var fontSizeValue;
 			var colorValue;
+			var fontWeightValue;
 			var backgroundColorValue;
-			var isText;
+			var isInlineTextStyleable;
 			var canSetBackground;
 			var touchesText;
 			var touchesBackground;
+			var effectiveChangedProperties;
+			var styleValues;
 
 			if ( isSyncingTextStyleControls || ! editorState.selectedId || ! isSelectedElementLocatorForCurrentBlock() ) {
 				return;
 			}
 
-			isText = isTextElementLocator( editorState.selectedElementLocator );
+			isInlineTextStyleable = isInlineTextStyleableLocator( editorState.selectedElementLocator );
 			canSetBackground = isBackgroundStyleableLocator( editorState.selectedElementLocator );
-			touchesText = ! changedProperties || changedProperties.fontSize || changedProperties.color;
+			touchesText = ! changedProperties || changedProperties.fontSize || changedProperties.color || changedProperties.fontWeight;
 			touchesBackground = ! changedProperties || changedProperties.backgroundColor;
 
-			if ( touchesText && ! isText ) {
+			if ( touchesText && ! isInlineTextStyleable ) {
 				return;
 			}
 
@@ -897,16 +1138,25 @@
 			locator = editorState.selectedElementLocator;
 			fontSizeValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'fontSize' ) ? overrides.fontSize : ( fontSizeInput ? fontSizeInput.value : '' );
 			colorValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'color' ) ? overrides.color : ( textColorInput ? textColorInput.value : '' );
+			fontWeightValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'fontWeight' ) ? overrides.fontWeight : ( fontWeightInput ? fontWeightInput.value : '' );
 			backgroundColorValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'backgroundColor' ) ? overrides.backgroundColor : ( backgroundColorInput ? backgroundColorInput.value : '' );
+			styleValues = {
+				fontSize: fontSizeValue,
+				color: colorValue,
+				fontWeight: fontWeightValue,
+				backgroundColor: backgroundColorValue,
+			};
+			effectiveChangedProperties = getEffectiveChangedTextStyleProperties( changedProperties, overrides, styleValues );
+
+			if ( ! effectiveChangedProperties ) {
+				return;
+			}
+
 			result = applyElementTextStyleEdit(
 				block.content || '',
 				locator.path,
-				{
-					fontSize: fontSizeValue,
-					color: colorValue,
-					backgroundColor: backgroundColorValue,
-				},
-				changedProperties
+				styleValues,
+				effectiveChangedProperties
 			);
 
 			if ( ! result || result.html === block.content ) {
@@ -950,11 +1200,17 @@
 			textStyleApplyTimer = null;
 		}
 
-		function flushPendingElementEdits() {
+		function flushPendingElementEdits( options ) {
+			var settings = options || {};
+
 			cancelPendingLinkApply();
 			cancelPendingTextStyleApply();
-			applyLinkFromControls();
-			applyTextStyleFromControls( { fontSize: true, color: true, backgroundColor: true } );
+			applyLinkFromControls( { skipHistory: !! settings.skipHistory } );
+			applyTextStyleFromControls(
+				{ fontSize: true, color: true, fontWeight: true, backgroundColor: true },
+				null,
+				{ skipHistory: !! settings.skipHistory }
+			);
 		}
 
 		function resetFontSizeStyle() {
@@ -978,6 +1234,18 @@
 			}
 
 			applyTextStyleFromControls( { color: true }, { color: '' }, { skipHistory: true } );
+		}
+
+		function resetFontWeightStyle() {
+			cancelPendingTextStyleApply();
+			flushStyleHistoryCheckpoint();
+
+			if ( fontWeightInput ) {
+				fontWeightInput.value = '';
+			}
+
+			pushHistory();
+			applyTextStyleFromControls( { fontWeight: true }, { fontWeight: '' }, { skipHistory: true } );
 		}
 
 		function resetBackgroundColorStyle() {
@@ -1064,18 +1332,40 @@
 
 		if ( textColorInput ) {
 			textColorInput.addEventListener( 'input', function() {
+				if ( isSyncingTextStyleControls ) {
+					return;
+				}
+
 				applyTextStyleFromControls( { color: true } );
 			} );
 			textColorInput.addEventListener( 'change', function() {
+				if ( isSyncingTextStyleControls ) {
+					return;
+				}
+
 				applyTextStyleFromControls( { color: true } );
+			} );
+		}
+
+		if ( fontWeightInput ) {
+			fontWeightInput.addEventListener( 'change', function() {
+				applyTextStyleFromControls( { fontWeight: true } );
 			} );
 		}
 
 		if ( backgroundColorInput ) {
 			backgroundColorInput.addEventListener( 'input', function() {
+				if ( isSyncingTextStyleControls ) {
+					return;
+				}
+
 				applyTextStyleFromControls( { backgroundColor: true } );
 			} );
 			backgroundColorInput.addEventListener( 'change', function() {
+				if ( isSyncingTextStyleControls ) {
+					return;
+				}
+
 				applyTextStyleFromControls( { backgroundColor: true } );
 			} );
 		}
@@ -1086,6 +1376,10 @@
 
 		if ( textColorResetButton ) {
 			textColorResetButton.addEventListener( 'click', resetTextColorStyle );
+		}
+
+		if ( fontWeightResetButton ) {
+			fontWeightResetButton.addEventListener( 'click', resetFontWeightStyle );
 		}
 
 		if ( backgroundColorResetButton ) {
@@ -1367,6 +1661,11 @@
 		var index;
 
 		for ( index = 0; index < editorState.blocks.length; index++ ) {
+			if ( isAnchorBlock( editorState.blocks[ index ] ) ) {
+				editorState.blocks[ index ].title = getAnchorBlockTitle( editorState.blocks[ index ].anchorId || '' );
+				continue;
+			}
+
 			if ( ! editorState.blocks[ index ].titleLocked ) {
 				editorState.blocks[ index ].title = getBlockTitle( editorState.blocks[ index ].content, index );
 			}
@@ -1679,16 +1978,41 @@
 		return ( i18n.htmlBlock || 'HTML-блок' ) + ' ' + ( index + 1 );
 	}
 
-	function flushPendingElementEdits() {
+	function flushPendingElementEdits( options ) {
 		if ( elementEditorController && elementEditorController.flushPendingElementEdits ) {
-			elementEditorController.flushPendingElementEdits();
+			elementEditorController.flushPendingElementEdits( options );
 		}
 	}
 
-	function commitCodeToSelectedBlock() {
-		flushPendingElementEdits();
+	function commitAnchorToSelectedBlock() {
+		var block = getBlockById( editorState.selectedId );
+		var anchorId;
 
-		var block = ensureBlockForCode();
+		if ( ! isAnchorBlock( block ) ) {
+			return;
+		}
+
+		anchorId = anchorIdInput ? normalizeAnchorId( anchorIdInput.value ) : normalizeAnchorId( block.anchorId || '' );
+
+		if ( anchorIdInput && anchorIdInput.value !== anchorId ) {
+			anchorIdInput.value = anchorId;
+		}
+
+		block.anchorId = anchorId;
+		block.content = buildAnchorBlockContent( anchorId );
+		block.title = getAnchorBlockTitle( anchorId );
+		block.titleLocked = true;
+	}
+
+	function commitCodeToSelectedBlock() {
+		var block = getBlockById( editorState.selectedId );
+
+		if ( isAnchorBlock( block ) ) {
+			commitAnchorToSelectedBlock();
+			return;
+		}
+
+		block = ensureBlockForCode();
 
 		if ( ! block ) {
 			return;
@@ -1705,14 +2029,7 @@
 		commitCodeToSelectedBlock();
 
 		return JSON.stringify(
-			editorState.blocks.map( function( block ) {
-				return {
-					id: block.id,
-					title: block.title,
-					titleLocked: !! block.titleLocked,
-					content: block.content || '',
-				};
-			} )
+			editorState.blocks.map( mapBlockForSnapshot )
 		);
 	}
 
@@ -1736,13 +2053,21 @@
 	}
 
 	function updateUnsavedIndicator() {
-		var indicator = document.getElementById( 'art-editor-unsaved-indicator' );
+		updateSaveStateUi();
+	}
 
-		if ( ! indicator ) {
-			return;
+	function updateSaveStateUi() {
+		var indicator = document.getElementById( 'art-editor-unsaved-indicator' );
+		var saveButton = document.getElementById( 'art-editor-save-button' );
+		var dirty = isDirty();
+
+		if ( indicator ) {
+			indicator.hidden = ! dirty;
 		}
 
-		indicator.hidden = ! isDirty();
+		if ( saveButton ) {
+			saveButton.classList.toggle( 'art-editor-screen__save-button--idle', ! dirty && ! isSaving() );
+		}
 	}
 
 	function scheduleUnsavedIndicatorUpdate() {
@@ -1819,11 +2144,13 @@
 	function beginSaving() {
 		persistenceState.saveInFlight += 1;
 		updateEditorSaveLock();
+		updateSaveStateUi();
 	}
 
 	function endSaving() {
 		persistenceState.saveInFlight = Math.max( 0, persistenceState.saveInFlight - 1 );
 		updateEditorSaveLock();
+		updateSaveStateUi();
 	}
 
 	function initUnsavedChangesGuard() {
@@ -1858,14 +2185,7 @@
 
 		return {
 			selectedId: editorState.selectedId,
-			blocks: editorState.blocks.map( function( block ) {
-				return {
-					id: block.id,
-					title: block.title,
-					titleLocked: !! block.titleLocked,
-					content: block.content || '',
-				};
-			} ),
+			blocks: editorState.blocks.map( mapBlockForSnapshot ),
 		};
 	}
 
@@ -1953,12 +2273,19 @@
 		historyState.recording = false;
 		editorState.selectedId = snapshot.selectedId;
 		editorState.blocks = snapshot.blocks.map( function( block ) {
-			return {
+			var nextBlock = {
 				id: block.id,
 				title: block.title,
 				titleLocked: !! block.titleLocked,
 				content: block.content || '',
+				type: block.type || 'html',
 			};
+
+			if ( isAnchorBlock( nextBlock ) ) {
+				nextBlock.anchorId = block.anchorId || '';
+			}
+
+			return nextBlock;
 		} );
 		editorState.renamingBlockId = null;
 		renderStructure();
@@ -2210,6 +2537,7 @@
 			'*,*::before,*::after{box-sizing:inherit;}',
 			'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1e1e1e;}',
 			'img,video,iframe,svg{max-width:100%;}',
+			editMode ? 'body a{color:inherit;text-decoration:inherit;font-size:inherit;font-weight:inherit;font-family:inherit;background-color:transparent;}' : '',
 			'</style>',
 			blockStyles || '',
 			headExtras,
@@ -2451,6 +2779,18 @@
 		return !! ( locator.textContent && String( locator.textContent ).replace( /\s+/g, '' ).length );
 	}
 
+	function isInlineTextStyleableLocator( locator ) {
+		var tag;
+
+		if ( ! isTextElementLocator( locator ) ) {
+			return false;
+		}
+
+		tag = String( locator.tag || '' ).toUpperCase();
+
+		return 'DIV' !== tag && 'SECTION' !== tag;
+	}
+
 	function cssColorToHex( color ) {
 		var rgbMatch;
 		var hex;
@@ -2526,17 +2866,67 @@
 		return normalized;
 	}
 
+	function formatFontWeightForInput( value ) {
+		var normalized;
+
+		if ( 'number' === typeof value ) {
+			value = String( value );
+		}
+
+		if ( 'string' !== typeof value ) {
+			return '';
+		}
+
+		normalized = value.trim().toLowerCase();
+
+		if ( ! normalized ) {
+			return '';
+		}
+
+		if ( 'normal' === normalized ) {
+			return '400';
+		}
+
+		if ( 'bold' === normalized ) {
+			return '700';
+		}
+
+		return normalizeFontWeightInput( normalized );
+	}
+
+	function normalizeFontWeightInput( value ) {
+		var weight;
+
+		if ( 'number' === typeof value ) {
+			value = String( value );
+		}
+
+		if ( 'string' !== typeof value ) {
+			return '';
+		}
+
+		weight = parseInt( value.trim(), 10 );
+
+		if ( ! weight || weight < 100 || weight > 900 || weight % 100 !== 0 ) {
+			return '';
+		}
+
+		return String( weight );
+	}
+
 	function getElementTextStyleStateFromHtml( html, path ) {
 		var doc;
 		var target;
 		var fontSize;
 		var color;
+		var fontWeight;
 		var backgroundColor;
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length ) {
 			return {
 				fontSize: '',
 				color: '',
+				fontWeight: '',
 				backgroundColor: '',
 			};
 		}
@@ -2549,23 +2939,27 @@
 				return {
 					fontSize: '',
 					color: '',
+					fontWeight: '',
 					backgroundColor: '',
 				};
 			}
 
 			fontSize = formatFontSizeForInput( target.style.getPropertyValue( 'font-size' ) );
 			color = cssColorToHex( target.style.getPropertyValue( 'color' ) );
+			fontWeight = formatFontWeightForInput( target.style.getPropertyValue( 'font-weight' ) );
 			backgroundColor = cssColorToHex( target.style.getPropertyValue( 'background-color' ) );
 
 			return {
 				fontSize: fontSize,
 				color: color,
+				fontWeight: fontWeight,
 				backgroundColor: backgroundColor,
 			};
 		} catch ( error ) {
 			return {
 				fontSize: '',
 				color: '',
+				fontWeight: '',
 				backgroundColor: '',
 			};
 		}
@@ -2577,9 +2971,11 @@
 		var selectionPath;
 		var fontSize;
 		var color;
+		var fontWeight;
 		var backgroundColor;
 		var shouldUpdateFontSize;
 		var shouldUpdateColor;
+		var shouldUpdateFontWeight;
 		var shouldUpdateBackgroundColor;
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length || ! textStyles ) {
@@ -2588,9 +2984,11 @@
 
 		shouldUpdateFontSize = ! changedProperties || changedProperties.fontSize;
 		shouldUpdateColor = ! changedProperties || changedProperties.color;
+		shouldUpdateFontWeight = ! changedProperties || changedProperties.fontWeight;
 		shouldUpdateBackgroundColor = ! changedProperties || changedProperties.backgroundColor;
 		fontSize = normalizeFontSizeInput( textStyles.fontSize );
 		color = cssColorToHex( textStyles.color );
+		fontWeight = normalizeFontWeightInput( textStyles.fontWeight );
 		backgroundColor = cssColorToHex( textStyles.backgroundColor );
 
 		try {
@@ -2614,6 +3012,14 @@
 					target.style.setProperty( 'color', color );
 				} else {
 					target.style.removeProperty( 'color' );
+				}
+			}
+
+			if ( shouldUpdateFontWeight ) {
+				if ( fontWeight ) {
+					target.style.setProperty( 'font-weight', fontWeight );
+				} else {
+					target.style.removeProperty( 'font-weight' );
 				}
 			}
 
@@ -3068,7 +3474,7 @@
 		return [
 			'<style id="art-editor-inspect-style">',
 			'.art-editor-inspect-highlight{outline:2px solid #e66a15!important;outline-offset:2px;}',
-			'.art-editor-inspect-active{outline:2px solid #2271b1!important;outline-offset:2px;background-color:rgba(34,113,177,.08)!important;}',
+			'.art-editor-inspect-active{outline:2px solid #2271b1!important;outline-offset:2px;}',
 			'.art-editor-inspect-editing{outline:2px solid #2271b1!important;outline-offset:2px;cursor:text!important;}',
 			'</style>',
 			'<script id="art-editor-inspect-script">',
@@ -3344,10 +3750,146 @@
 			} );
 	}
 
-	function syncCodeFromSelection() {
+	function updateCanvasModeForBlock( block ) {
+		var codeTab = document.getElementById( 'art-editor-tab-code' );
+		var editTab = document.getElementById( 'art-editor-tab-edit' );
+		var viewTab = document.getElementById( 'art-editor-tab-view' );
+		var codePanel = document.getElementById( 'art-editor-panel-code' );
+		var editPanel = document.getElementById( 'art-editor-panel-edit' );
+		var anchorPanel = document.getElementById( 'art-editor-panel-anchor' );
+		var viewPanel = document.getElementById( 'art-editor-panel-view' );
+		var isAnchor = isAnchorBlock( block );
+		var currentTab = getActiveCanvasTabName();
+
+		if ( codeTab ) {
+			codeTab.disabled = isAnchor;
+		}
+
+		if ( editTab ) {
+			editTab.disabled = isAnchor;
+		}
+
+		if ( ! isAnchor ) {
+			if ( anchorPanel ) {
+				anchorPanel.hidden = true;
+				anchorPanel.classList.remove( 'is-active' );
+			}
+
+			if ( codeTab ) {
+				codeTab.classList.toggle( 'is-active', 'code' === currentTab );
+				codeTab.setAttribute( 'aria-selected', 'code' === currentTab ? 'true' : 'false' );
+			}
+
+			if ( editTab ) {
+				editTab.classList.toggle( 'is-active', 'edit' === currentTab );
+				editTab.setAttribute( 'aria-selected', 'edit' === currentTab ? 'true' : 'false' );
+			}
+
+			if ( viewTab ) {
+				viewTab.classList.toggle( 'is-active', 'view' === currentTab );
+				viewTab.setAttribute( 'aria-selected', 'view' === currentTab ? 'true' : 'false' );
+			}
+
+			if ( codePanel ) {
+				codePanel.hidden = 'code' !== currentTab;
+				codePanel.classList.toggle( 'is-active', 'code' === currentTab );
+			}
+
+			if ( editPanel ) {
+				editPanel.hidden = 'edit' !== currentTab;
+				editPanel.classList.toggle( 'is-active', 'edit' === currentTab );
+			}
+
+			if ( viewPanel ) {
+				viewPanel.hidden = 'view' !== currentTab;
+				viewPanel.classList.toggle( 'is-active', 'view' === currentTab );
+			}
+
+			return;
+		}
+
+		if ( elementEditorController ) {
+			elementEditorController.closePanel();
+		}
+
+		if ( 'view' === currentTab ) {
+			if ( anchorPanel ) {
+				anchorPanel.hidden = true;
+				anchorPanel.classList.remove( 'is-active' );
+			}
+
+			if ( codePanel ) {
+				codePanel.hidden = true;
+				codePanel.classList.remove( 'is-active' );
+			}
+
+			if ( editPanel ) {
+				editPanel.hidden = true;
+				editPanel.classList.remove( 'is-active' );
+			}
+
+			if ( viewPanel ) {
+				viewPanel.hidden = false;
+				viewPanel.classList.add( 'is-active' );
+			}
+
+			return;
+		}
+
+		if ( codeTab ) {
+			codeTab.classList.remove( 'is-active' );
+			codeTab.setAttribute( 'aria-selected', 'false' );
+		}
+
+		if ( editTab ) {
+			editTab.classList.remove( 'is-active' );
+			editTab.setAttribute( 'aria-selected', 'false' );
+		}
+
+		if ( viewTab ) {
+			viewTab.classList.remove( 'is-active' );
+			viewTab.setAttribute( 'aria-selected', 'false' );
+		}
+
+		if ( codePanel ) {
+			codePanel.hidden = true;
+			codePanel.classList.remove( 'is-active' );
+		}
+
+		if ( editPanel ) {
+			editPanel.hidden = true;
+			editPanel.classList.remove( 'is-active' );
+		}
+
+		if ( viewPanel ) {
+			viewPanel.hidden = true;
+			viewPanel.classList.remove( 'is-active' );
+		}
+
+		if ( anchorPanel ) {
+			anchorPanel.hidden = false;
+			anchorPanel.classList.add( 'is-active' );
+		}
+	}
+
+	function syncAnchorEditorFromBlock( block ) {
+		if ( anchorIdInput ) {
+			anchorIdInput.value = block && block.anchorId ? block.anchorId : '';
+		}
+	}
+
+	function syncSelectionFromBlock() {
 		var block = getBlockById( editorState.selectedId );
 
 		clearSelectedElementLocator();
+		updateCanvasModeForBlock( block );
+
+		if ( isAnchorBlock( block ) ) {
+			syncAnchorEditorFromBlock( block );
+			setCodeEditorEnabled( false );
+			updatePagePreview();
+			return;
+		}
 
 		if ( block ) {
 			setCodeValue( block.content || '' );
@@ -3359,6 +3901,10 @@
 
 		updatePreview();
 		updatePagePreview();
+	}
+
+	function syncCodeFromSelection() {
+		syncSelectionFromBlock();
 	}
 
 	function renderStructure() {
@@ -3401,6 +3947,10 @@
 
 			item = document.createElement( 'li' );
 			item.className = 'art-editor-screen__structure-item';
+
+			if ( isAnchorBlock( block ) ) {
+				item.classList.add( 'art-editor-screen__structure-item--anchor' );
+			}
 
 			button = document.createElement( 'button' );
 			button.type = 'button';
@@ -3452,6 +4002,8 @@
 
 	function selectBlock( blockId ) {
 		var isSameBlock = editorState.selectedId === blockId;
+		var previousBlock = getBlockById( editorState.selectedId );
+		var nextBlock;
 
 		if ( isSaving() ) {
 			return;
@@ -3471,13 +4023,49 @@
 		pushHistory();
 		commitCodeToSelectedBlock();
 		editorState.selectedId = blockId;
+		nextBlock = getBlockById( blockId );
 		renderStructure();
-		syncCodeFromSelection();
+		syncSelectionFromBlock();
+
+		if ( isAnchorBlock( previousBlock ) && ! isAnchorBlock( nextBlock ) ) {
+			switchToCodeTab();
+		}
 	}
 
 	function switchToCodeTab() {
 		if ( typeof activateCanvasTab === 'function' ) {
 			activateCanvasTab( 'code' );
+		}
+	}
+
+	function createAnchorBlock() {
+		var block;
+
+		if ( isSaving() ) {
+			return;
+		}
+
+		showStructureSidebar();
+
+		block = {
+			id: 'anchor-' + Date.now(),
+			type: 'anchor',
+			anchorId: '',
+			title: getAnchorBlockTitle( '' ),
+			titleLocked: true,
+			content: '',
+		};
+
+		pushHistory();
+		commitCodeToSelectedBlock();
+		editorState.blocks.push( block );
+		editorState.selectedId = block.id;
+		renderStructure();
+		syncSelectionFromBlock();
+		scheduleUnsavedIndicatorUpdate();
+
+		if ( anchorIdInput ) {
+			anchorIdInput.focus();
 		}
 	}
 
@@ -3501,6 +4089,7 @@
 
 		block = {
 			id: 'html-' + Date.now(),
+			type: 'html',
 			title: ( i18n.emptyBlock || 'Пустой HTML-блок' ) + ' ' + ( index + 1 ),
 			titleLocked: false,
 			content: '',
@@ -3511,23 +4100,56 @@
 		editorState.blocks.push( block );
 		editorState.selectedId = block.id;
 		renderStructure();
-		syncCodeFromSelection();
+		syncSelectionFromBlock();
 		scheduleUnsavedIndicatorUpdate();
 		switchToCodeTab();
+	}
+
+	function initAnchorEditor() {
+		if ( ! anchorIdInput ) {
+			return;
+		}
+
+		anchorIdInput.addEventListener( 'input', function() {
+			if ( ! isAnchorBlock( getBlockById( editorState.selectedId ) ) ) {
+				return;
+			}
+
+			commitAnchorToSelectedBlock();
+			renderStructure();
+			scheduleUnsavedIndicatorUpdate();
+			updatePagePreview();
+		} );
+
+		anchorIdInput.addEventListener( 'blur', function() {
+			if ( ! isAnchorBlock( getBlockById( editorState.selectedId ) ) ) {
+				return;
+			}
+
+			commitAnchorToSelectedBlock();
+			renderStructure();
+			scheduleUnsavedIndicatorUpdate();
+			updatePagePreview();
+		} );
 	}
 
 	function initStructure() {
 		var index;
 
+		if ( createAnchorButton ) {
+			createAnchorButton.addEventListener( 'click', createAnchorBlock );
+		}
+
 		if ( createHtmlButton ) {
 			createHtmlButton.addEventListener( 'click', createHtmlBlock );
 		}
 
+		initAnchorEditor();
+
 		bindCodeChangeEvents();
 
 		for ( index = 0; index < editorState.blocks.length; index++ ) {
-			editorState.blocks[ index ].titleLocked = !! editorState.blocks[ index ].titleLocked;
-			editorState.blocks[ index ].title = editorState.blocks[ index ].title || getBlockTitle( editorState.blocks[ index ].content, index );
+			editorState.blocks[ index ] = normalizeLoadedBlock( editorState.blocks[ index ], index );
 		}
 
 		if ( editorState.blocks.length ) {
@@ -3722,12 +4344,27 @@
 		}
 
 		function setCanvasTabsDisabled( disabled ) {
+			var selectedBlock = getBlockById( editorState.selectedId );
+
 			tabButtons.forEach( function( button ) {
+				var tabName = button.getAttribute( 'data-tab' );
+
+				if ( ! disabled && isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'edit' === tabName ) ) {
+					button.disabled = true;
+					return;
+				}
+
 				button.disabled = disabled;
 			} );
 		}
 
 		function performTabActivation( tabName ) {
+			var selectedBlock = getBlockById( editorState.selectedId );
+
+			if ( isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'edit' === tabName ) ) {
+				return;
+			}
+
 			tabButtons.forEach( function( button ) {
 				var isActive = button.getAttribute( 'data-tab' ) === tabName;
 
@@ -3747,7 +4384,7 @@
 				}
 			} );
 
-			if ( 'edit' === tabName ) {
+			if ( 'edit' === tabName && ! isAnchorBlock( selectedBlock ) ) {
 				commitCodeToSelectedBlock();
 				updatePreview();
 
@@ -3779,12 +4416,14 @@
 				}
 			}
 
-			if ( 'code' === tabName ) {
+			if ( 'code' === tabName && ! isAnchorBlock( selectedBlock ) ) {
 				refreshCodeEditor();
 				window.setTimeout( function() {
 					highlightSelectedElementInCode();
 				}, 0 );
 			}
+
+			updateCanvasModeForBlock( selectedBlock );
 
 			if ( devicePreview ) {
 				devicePreview.updateVisibility( tabName );
@@ -3793,8 +4432,13 @@
 
 		function activateTab( tabName ) {
 			var currentTab = getActiveCanvasTabName();
+			var selectedBlock = getBlockById( editorState.selectedId );
 
 			if ( isSaving() || ! tabName || tabName === currentTab ) {
+				return;
+			}
+
+			if ( isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'edit' === tabName ) ) {
 				return;
 			}
 
@@ -3864,6 +4508,7 @@
 			var settings = options || {};
 			var manageSaveLock = false !== settings.manageSaveLock;
 
+			flushPendingElementEdits( { skipHistory: true } );
 			commitCodeToSelectedBlock();
 
 			if ( manageSaveLock ) {
@@ -3878,12 +4523,7 @@
 				},
 				body: JSON.stringify( {
 					status: status || config.postStatus || 'draft',
-					blocks: editorState.blocks.map( function( block ) {
-						return {
-							content: block.content || '',
-							title: block.titleLocked ? ( block.title || '' ) : '',
-						};
-					} ),
+					blocks: editorState.blocks.map( mapBlockForSave ),
 				} ),
 			} )
 				.then( function( response ) {
@@ -3897,7 +4537,9 @@
 					if ( data && Array.isArray( data.htmlBlocks ) ) {
 						var previousSelectedIndex = getBlockIndex( editorState.selectedId );
 
-						editorState.blocks = data.htmlBlocks;
+						editorState.blocks = data.htmlBlocks.map( function( block, index ) {
+							return normalizeLoadedBlock( block, index );
+						} );
 
 						if ( previousSelectedIndex >= 0 && editorState.blocks.length ) {
 							editorState.selectedId = editorState.blocks[

@@ -31,13 +31,22 @@ class Art_Editor_Content {
 			$content = self::get_html_block_content( $block );
 
 			$custom_title = self::get_custom_block_title( $block );
+			$block_type   = self::get_block_type_from_block( $block );
+			$anchor_id    = self::get_anchor_id_from_block( $block, $content );
 
-			$items[] = array(
-				'id'          => 'html-' . $index,
-				'title'       => '' !== $custom_title ? $custom_title : self::get_block_title( $content, $index ),
-				'titleLocked' => '' !== $custom_title,
+			$item = array(
+				'id'          => ( 'anchor' === $block_type ? 'anchor-' : 'html-' ) . $index,
+				'type'        => $block_type,
+				'title'       => '' !== $custom_title ? $custom_title : self::get_block_title( $content, $index, $block_type, $anchor_id ),
+				'titleLocked' => '' !== $custom_title || 'anchor' === $block_type,
 				'content'     => $content,
 			);
+
+			if ( 'anchor' === $block_type ) {
+				$item['anchorId'] = $anchor_id;
+			}
+
+			$items[] = $item;
 
 			++$index;
 		}
@@ -84,7 +93,19 @@ class Art_Editor_Content {
 	 * @param int    $index Block index.
 	 * @return string
 	 */
-	public static function get_block_title( $html, $index ) {
+	public static function get_block_title( $html, $index, $type = 'html', $anchor_id = '' ) {
+		if ( 'anchor' === $type ) {
+			if ( '' !== $anchor_id ) {
+				return sprintf(
+					/* translators: %s: anchor id */
+					__( 'Якорь: %s', 'art-editor' ),
+					$anchor_id
+				);
+			}
+
+			return __( 'Пустой якорь', 'art-editor' );
+		}
+
 		$html = trim( (string) $html );
 
 		if ( '' === $html ) {
@@ -168,17 +189,34 @@ class Art_Editor_Content {
 				continue;
 			}
 
+			$type    = isset( $block['type'] ) ? sanitize_key( $block['type'] ) : 'html';
 			$content = isset( $block['content'] ) ? (string) $block['content'] : '';
 			$title   = isset( $block['title'] ) ? sanitize_text_field( $block['title'] ) : '';
+			$anchor_id = '';
 
-			if ( ! current_user_can( 'unfiltered_html' ) ) {
-				$content = wp_kses_post( $content );
+			if ( 'anchor' === $type ) {
+				$anchor_id = isset( $block['anchorId'] ) ? self::sanitize_anchor_id( $block['anchorId'] ) : self::parse_anchor_id_from_content( $content );
+				$content   = self::build_anchor_block_content( $anchor_id );
+				$title     = self::get_block_title( $content, 0, 'anchor', $anchor_id );
+			} else {
+				$type = 'html';
+
+				if ( ! current_user_can( 'unfiltered_html' ) ) {
+					$content = wp_kses_post( $content );
+				}
 			}
 
-			$sanitized[] = array(
+			$entry = array(
 				'content' => $content,
 				'title'   => $title,
+				'type'    => $type,
 			);
+
+			if ( 'anchor' === $type ) {
+				$entry['anchorId'] = $anchor_id;
+			}
+
+			$sanitized[] = $entry;
 		}
 
 		return $sanitized;
@@ -200,7 +238,12 @@ class Art_Editor_Content {
 		foreach ( $parsed as $block ) {
 			if ( ! empty( $block['blockName'] ) && 'core/html' === $block['blockName'] ) {
 				if ( $index < $count ) {
-					$new_blocks[] = self::make_html_block( $blocks[ $index ]['content'], $blocks[ $index ]['title'] );
+					$new_blocks[] = self::make_html_block(
+						$blocks[ $index ]['content'],
+						$blocks[ $index ]['title'],
+						$blocks[ $index ]['type'],
+						isset( $blocks[ $index ]['anchorId'] ) ? $blocks[ $index ]['anchorId'] : ''
+					);
 					++$index;
 				}
 				continue;
@@ -214,7 +257,12 @@ class Art_Editor_Content {
 		}
 
 		while ( $index < $count ) {
-			$new_blocks[] = self::make_html_block( $blocks[ $index ]['content'], $blocks[ $index ]['title'] );
+			$new_blocks[] = self::make_html_block(
+				$blocks[ $index ]['content'],
+				$blocks[ $index ]['title'],
+				$blocks[ $index ]['type'],
+				isset( $blocks[ $index ]['anchorId'] ) ? $blocks[ $index ]['anchorId'] : ''
+			);
 			++$index;
 		}
 
@@ -228,13 +276,25 @@ class Art_Editor_Content {
 	 * @param string $title   Optional custom sidebar title.
 	 * @return array
 	 */
-	public static function make_html_block( $content, $title = '' ) {
-		$content = (string) $content;
-		$title   = trim( (string) $title );
-		$attrs   = array();
+	public static function make_html_block( $content, $title = '', $type = 'html', $anchor_id = '' ) {
+		$content   = (string) $content;
+		$title     = trim( (string) $title );
+		$type      = sanitize_key( (string) $type );
+		$anchor_id = self::sanitize_anchor_id( $anchor_id );
+		$attrs     = array();
 
 		if ( '' !== $title ) {
 			$attrs['artEditorTitle'] = $title;
+		}
+
+		if ( 'anchor' === $type ) {
+			$attrs['artEditorBlockType'] = 'anchor';
+
+			if ( '' !== $anchor_id ) {
+				$attrs['artEditorAnchorId'] = $anchor_id;
+			}
+
+			$content = self::build_anchor_block_content( $anchor_id );
 		}
 
 		return array(
@@ -243,6 +303,92 @@ class Art_Editor_Content {
 			'innerBlocks'  => array(),
 			'innerHTML'    => $content,
 			'innerContent' => array( $content ),
+		);
+	}
+
+	/**
+	 * Read block type from parsed block attributes.
+	 *
+	 * @param array $block Parsed block.
+	 * @return string
+	 */
+	public static function get_block_type_from_block( $block ) {
+		if ( empty( $block['attrs']['artEditorBlockType'] ) || ! is_string( $block['attrs']['artEditorBlockType'] ) ) {
+			return 'html';
+		}
+
+		$type = sanitize_key( $block['attrs']['artEditorBlockType'] );
+
+		return 'anchor' === $type ? 'anchor' : 'html';
+	}
+
+	/**
+	 * Read anchor id from block attributes or HTML.
+	 *
+	 * @param array  $block   Parsed block.
+	 * @param string $content Block HTML.
+	 * @return string
+	 */
+	public static function get_anchor_id_from_block( $block, $content ) {
+		if ( ! empty( $block['attrs']['artEditorAnchorId'] ) && is_string( $block['attrs']['artEditorAnchorId'] ) ) {
+			return self::sanitize_anchor_id( $block['attrs']['artEditorAnchorId'] );
+		}
+
+		return self::parse_anchor_id_from_content( $content );
+	}
+
+	/**
+	 * Sanitize an anchor id.
+	 *
+	 * @param string $anchor_id Raw anchor id.
+	 * @return string
+	 */
+	public static function sanitize_anchor_id( $anchor_id ) {
+		$anchor_id = strtolower( sanitize_title( (string) $anchor_id ) );
+
+		return preg_replace( '/[^a-z0-9\-_]/', '', $anchor_id );
+	}
+
+	/**
+	 * Parse anchor id from stored HTML.
+	 *
+	 * @param string $html Block HTML.
+	 * @return string
+	 */
+	public static function parse_anchor_id_from_content( $html ) {
+		$html = trim( (string) $html );
+
+		if ( '' === $html ) {
+			return '';
+		}
+
+		if ( preg_match( '/<div\b[^>]*\bclass="[^"]*\bart-editor-anchor\b[^"]*"[^>]*\bid="([^"]+)"/i', $html, $matches ) ) {
+			return self::sanitize_anchor_id( $matches[1] );
+		}
+
+		if ( preg_match( '/<div\b[^>]*\bid="([^"]+)"[^>]*\bclass="[^"]*\bart-editor-anchor\b/i', $html, $matches ) ) {
+			return self::sanitize_anchor_id( $matches[1] );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Build anchor block HTML.
+	 *
+	 * @param string $anchor_id Anchor id.
+	 * @return string
+	 */
+	public static function build_anchor_block_content( $anchor_id ) {
+		$anchor_id = self::sanitize_anchor_id( $anchor_id );
+
+		if ( '' === $anchor_id ) {
+			return '';
+		}
+
+		return sprintf(
+			'<div id="%s" class="art-editor-anchor" aria-hidden="true"></div>',
+			esc_attr( $anchor_id )
 		);
 	}
 }
