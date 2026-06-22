@@ -4,6 +4,16 @@ body.art-editor-template-canvas {
 	padding: 0;
 }
 
+body.admin-bar.art-editor-template-canvas {
+	margin-top: 32px;
+}
+
+@media screen and (max-width: 782px) {
+	body.admin-bar.art-editor-template-canvas {
+		margin-top: 46px;
+	}
+}
+
 body.art-editor-template-canvas {
 	background: #fff;
 }

@@ -113,10 +113,27 @@
 		return mount;
 	}
 
-	function redirectWhenSaved( editUrl ) {
-		window.setTimeout( function() {
-			if ( wp.data.select( 'core/editor' ).isSavingPost() ) {
-				redirectWhenSaved( editUrl );
+	function redirectWhenSaveSettled( editUrl ) {
+		var attempts = 0;
+		var maxAttempts = 40;
+
+		window.setTimeout( function checkSaveState() {
+			var select = wp.data.select( 'core/editor' );
+
+			if ( select.isSavingPost() || select.isAutosavingPost() ) {
+				attempts += 1;
+
+				if ( attempts >= maxAttempts ) {
+					window.alert( __( 'Не удалось сохранить запись перед открытием редактора.', 'art-editor' ) );
+					return;
+				}
+
+				window.setTimeout( checkSaveState, 300 );
+				return;
+			}
+
+			if ( select.getLastPostSaveError && select.getLastPostSaveError() ) {
+				window.alert( __( 'Не удалось сохранить запись перед открытием редактора.', 'art-editor' ) );
 				return;
 			}
 
@@ -144,8 +161,15 @@
 				} );
 			}
 
-			editor.savePost();
-			redirectWhenSaved( editUrl );
+			var saveResult = editor.savePost();
+
+			if ( saveResult && 'function' === typeof saveResult.then ) {
+				saveResult.catch( function() {
+					window.alert( __( 'Не удалось сохранить запись перед открытием редактора.', 'art-editor' ) );
+				} );
+			}
+
+			redirectWhenSaveSettled( editUrl );
 			return;
 		}
 

@@ -114,10 +114,17 @@ class Art_Editor_Rest {
 		$post_id = (int) $request->get_param( 'id' );
 		$payload = $request->get_json_params();
 		$blocks  = isset( $payload['blocks'] ) ? $payload['blocks'] : array();
-		$status  = isset( $payload['status'] ) ? sanitize_key( $payload['status'] ) : 'draft';
+		$status  = isset( $payload['status'] ) ? sanitize_key( $payload['status'] ) : '';
 
-		if ( ! in_array( $status, array( 'draft', 'publish', 'pending', 'private', 'future' ), true ) ) {
-			$status = 'draft';
+		if ( '' === $status ) {
+			$post = get_post( $post_id );
+			$status = $post instanceof WP_Post ? $post->post_status : 'draft';
+		}
+
+		$status = Art_Editor_Post_Meta::sanitize_post_status( $status, $post_id );
+
+		if ( is_wp_error( $status ) ) {
+			return $status;
 		}
 
 		$result = Art_Editor_Content::save_html_blocks( $post_id, $blocks, $status );

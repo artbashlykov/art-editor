@@ -89,6 +89,12 @@
 		};
 	}
 
+	function isPageSettingsPanelOpen() {
+		var settingsPanel = document.getElementById( 'art-editor-settings-panel' );
+
+		return !! ( settingsPanel && ! settingsPanel.hidden );
+	}
+
 	function isPublishedLikeStatus( status ) {
 		return 'publish' === status || 'private' === status;
 	}
@@ -670,7 +676,7 @@
 			linkState = getElementLinkStateFromHtml( block ? block.content || '' : '', locator.path );
 
 			isSyncingLinkControls = true;
-			linkUrlInput.value = linkState.href;
+			linkUrlInput.value = normalizeLinkHref( linkState.href );
 			linkBlankCheckbox.checked = linkState.openInNew;
 
 			if ( elementControls ) {
@@ -782,6 +788,9 @@
 			var locator;
 			var result;
 			var nextLocator;
+			var rawHref;
+			var normalizedHref;
+			var openInNew;
 
 			if ( isSyncingLinkControls || ! editorState.selectedId || ! isSelectedElementLocatorForCurrentBlock() ) {
 				return;
@@ -794,11 +803,21 @@
 			}
 
 			locator = editorState.selectedElementLocator;
+			rawHref = linkUrlInput ? linkUrlInput.value : '';
+			normalizedHref = normalizeLinkHref( rawHref );
+			openInNew = linkBlankCheckbox ? linkBlankCheckbox.checked : false;
+
+			if ( linkUrlInput && linkUrlInput.value !== normalizedHref ) {
+				isSyncingLinkControls = true;
+				linkUrlInput.value = normalizedHref;
+				isSyncingLinkControls = false;
+			}
+
 			result = applyElementLinkEdit(
 				block.content || '',
 				locator.path,
-				linkUrlInput ? linkUrlInput.value : '',
-				linkBlankCheckbox ? linkBlankCheckbox.checked : false
+				normalizedHref,
+				openInNew
 			);
 
 			if ( ! result || result.html === block.content ) {
@@ -929,6 +948,13 @@
 		function cancelPendingTextStyleApply() {
 			window.clearTimeout( textStyleApplyTimer );
 			textStyleApplyTimer = null;
+		}
+
+		function flushPendingElementEdits() {
+			cancelPendingLinkApply();
+			cancelPendingTextStyleApply();
+			applyLinkFromControls();
+			applyTextStyleFromControls( { fontSize: true, color: true, backgroundColor: true } );
 		}
 
 		function resetFontSizeStyle() {
@@ -1072,6 +1098,7 @@
 			clearActiveElement: clearActiveElement,
 			cancelPendingLinkApply: cancelPendingLinkApply,
 			cancelPendingTextStyleApply: cancelPendingTextStyleApply,
+			flushPendingElementEdits: flushPendingElementEdits,
 			syncElementControls: syncElementControls,
 		};
 	}
@@ -1652,7 +1679,15 @@
 		return ( i18n.htmlBlock || 'HTML-блок' ) + ' ' + ( index + 1 );
 	}
 
+	function flushPendingElementEdits() {
+		if ( elementEditorController && elementEditorController.flushPendingElementEdits ) {
+			elementEditorController.flushPendingElementEdits();
+		}
+	}
+
 	function commitCodeToSelectedBlock() {
+		flushPendingElementEdits();
+
 		var block = ensureBlockForCode();
 
 		if ( ! block ) {
@@ -2276,6 +2311,7 @@
 
 	function normalizeLinkHref( href ) {
 		var trimmed;
+		var schemeMatch;
 
 		if ( 'string' !== typeof href ) {
 			return '';
@@ -2287,19 +2323,25 @@
 			return '';
 		}
 
-		if ( /^(?:[a-z][a-z0-9+.-]*:|#|\/)/i.test( trimmed ) ) {
+		if ( '#' === trimmed.charAt( 0 ) ) {
 			return trimmed;
 		}
 
-		if ( /^www\./i.test( trimmed ) ) {
-			return 'https://' + trimmed;
+		if ( '/' === trimmed.charAt( 0 ) ) {
+			return trimmed;
 		}
 
-		if ( /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?::\d+)?(?:[/?#][^\s]*)?$/i.test( trimmed ) ) {
-			return 'https://' + trimmed;
+		if ( 0 === trimmed.indexOf( '//' ) ) {
+			return 'https:' + trimmed;
 		}
 
-		return trimmed;
+		schemeMatch = trimmed.match( /^([a-z][a-z0-9+.-]*):/i );
+
+		if ( schemeMatch ) {
+			return trimmed;
+		}
+
+		return 'https://' + trimmed;
 	}
 
 	function getElementLinkStateFromHtml( html, path ) {
@@ -3713,7 +3755,7 @@
 					devicePreview.syncMobileFrameWidth();
 				}
 
-				if ( isSelectedElementLocatorForCurrentBlock() && elementEditorController ) {
+				if ( isSelectedElementLocatorForCurrentBlock() && elementEditorController && ! isPageSettingsPanelOpen() ) {
 					elementEditorController.openPanel( editorState.selectedElementLocator );
 				}
 			}
@@ -4143,7 +4185,9 @@
 			var shouldOpen = 'boolean' === typeof forceOpen ? forceOpen : settingsPanel.hidden;
 			var elementPanel = document.getElementById( 'art-editor-element-panel' );
 
-			if ( shouldOpen && elementEditorController ) {
+			if ( shouldOpen ) {
+				clearSelectedElementLocator();
+			} else if ( elementEditorController ) {
 				elementEditorController.closePanel();
 			}
 
@@ -4182,6 +4226,11 @@
 
 		if ( slugInput ) {
 			slugInput.addEventListener( 'input', scheduleUnsavedIndicatorUpdate );
+
+			slugInput.addEventListener( 'blur', function() {
+				window.clearTimeout( titleTimer );
+				persistPageSettings();
+			} );
 		}
 
 		titleInput.addEventListener( 'blur', function() {

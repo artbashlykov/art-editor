@@ -18,7 +18,6 @@ class Art_Editor_Frontend {
 	public static function init() {
 		add_filter( 'template_include', array( __CLASS__, 'maybe_use_canvas_template' ), 99 );
 		add_filter( 'body_class', array( __CLASS__, 'add_canvas_body_class' ) );
-		add_filter( 'show_admin_bar', array( __CLASS__, 'maybe_hide_admin_bar' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_canvas_assets' ), 20 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_theme_styles' ), 1000 );
 		add_action( 'loop_start', array( __CLASS__, 'reset_preview_block_index' ) );
@@ -108,22 +107,6 @@ class Art_Editor_Frontend {
 		}
 
 		return $classes;
-	}
-
-	/**
-	 * Hide the admin bar on canvas pages for a cleaner preview.
-	 *
-	 * @param bool $show Whether to show the admin bar.
-	 * @return bool
-	 */
-	public static function maybe_hide_admin_bar( $show ) {
-		$post_id = self::get_current_post_id();
-
-		if ( $post_id > 0 && self::should_use_canvas_template( $post_id ) ) {
-			return false;
-		}
-
-		return $show;
 	}
 
 	/**

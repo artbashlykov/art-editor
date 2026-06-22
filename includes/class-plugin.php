@@ -50,6 +50,7 @@ class Art_Editor_Plugin {
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-block-editor.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-editor-screen.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-frontend.php';
+		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-admin-bar.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-menu.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-settings.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-list-table.php';
@@ -69,5 +70,6 @@ class Art_Editor_Plugin {
 		Art_Editor_Block_Editor::init();
 		Art_Editor_Editor_Screen::init();
 		Art_Editor_Frontend::init();
+		Art_Editor_Admin_Bar::init();
 	}
 }
