@@ -76,11 +76,6 @@
 		return null;
 	}
 
-	function findElementorMountPoint() {
-		return document.getElementById( 'elementor-switch-mode' )
-			|| document.getElementById( 'elementor-edit-button-gutenberg' );
-	}
-
 	function getOrCreateMount( mountId, parent, insertBeforeNode ) {
 		var mount = mountRegistry[ mountId ] || document.getElementById( mountId );
 

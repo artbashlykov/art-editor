@@ -122,8 +122,8 @@ class Art_Editor_Frontend {
 		wp_enqueue_style(
 			'art-editor-canvas',
 			ART_EDITOR_PLUGIN_URL . 'assets/css/canvas.css',
-			array(),
-			ART_EDITOR_VERSION
+			array( 'admin-bar' ),
+			ART_EDITOR_VERSION . '.' . (string) filemtime( ART_EDITOR_PLUGIN_DIR . 'assets/css/canvas.css' )
 		);
 	}
 

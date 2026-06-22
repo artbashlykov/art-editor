@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.4
+Stable tag: 0.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,14 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.5 =
+* Canvas: fix white gap above content when logged in (admin bar margin).
+* Canvas and preview: smooth scroll to anchors; link underline only without explicit text-decoration.
+* Editor: italic, underline, and strikethrough toggles for text elements (hidden for div/section).
+* Editor: line-height control with unitless, px, and percent values.
+* Editor: compact style panel layout; uniform width for selects and color inputs.
+* Editor: fix underline/strikethrough inline styles and link decoration suppression.
 
 = 0.2.4 =
 * Anchor blocks: «Добавить якорь» button, dedicated anchor panel, disabled Code/Edit tabs for anchors.

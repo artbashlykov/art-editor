@@ -586,15 +586,23 @@
 		var elementSummary = document.getElementById( 'art-editor-element-summary' );
 		var styleControls = document.getElementById( 'art-editor-element-style-controls' );
 		var fontSizeRow = document.getElementById( 'art-editor-element-font-size-row' );
+		var lineHeightRow = document.getElementById( 'art-editor-element-line-height-row' );
 		var textColorRow = document.getElementById( 'art-editor-element-text-color-row' );
 		var fontWeightRow = document.getElementById( 'art-editor-element-font-weight-row' );
+		var textDecorationRow = document.getElementById( 'art-editor-element-text-decoration-row' );
 		var backgroundColorRow = document.getElementById( 'art-editor-element-background-color-row' );
 		var fontSizeInput = document.getElementById( 'art-editor-element-font-size' );
 		var fontSizeResetButton = document.getElementById( 'art-editor-element-font-size-reset' );
+		var lineHeightInput = document.getElementById( 'art-editor-element-line-height' );
+		var lineHeightUnitInput = document.getElementById( 'art-editor-element-line-height-unit' );
+		var lineHeightResetButton = document.getElementById( 'art-editor-element-line-height-reset' );
 		var textColorInput = document.getElementById( 'art-editor-element-text-color' );
 		var textColorResetButton = document.getElementById( 'art-editor-element-text-color-reset' );
 		var fontWeightInput = document.getElementById( 'art-editor-element-font-weight' );
 		var fontWeightResetButton = document.getElementById( 'art-editor-element-font-weight-reset' );
+		var italicToggle = document.getElementById( 'art-editor-element-italic-toggle' );
+		var underlineToggle = document.getElementById( 'art-editor-element-underline-toggle' );
+		var lineThroughToggle = document.getElementById( 'art-editor-element-line-through-toggle' );
 		var backgroundColorInput = document.getElementById( 'art-editor-element-background-color' );
 		var backgroundColorResetButton = document.getElementById( 'art-editor-element-background-color-reset' );
 		var imageControls = document.getElementById( 'art-editor-element-image-controls' );
@@ -610,10 +618,30 @@
 		var textStyleApplyTimer = null;
 		var lastSyncedTextStyleState = {
 			fontSize: '',
+			lineHeight: '',
+			lineHeightUnit: 'unitless',
 			color: '',
 			fontWeight: '',
+			fontStyle: '',
+			textDecorationUnderline: false,
+			textDecorationLineThrough: false,
 			backgroundColor: '',
 		};
+
+		function setTextDecorationToggleState( button, isActive ) {
+			if ( ! button ) {
+				return;
+			}
+
+			button.classList.toggle( 'is-active', !! isActive );
+			button.setAttribute( 'aria-pressed', isActive ? 'true' : 'false' );
+		}
+
+		function syncTextDecorationToggleControls( textStyleState ) {
+			setTextDecorationToggleState( italicToggle, !! ( textStyleState && 'italic' === textStyleState.fontStyle ) );
+			setTextDecorationToggleState( underlineToggle, !! ( textStyleState && textStyleState.textDecorationUnderline ) );
+			setTextDecorationToggleState( lineThroughToggle, !! ( textStyleState && textStyleState.textDecorationLineThrough ) );
+		}
 
 		if ( ! elementPanel || ! structureView ) {
 			return null;
@@ -622,8 +650,13 @@
 		function updateLastSyncedTextStyleState( textStyleState ) {
 			lastSyncedTextStyleState = {
 				fontSize: textStyleState && textStyleState.fontSize ? textStyleState.fontSize : '',
+				lineHeight: textStyleState && textStyleState.lineHeight ? textStyleState.lineHeight : '',
+				lineHeightUnit: textStyleState && textStyleState.lineHeightUnit ? sanitizeLineHeightUnit( textStyleState.lineHeightUnit ) : 'unitless',
 				color: textStyleState && textStyleState.color ? textStyleState.color : '',
 				fontWeight: textStyleState && textStyleState.fontWeight ? textStyleState.fontWeight : '',
+				fontStyle: textStyleState && textStyleState.fontStyle ? textStyleState.fontStyle : '',
+				textDecorationUnderline: !! ( textStyleState && textStyleState.textDecorationUnderline ),
+				textDecorationLineThrough: !! ( textStyleState && textStyleState.textDecorationLineThrough ),
 				backgroundColor: textStyleState && textStyleState.backgroundColor ? textStyleState.backgroundColor : '',
 			};
 		}
@@ -642,6 +675,16 @@
 				normalizedInput = normalizeFontWeightInput( inputValue );
 				normalizedSynced = normalizeFontWeightInput( syncedValue );
 				return normalizedInput !== normalizedSynced;
+			}
+
+			if ( 'fontStyle' === property ) {
+				normalizedInput = formatFontStyleForInput( inputValue );
+				normalizedSynced = formatFontStyleForInput( syncedValue );
+				return normalizedInput !== normalizedSynced;
+			}
+
+			if ( 'textDecorationUnderline' === property || 'textDecorationLineThrough' === property ) {
+				return !! inputValue !== !! syncedValue;
 			}
 
 			if ( 'color' === property ) {
@@ -675,8 +718,13 @@
 			if ( overrides ) {
 				return changedProperties || {
 					fontSize: true,
+					lineHeight: true,
+					lineHeightUnit: true,
 					color: true,
 					fontWeight: true,
+					fontStyle: true,
+					textDecorationUnderline: true,
+					textDecorationLineThrough: true,
 					backgroundColor: true,
 				};
 			}
@@ -684,6 +732,13 @@
 			if ( ! changedProperties || changedProperties.fontSize ) {
 				if ( shouldApplyTextStyleProperty( 'fontSize', values.fontSize, lastSyncedTextStyleState.fontSize ) ) {
 					effective.fontSize = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.lineHeight || changedProperties.lineHeightUnit ) {
+				if ( buildLineHeightCSSValue( values.lineHeight, values.lineHeightUnit ) !== buildLineHeightCSSValue( lastSyncedTextStyleState.lineHeight, lastSyncedTextStyleState.lineHeightUnit ) ) {
+					effective.lineHeight = true;
+					effective.lineHeightUnit = true;
 				}
 			}
 
@@ -696,6 +751,24 @@
 			if ( ! changedProperties || changedProperties.fontWeight ) {
 				if ( shouldApplyTextStyleProperty( 'fontWeight', values.fontWeight, lastSyncedTextStyleState.fontWeight ) ) {
 					effective.fontWeight = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.fontStyle ) {
+				if ( shouldApplyTextStyleProperty( 'fontStyle', values.fontStyle, lastSyncedTextStyleState.fontStyle ) ) {
+					effective.fontStyle = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.textDecorationUnderline ) {
+				if ( shouldApplyTextStyleProperty( 'textDecorationUnderline', values.textDecorationUnderline, lastSyncedTextStyleState.textDecorationUnderline ) ) {
+					effective.textDecorationUnderline = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.textDecorationLineThrough ) {
+				if ( shouldApplyTextStyleProperty( 'textDecorationLineThrough', values.textDecorationLineThrough, lastSyncedTextStyleState.textDecorationLineThrough ) ) {
+					effective.textDecorationLineThrough = true;
 				}
 			}
 
@@ -767,12 +840,17 @@
 
 		function updateTextStyleResetButtons( textStyleState ) {
 			var hasFontSize = !! ( textStyleState && textStyleState.fontSize );
+			var hasLineHeight = !! ( textStyleState && textStyleState.lineHeight );
 			var hasColor = !! ( textStyleState && textStyleState.color );
 			var hasFontWeight = !! ( textStyleState && textStyleState.fontWeight );
 			var hasBackgroundColor = !! ( textStyleState && textStyleState.backgroundColor );
 
 			if ( fontSizeResetButton ) {
 				fontSizeResetButton.disabled = ! hasFontSize;
+			}
+
+			if ( lineHeightResetButton ) {
+				lineHeightResetButton.disabled = ! hasLineHeight;
 			}
 
 			if ( textColorResetButton ) {
@@ -808,12 +886,20 @@
 				fontSizeRow.hidden = ! isInlineTextStyleable;
 			}
 
+			if ( lineHeightRow ) {
+				lineHeightRow.hidden = ! isInlineTextStyleable;
+			}
+
 			if ( textColorRow ) {
 				textColorRow.hidden = ! isInlineTextStyleable;
 			}
 
 			if ( fontWeightRow ) {
 				fontWeightRow.hidden = ! isInlineTextStyleable;
+			}
+
+			if ( textDecorationRow ) {
+				textDecorationRow.hidden = ! isInlineTextStyleable;
 			}
 
 			if ( backgroundColorRow ) {
@@ -829,12 +915,20 @@
 					fontSizeRow.hidden = true;
 				}
 
+				if ( lineHeightRow ) {
+					lineHeightRow.hidden = true;
+				}
+
 				if ( textColorRow ) {
 					textColorRow.hidden = true;
 				}
 
 				if ( fontWeightRow ) {
 					fontWeightRow.hidden = true;
+				}
+
+				if ( textDecorationRow ) {
+					textDecorationRow.hidden = true;
 				}
 
 				if ( backgroundColorRow ) {
@@ -861,6 +955,14 @@
 					fontSizeInput.value = '';
 				}
 
+				if ( lineHeightInput ) {
+					lineHeightInput.value = '';
+				}
+
+				if ( lineHeightUnitInput ) {
+					lineHeightUnitInput.value = 'unitless';
+				}
+
 				if ( textColorInput ) {
 					textColorInput.value = '#000000';
 				}
@@ -868,6 +970,8 @@
 				if ( fontWeightInput ) {
 					fontWeightInput.value = '';
 				}
+
+				syncTextDecorationToggleControls( null );
 
 				if ( backgroundColorInput ) {
 					backgroundColorInput.value = '#ffffff';
@@ -881,15 +985,20 @@
 
 			block = getBlockById( editorState.selectedId );
 
-			if ( ( isInlineTextStyleable && fontSizeInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) ) {
+			if ( ( isInlineTextStyleable && fontSizeInput && lineHeightInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) ) {
 				textStyleState = getElementTextStyleStateFromHtml( block ? block.content || '' : '', locator.path );
 
 				isSyncingTextStyleControls = true;
 
-				if ( isInlineTextStyleable && fontSizeInput && textColorInput && fontWeightInput ) {
+				if ( isInlineTextStyleable && fontSizeInput && lineHeightInput && textColorInput && fontWeightInput ) {
 					fontSizeInput.value = textStyleState.fontSize || '';
+					lineHeightInput.value = textStyleState.lineHeight || '';
+					if ( lineHeightUnitInput ) {
+						lineHeightUnitInput.value = textStyleState.lineHeightUnit || 'unitless';
+					}
 					textColorInput.value = textStyleState.color || '#000000';
 					fontWeightInput.value = textStyleState.fontWeight || '';
+					syncTextDecorationToggleControls( textStyleState );
 				}
 
 				if ( canSetBackground && backgroundColorInput ) {
@@ -1102,8 +1211,13 @@
 			var result;
 			var nextLocator;
 			var fontSizeValue;
+			var lineHeightValue;
+			var lineHeightUnitValue;
 			var colorValue;
 			var fontWeightValue;
+			var fontStyleValue;
+			var textDecorationUnderlineValue;
+			var textDecorationLineThroughValue;
 			var backgroundColorValue;
 			var isInlineTextStyleable;
 			var canSetBackground;
@@ -1118,7 +1232,7 @@
 
 			isInlineTextStyleable = isInlineTextStyleableLocator( editorState.selectedElementLocator );
 			canSetBackground = isBackgroundStyleableLocator( editorState.selectedElementLocator );
-			touchesText = ! changedProperties || changedProperties.fontSize || changedProperties.color || changedProperties.fontWeight;
+			touchesText = ! changedProperties || changedProperties.fontSize || changedProperties.lineHeight || changedProperties.lineHeightUnit || changedProperties.color || changedProperties.fontWeight || changedProperties.fontStyle || changedProperties.textDecorationUnderline || changedProperties.textDecorationLineThrough;
 			touchesBackground = ! changedProperties || changedProperties.backgroundColor;
 
 			if ( touchesText && ! isInlineTextStyleable ) {
@@ -1137,13 +1251,23 @@
 
 			locator = editorState.selectedElementLocator;
 			fontSizeValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'fontSize' ) ? overrides.fontSize : ( fontSizeInput ? fontSizeInput.value : '' );
+			lineHeightValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'lineHeight' ) ? overrides.lineHeight : ( lineHeightInput ? lineHeightInput.value : '' );
+			lineHeightUnitValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'lineHeightUnit' ) ? overrides.lineHeightUnit : ( lineHeightUnitInput ? lineHeightUnitInput.value : 'unitless' );
 			colorValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'color' ) ? overrides.color : ( textColorInput ? textColorInput.value : '' );
 			fontWeightValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'fontWeight' ) ? overrides.fontWeight : ( fontWeightInput ? fontWeightInput.value : '' );
+			fontStyleValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'fontStyle' ) ? overrides.fontStyle : ( italicToggle && italicToggle.classList.contains( 'is-active' ) ? 'italic' : '' );
+			textDecorationUnderlineValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'textDecorationUnderline' ) ? overrides.textDecorationUnderline : ( underlineToggle && underlineToggle.classList.contains( 'is-active' ) );
+			textDecorationLineThroughValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'textDecorationLineThrough' ) ? overrides.textDecorationLineThrough : ( lineThroughToggle && lineThroughToggle.classList.contains( 'is-active' ) );
 			backgroundColorValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'backgroundColor' ) ? overrides.backgroundColor : ( backgroundColorInput ? backgroundColorInput.value : '' );
 			styleValues = {
 				fontSize: fontSizeValue,
+				lineHeight: lineHeightValue,
+				lineHeightUnit: lineHeightUnitValue,
 				color: colorValue,
 				fontWeight: fontWeightValue,
+				fontStyle: fontStyleValue,
+				textDecorationUnderline: textDecorationUnderlineValue,
+				textDecorationLineThrough: textDecorationLineThroughValue,
 				backgroundColor: backgroundColorValue,
 			};
 			effectiveChangedProperties = getEffectiveChangedTextStyleProperties( changedProperties, overrides, styleValues );
@@ -1191,7 +1315,7 @@
 			window.clearTimeout( textStyleApplyTimer );
 			textStyleApplyTimer = window.setTimeout( function() {
 				textStyleApplyTimer = null;
-				applyTextStyleFromControls( { fontSize: true } );
+				applyTextStyleFromControls( { fontSize: true, lineHeight: true, lineHeightUnit: true } );
 			}, 300 );
 		}
 
@@ -1207,7 +1331,17 @@
 			cancelPendingTextStyleApply();
 			applyLinkFromControls( { skipHistory: !! settings.skipHistory } );
 			applyTextStyleFromControls(
-				{ fontSize: true, color: true, fontWeight: true, backgroundColor: true },
+				{
+					fontSize: true,
+					lineHeight: true,
+					lineHeightUnit: true,
+					color: true,
+					fontWeight: true,
+					fontStyle: true,
+					textDecorationUnderline: true,
+					textDecorationLineThrough: true,
+					backgroundColor: true,
+				},
 				null,
 				{ skipHistory: !! settings.skipHistory }
 			);
@@ -1223,6 +1357,26 @@
 
 			pushHistory();
 			applyTextStyleFromControls( { fontSize: true }, { fontSize: '' }, { skipHistory: true } );
+		}
+
+		function resetLineHeightStyle() {
+			cancelPendingTextStyleApply();
+			flushStyleHistoryCheckpoint();
+
+			if ( lineHeightInput ) {
+				lineHeightInput.value = '';
+			}
+
+			if ( lineHeightUnitInput ) {
+				lineHeightUnitInput.value = 'unitless';
+			}
+
+			pushHistory();
+			applyTextStyleFromControls(
+				{ lineHeight: true, lineHeightUnit: true },
+				{ lineHeight: '', lineHeightUnit: 'unitless' },
+				{ skipHistory: true }
+			);
 		}
 
 		function resetTextColorStyle() {
@@ -1330,6 +1484,21 @@
 			} );
 		}
 
+		if ( lineHeightInput ) {
+			lineHeightInput.addEventListener( 'input', scheduleTextStyleApply );
+			lineHeightInput.addEventListener( 'change', function() {
+				cancelPendingTextStyleApply();
+				applyTextStyleFromControls( { lineHeight: true, lineHeightUnit: true } );
+			} );
+		}
+
+		if ( lineHeightUnitInput ) {
+			lineHeightUnitInput.addEventListener( 'change', function() {
+				cancelPendingTextStyleApply();
+				applyTextStyleFromControls( { lineHeight: true, lineHeightUnit: true } );
+			} );
+		}
+
 		if ( textColorInput ) {
 			textColorInput.addEventListener( 'input', function() {
 				if ( isSyncingTextStyleControls ) {
@@ -1353,6 +1522,54 @@
 			} );
 		}
 
+		if ( italicToggle ) {
+			italicToggle.addEventListener( 'click', function() {
+				var isActive;
+
+				if ( isSyncingTextStyleControls ) {
+					return;
+				}
+
+				isActive = italicToggle.classList.contains( 'is-active' );
+				applyTextStyleFromControls(
+					{ fontStyle: true },
+					{ fontStyle: isActive ? '' : 'italic' }
+				);
+			} );
+		}
+
+		if ( underlineToggle ) {
+			underlineToggle.addEventListener( 'click', function() {
+				if ( isSyncingTextStyleControls ) {
+					return;
+				}
+
+				applyTextStyleFromControls(
+					{ textDecorationUnderline: true, textDecorationLineThrough: true },
+					{
+						textDecorationUnderline: ! underlineToggle.classList.contains( 'is-active' ),
+						textDecorationLineThrough: lineThroughToggle && lineThroughToggle.classList.contains( 'is-active' ),
+					}
+				);
+			} );
+		}
+
+		if ( lineThroughToggle ) {
+			lineThroughToggle.addEventListener( 'click', function() {
+				if ( isSyncingTextStyleControls ) {
+					return;
+				}
+
+				applyTextStyleFromControls(
+					{ textDecorationUnderline: true, textDecorationLineThrough: true },
+					{
+						textDecorationUnderline: underlineToggle && underlineToggle.classList.contains( 'is-active' ),
+						textDecorationLineThrough: ! lineThroughToggle.classList.contains( 'is-active' ),
+					}
+				);
+			} );
+		}
+
 		if ( backgroundColorInput ) {
 			backgroundColorInput.addEventListener( 'input', function() {
 				if ( isSyncingTextStyleControls ) {
@@ -1372,6 +1589,10 @@
 
 		if ( fontSizeResetButton ) {
 			fontSizeResetButton.addEventListener( 'click', resetFontSizeStyle );
+		}
+
+		if ( lineHeightResetButton ) {
+			lineHeightResetButton.addEventListener( 'click', resetLineHeightStyle );
 		}
 
 		if ( textColorResetButton ) {
@@ -2537,7 +2758,9 @@
 			'*,*::before,*::after{box-sizing:inherit;}',
 			'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1e1e1e;}',
 			'img,video,iframe,svg{max-width:100%;}',
-			editMode ? 'body a{color:inherit;text-decoration:inherit;font-size:inherit;font-weight:inherit;font-family:inherit;background-color:transparent;}' : '',
+			'@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth;}}',
+			editMode ? 'body a{color:inherit;font-size:inherit;font-weight:inherit;font-family:inherit;background-color:transparent;}' : '',
+			'body a:not([style*="text-decoration"]):not(:has([style*="text-decoration"])){text-decoration:none;}',
 			'</style>',
 			blockStyles || '',
 			headExtras,
@@ -2866,6 +3089,81 @@
 		return normalized;
 	}
 
+	function parseLineHeightInlineValue( value ) {
+		var pxMatch;
+		var percentMatch;
+		var normalized;
+
+		normalized = String( value || '' ).trim().toLowerCase();
+
+		if ( ! normalized || 'normal' === normalized ) {
+			return {
+				value: '',
+				unit: 'unitless',
+			};
+		}
+
+		pxMatch = /^([\d.]+)px$/.exec( normalized );
+
+		if ( pxMatch ) {
+			return {
+				value: pxMatch[1].replace( /\.0+$/, '' ),
+				unit: 'px',
+			};
+		}
+
+		percentMatch = /^([\d.]+)%$/.exec( normalized );
+
+		if ( percentMatch ) {
+			return {
+				value: percentMatch[1].replace( /\.0+$/, '' ),
+				unit: 'percent',
+			};
+		}
+
+		if ( /^[\d.]+$/.test( normalized ) ) {
+			return {
+				value: normalized.replace( /\.0+$/, '' ),
+				unit: 'unitless',
+			};
+		}
+
+		return {
+			value: '',
+			unit: 'unitless',
+		};
+	}
+
+	function sanitizeLineHeightUnit( unit ) {
+		if ( 'px' === unit || 'percent' === unit ) {
+			return unit;
+		}
+
+		return 'unitless';
+	}
+
+	function buildLineHeightCSSValue( value, unit ) {
+		var normalized;
+
+		normalized = normalizeFontSizeInput( value );
+
+		if ( ! normalized ) {
+			return '';
+		}
+
+		unit = sanitizeLineHeightUnit( unit );
+
+		if ( 'px' === unit ) {
+			return normalized + 'px';
+		}
+
+		if ( 'percent' === unit ) {
+			return normalized + '%';
+		}
+
+		return normalized;
+	}
+
 	function formatFontWeightForInput( value ) {
 		var normalized;
 
@@ -2914,19 +3212,104 @@
 		return String( weight );
 	}
 
+	function formatFontStyleForInput( value ) {
+		var normalized;
+
+		normalized = String( value || '' ).trim().toLowerCase();
+
+		if ( 'italic' === normalized || 'oblique' === normalized ) {
+			return 'italic';
+		}
+
+		return '';
+	}
+
+	function parseTextDecorationFlags( value ) {
+		var normalized;
+
+		normalized = String( value || '' ).trim().toLowerCase();
+
+		return {
+			underline: -1 !== normalized.indexOf( 'underline' ),
+			lineThrough: -1 !== normalized.indexOf( 'line-through' ),
+		};
+	}
+
+	function buildTextDecorationFromFlags( underline, lineThrough ) {
+		var parts = [];
+
+		if ( underline ) {
+			parts.push( 'underline' );
+		}
+
+		if ( lineThrough ) {
+			parts.push( 'line-through' );
+		}
+
+		return parts.join( ' ' );
+	}
+
+	function clearAncestorLinkDecorationSuppression( target ) {
+		var node;
+
+		if ( ! target ) {
+			return;
+		}
+
+		node = target.parentElement;
+
+		while ( node && 'BODY' !== node.tagName ) {
+			if ( 'A' !== node.tagName || ! node.style ) {
+				node = node.parentElement;
+				continue;
+			}
+
+			if ( 'none' === String( node.style.textDecoration || '' ).trim().toLowerCase() ) {
+				node.style.removeProperty( 'text-decoration' );
+				node.style.removeProperty( 'text-decoration-line' );
+
+				if ( ! node.getAttribute( 'style' ) ) {
+					node.removeAttribute( 'style' );
+				}
+			}
+
+			node = node.parentElement;
+		}
+	}
+
+	function clearTextDecorationInlineStyles( target ) {
+		if ( ! target || ! target.style ) {
+			return;
+		}
+
+		target.style.removeProperty( 'text-decoration' );
+		target.style.removeProperty( 'text-decoration-line' );
+		target.style.removeProperty( 'text-decoration-style' );
+		target.style.removeProperty( 'text-decoration-color' );
+		target.style.removeProperty( 'text-decoration-thickness' );
+	}
+
 	function getElementTextStyleStateFromHtml( html, path ) {
 		var doc;
 		var target;
 		var fontSize;
+		var lineHeightParts;
 		var color;
 		var fontWeight;
 		var backgroundColor;
+		var fontStyle;
+		var decorationFlags;
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length ) {
 			return {
 				fontSize: '',
+				lineHeight: '',
+				lineHeightUnit: 'unitless',
 				color: '',
 				fontWeight: '',
+				fontStyle: '',
+				textDecorationUnderline: false,
+				textDecorationLineThrough: false,
 				backgroundColor: '',
 			};
 		}
@@ -2938,28 +3321,48 @@
 			if ( ! target ) {
 				return {
 					fontSize: '',
+					lineHeight: '',
+					lineHeightUnit: 'unitless',
 					color: '',
 					fontWeight: '',
+					fontStyle: '',
+					textDecorationUnderline: false,
+					textDecorationLineThrough: false,
 					backgroundColor: '',
 				};
 			}
 
 			fontSize = formatFontSizeForInput( target.style.getPropertyValue( 'font-size' ) );
+			lineHeightParts = parseLineHeightInlineValue( target.style.getPropertyValue( 'line-height' ) );
 			color = cssColorToHex( target.style.getPropertyValue( 'color' ) );
 			fontWeight = formatFontWeightForInput( target.style.getPropertyValue( 'font-weight' ) );
+			fontStyle = formatFontStyleForInput( target.style.getPropertyValue( 'font-style' ) );
+			decorationFlags = parseTextDecorationFlags(
+				target.style.getPropertyValue( 'text-decoration-line' ) || target.style.getPropertyValue( 'text-decoration' )
+			);
 			backgroundColor = cssColorToHex( target.style.getPropertyValue( 'background-color' ) );
 
 			return {
 				fontSize: fontSize,
+				lineHeight: lineHeightParts.value,
+				lineHeightUnit: lineHeightParts.unit,
 				color: color,
 				fontWeight: fontWeight,
+				fontStyle: fontStyle,
+				textDecorationUnderline: decorationFlags.underline,
+				textDecorationLineThrough: decorationFlags.lineThrough,
 				backgroundColor: backgroundColor,
 			};
 		} catch ( error ) {
 			return {
 				fontSize: '',
+				lineHeight: '',
+				lineHeightUnit: 'unitless',
 				color: '',
 				fontWeight: '',
+				fontStyle: '',
+				textDecorationUnderline: false,
+				textDecorationLineThrough: false,
 				backgroundColor: '',
 			};
 		}
@@ -2970,12 +3373,20 @@
 		var target;
 		var selectionPath;
 		var fontSize;
+		var lineHeight;
 		var color;
 		var fontWeight;
 		var backgroundColor;
+		var fontStyle;
+		var textDecorationUnderline;
+		var textDecorationLineThrough;
+		var textDecoration;
 		var shouldUpdateFontSize;
+		var shouldUpdateLineHeight;
 		var shouldUpdateColor;
 		var shouldUpdateFontWeight;
+		var shouldUpdateFontStyle;
+		var shouldUpdateTextDecoration;
 		var shouldUpdateBackgroundColor;
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length || ! textStyles ) {
@@ -2983,12 +3394,20 @@
 		}
 
 		shouldUpdateFontSize = ! changedProperties || changedProperties.fontSize;
+		shouldUpdateLineHeight = ! changedProperties || changedProperties.lineHeight || changedProperties.lineHeightUnit;
 		shouldUpdateColor = ! changedProperties || changedProperties.color;
 		shouldUpdateFontWeight = ! changedProperties || changedProperties.fontWeight;
+		shouldUpdateFontStyle = ! changedProperties || changedProperties.fontStyle;
+		shouldUpdateTextDecoration = ! changedProperties || changedProperties.textDecorationUnderline || changedProperties.textDecorationLineThrough;
 		shouldUpdateBackgroundColor = ! changedProperties || changedProperties.backgroundColor;
 		fontSize = normalizeFontSizeInput( textStyles.fontSize );
+		lineHeight = buildLineHeightCSSValue( textStyles.lineHeight, textStyles.lineHeightUnit );
 		color = cssColorToHex( textStyles.color );
 		fontWeight = normalizeFontWeightInput( textStyles.fontWeight );
+		fontStyle = formatFontStyleForInput( textStyles.fontStyle );
+		textDecorationUnderline = !! textStyles.textDecorationUnderline;
+		textDecorationLineThrough = !! textStyles.textDecorationLineThrough;
+		textDecoration = buildTextDecorationFromFlags( textDecorationUnderline, textDecorationLineThrough );
 		backgroundColor = cssColorToHex( textStyles.backgroundColor );
 
 		try {
@@ -3007,6 +3426,14 @@
 				}
 			}
 
+			if ( shouldUpdateLineHeight ) {
+				if ( lineHeight ) {
+					target.style.setProperty( 'line-height', lineHeight );
+				} else {
+					target.style.removeProperty( 'line-height' );
+				}
+			}
+
 			if ( shouldUpdateColor ) {
 				if ( color ) {
 					target.style.setProperty( 'color', color );
@@ -3020,6 +3447,24 @@
 					target.style.setProperty( 'font-weight', fontWeight );
 				} else {
 					target.style.removeProperty( 'font-weight' );
+				}
+			}
+
+			if ( shouldUpdateFontStyle ) {
+				if ( fontStyle ) {
+					target.style.setProperty( 'font-style', fontStyle );
+				} else {
+					target.style.removeProperty( 'font-style' );
+				}
+			}
+
+			if ( shouldUpdateTextDecoration ) {
+				if ( textDecoration ) {
+					clearAncestorLinkDecorationSuppression( target );
+					clearTextDecorationInlineStyles( target );
+					target.style.setProperty( 'text-decoration-line', textDecoration );
+				} else {
+					clearTextDecorationInlineStyles( target );
 				}
 			}
 
@@ -3122,11 +3567,10 @@
 		if ( openInNew ) {
 			anchor.setAttribute( 'target', '_blank' );
 			anchor.setAttribute( 'rel', 'noopener noreferrer' );
-			return;
+		} else {
+			anchor.removeAttribute( 'target' );
+			anchor.removeAttribute( 'rel' );
 		}
-
-		anchor.removeAttribute( 'target' );
-		anchor.removeAttribute( 'rel' );
 	}
 
 	function applyElementLinkEdit( html, path, href, openInNew ) {

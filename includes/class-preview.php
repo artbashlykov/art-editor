@@ -212,6 +212,8 @@ class Art_Editor_Preview {
 		return 'html,body{margin:0;padding:0;box-sizing:border-box;}' .
 			'*,*::before,*::after{box-sizing:inherit;}' .
 			'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1e1e1e;}' .
+			'a:not([style*="text-decoration"]):not(:has([style*="text-decoration"])){text-decoration:none;}' .
+			'@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth;}}' .
 			'img,video,iframe,svg{max-width:100%;}';
 	}
 

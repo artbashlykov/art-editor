@@ -359,18 +359,27 @@ body.art-editor-screen {
 
 .art-editor-screen__element-editor-style-row > .art-editor-screen__element-editor-field-label {
 	grid-column: 1;
+	min-width: 0;
 	margin: 0;
-	white-space: nowrap;
+	line-height: 1.3;
 }
 
 .art-editor-screen__element-editor-style-control {
 	display: flex;
+	flex-shrink: 0;
 	grid-column: 2;
 	gap: 6px;
 	align-items: center;
 	justify-content: flex-end;
 	justify-self: end;
 	width: max-content;
+}
+
+.art-editor-screen__element-editor-style-value-group {
+	display: inline-flex;
+	flex: 0 0 auto;
+	gap: 4px;
+	align-items: center;
 }
 
 .art-editor-screen__element-editor-field--inline {
@@ -397,6 +406,62 @@ body.art-editor-screen {
 	color: #1d2327;
 	font-size: 13px;
 	line-height: 1.4;
+}
+
+.art-editor-screen__element-editor-style-select--unit {
+	padding-right: 2px;
+	padding-left: 2px;
+	text-align: center;
+	text-align-last: center;
+}
+
+.art-editor-screen__element-editor-toggle-group {
+	flex-wrap: wrap;
+}
+
+.art-editor-screen__element-editor-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	min-width: 32px;
+	min-height: 32px;
+	margin: 0;
+	padding: 0 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	background: #fff;
+	color: #1d2327;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.art-editor-screen__element-editor-toggle em {
+	font-style: italic;
+	font-weight: 600;
+}
+
+.art-editor-screen__element-editor-toggle--underline span {
+	text-decoration: underline;
+}
+
+.art-editor-screen__element-editor-toggle--line-through span {
+	text-decoration: line-through;
+}
+
+.art-editor-screen__element-editor-toggle:hover,
+.art-editor-screen__element-editor-toggle:focus {
+	border-color: #8c8f94;
+	background: #f6f7f7;
+	color: #1d2327;
+}
+
+.art-editor-screen__element-editor-toggle.is-active {
+	border-color: var( --art-editor-color-primary );
+	background: rgba( 230, 106, 21, 0.12 );
+	color: var( --art-editor-color-primary );
 }
 
 .art-editor-screen__element-editor-style-reset {
@@ -434,9 +499,9 @@ body.art-editor-screen {
 }
 
 .art-editor-screen__element-editor-style-select {
-	width: 72px;
-	max-width: 72px;
-	padding: 4px 6px;
+	padding: 4px 18px 4px 4px;
+	text-align: center;
+	text-align-last: center;
 }
 
 .art-editor-screen__element-editor-style-input:focus,

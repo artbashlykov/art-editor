@@ -369,6 +369,49 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 									</button>
 								</div>
 							</div>
+							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-line-height-row" hidden>
+								<label
+									class="art-editor-screen__element-editor-field-label"
+									for="art-editor-element-line-height"
+									title="<?php echo esc_attr__( 'Межстрочный интервал', 'art-editor' ); ?>"
+								>
+									<?php echo esc_html__( 'Интервал', 'art-editor' ); ?>
+								</label>
+								<div class="art-editor-screen__element-editor-style-control">
+									<div class="art-editor-screen__element-editor-style-value-group">
+										<input
+											type="number"
+											class="art-editor-screen__element-editor-style-input"
+											id="art-editor-element-line-height"
+											name="art-editor-element-line-height"
+											min="0.5"
+											max="300"
+											step="0.1"
+											inputmode="decimal"
+											autocomplete="off"
+											aria-label="<?php echo esc_attr__( 'Межстрочный интервал', 'art-editor' ); ?>"
+										/>
+										<select
+											class="art-editor-screen__element-editor-style-select art-editor-screen__element-editor-style-select--unit"
+											id="art-editor-element-line-height-unit"
+											name="art-editor-element-line-height-unit"
+											aria-label="<?php echo esc_attr__( 'Единица межстрочного интервала', 'art-editor' ); ?>"
+										>
+											<option value="unitless"><?php echo esc_html__( '×', 'art-editor' ); ?></option>
+											<option value="px">px</option>
+											<option value="percent">%</option>
+										</select>
+									</div>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-style-reset"
+										id="art-editor-element-line-height-reset"
+										disabled
+									>
+										<?php echo esc_html__( 'Сбросить', 'art-editor' ); ?>
+									</button>
+								</div>
+							</div>
 							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-text-color-row" hidden>
 								<label class="art-editor-screen__element-editor-field-label" for="art-editor-element-text-color">
 									<?php echo esc_html__( 'Цвет текста', 'art-editor' ); ?>
@@ -417,6 +460,47 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 										disabled
 									>
 										<?php echo esc_html__( 'Сбросить', 'art-editor' ); ?>
+									</button>
+								</div>
+							</div>
+							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-text-decoration-row" hidden>
+								<span class="art-editor-screen__element-editor-field-label" id="art-editor-element-text-decoration-label">
+									<?php echo esc_html__( 'Оформление', 'art-editor' ); ?>
+								</span>
+								<div
+									class="art-editor-screen__element-editor-style-control art-editor-screen__element-editor-toggle-group"
+									role="group"
+									aria-labelledby="art-editor-element-text-decoration-label"
+								>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-toggle art-editor-screen__element-editor-toggle--italic"
+										id="art-editor-element-italic-toggle"
+										aria-pressed="false"
+										aria-label="<?php echo esc_attr__( 'Курсив', 'art-editor' ); ?>"
+										title="<?php echo esc_attr__( 'Курсив', 'art-editor' ); ?>"
+									>
+										<em>I</em>
+									</button>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-toggle art-editor-screen__element-editor-toggle--underline"
+										id="art-editor-element-underline-toggle"
+										aria-pressed="false"
+										aria-label="<?php echo esc_attr__( 'Подчёркивание', 'art-editor' ); ?>"
+										title="<?php echo esc_attr__( 'Подчёркивание', 'art-editor' ); ?>"
+									>
+										<span aria-hidden="true">U</span>
+									</button>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-toggle art-editor-screen__element-editor-toggle--line-through"
+										id="art-editor-element-line-through-toggle"
+										aria-pressed="false"
+										aria-label="<?php echo esc_attr__( 'Зачёркивание', 'art-editor' ); ?>"
+										title="<?php echo esc_attr__( 'Зачёркивание', 'art-editor' ); ?>"
+									>
+										<span aria-hidden="true">S</span>
 									</button>
 								</div>
 							</div>

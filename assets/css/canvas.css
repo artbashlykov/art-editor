@@ -4,13 +4,21 @@ body.art-editor-template-canvas {
 	padding: 0;
 }
 
-body.admin-bar.art-editor-template-canvas {
-	margin-top: 32px;
+@media screen {
+	html:has(body.art-editor-template-canvas) {
+		margin-top: 0 !important;
+	}
 }
 
 @media screen and (max-width: 782px) {
-	body.admin-bar.art-editor-template-canvas {
-		margin-top: 46px;
+	html:has(body.art-editor-template-canvas) {
+		margin-top: 0 !important;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	html:has(body.art-editor-template-canvas) {
+		scroll-behavior: smooth;
 	}
 }
 
@@ -30,6 +38,10 @@ body.art-editor-template-canvas {
 
 .art-editor-canvas__content > :first-child {
 	margin-top: 0;
+}
+
+.art-editor-canvas__content a:not( [style*='text-decoration'] ):not( :has( [style*='text-decoration'] ) ) {
+	text-decoration: none;
 }
 
 .art-editor-canvas__content img,
