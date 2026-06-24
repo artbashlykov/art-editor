@@ -29,6 +29,7 @@ class Art_Editor_Admin_Menu {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_filter( 'plugin_action_links_' . ART_EDITOR_PLUGIN_BASENAME, array( __CLASS__, 'plugin_action_links' ) );
 		add_filter( 'plugin_row_meta', array( __CLASS__, 'plugin_row_meta_forge' ), 10, 2 );
+		add_filter( 'plugin_row_meta', array( __CLASS__, 'plugin_row_meta_strip_details' ), 100, 2 );
 	}
 
 	/**
@@ -205,5 +206,28 @@ class Art_Editor_Admin_Menu {
 		);
 
 		return $links;
+	}
+
+	/**
+	 * Remove PUC «View details» link from plugin row meta.
+	 *
+	 * @param array<int, string> $links Plugin row meta links.
+	 * @param string             $file  Plugin basename.
+	 * @return array<int, string>
+	 */
+	public static function plugin_row_meta_strip_details( $links, $file ) {
+		if ( ART_EDITOR_PLUGIN_BASENAME !== $file ) {
+			return $links;
+		}
+
+		return array_values(
+			array_filter(
+				$links,
+				static function ( $link ) {
+					return false === strpos( $link, 'open-plugin-details-modal' )
+						&& false === strpos( $link, 'plugin-install.php?tab=plugin-information' );
+				}
+			)
+		);
 	}
 }

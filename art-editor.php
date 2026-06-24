@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ART Editor
  * Description:       Простой редактор HTML блоков для создания красивых лендингов с помощью нейронок.
- * Version:           0.2.6
+ * Version:           0.2.7
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Арт Башлыков
@@ -16,13 +16,15 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ART_EDITOR_VERSION', '0.2.6' );
+define( 'ART_EDITOR_VERSION', '0.2.7' );
 define( 'ART_EDITOR_ADMIN_MENU_SLUG', 'art-editor' );
 define( 'ART_EDITOR_AUTHOR_URL', 'https://forge.artbashlykov.ru' );
 define( 'ART_EDITOR_PLUGIN_FILE', __FILE__ );
 define( 'ART_EDITOR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ART_EDITOR_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'ART_EDITOR_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+
+add_filter( 'puc_view_details_link-' . ART_EDITOR_ADMIN_MENU_SLUG, '__return_empty_string' );
 
 require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-activator.php';
 require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-deactivator.php';

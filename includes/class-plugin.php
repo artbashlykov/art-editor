@@ -51,6 +51,7 @@ class Art_Editor_Plugin {
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-editor-screen.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-frontend.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-admin-bar.php';
+		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-updater.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-menu.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-settings.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-list-table.php';
@@ -60,6 +61,10 @@ class Art_Editor_Plugin {
 	 * Register hooks and initialize modules.
 	 */
 	public function run() {
+		if ( is_admin() ) {
+			Art_Editor_Updater::init();
+		}
+
 		Art_Editor_Landing_Post_Type::init();
 		Art_Editor_Post_Meta::init();
 		Art_Editor_Settings::init();
