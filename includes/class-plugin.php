@@ -20,6 +20,13 @@ class Art_Editor_Plugin {
 	private static $instance = null;
 
 	/**
+	 * Whether admin modules were initialized.
+	 *
+	 * @var bool
+	 */
+	private static $admin_initialized = false;
+
+	/**
 	 * @return Art_Editor_Plugin
 	 */
 	public static function instance() {
@@ -51,6 +58,7 @@ class Art_Editor_Plugin {
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-editor-screen.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-frontend.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-admin-bar.php';
+		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-updater.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-menu.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-settings.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-list-table.php';
@@ -64,12 +72,29 @@ class Art_Editor_Plugin {
 		Art_Editor_Post_Meta::init();
 		Art_Editor_Settings::init();
 		Art_Editor_Rest::init();
-		Art_Editor_Admin_Menu::init();
-		Art_Editor_Admin_Settings::init();
-		Art_Editor_Admin_List_Table::init();
 		Art_Editor_Block_Editor::init();
 		Art_Editor_Editor_Screen::init();
 		Art_Editor_Frontend::init();
 		Art_Editor_Admin_Bar::init();
+
+		if ( is_admin() ) {
+			$this->init_admin();
+		}
+	}
+
+	/**
+	 * Initialize admin modules (must run before admin_menu).
+	 */
+	public function init_admin() {
+		if ( self::$admin_initialized ) {
+			return;
+		}
+
+		self::$admin_initialized = true;
+
+		Art_Editor_Updater::init();
+		Art_Editor_Admin_Menu::init();
+		Art_Editor_Admin_Settings::init();
+		Art_Editor_Admin_List_Table::init();
 	}
 }

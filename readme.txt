@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.8
+Stable tag: 0.2.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.9 =
+* GitHub updates via Plugin Update Checker (PUC per art-agent-standards/PUC.md): User-Agent, art-editor.zip release assets, three-layer hide «Details».
+* Release build script: scripts/build-release.php.
 
 = 0.2.8 =
 * Removed bundled Plugin Update Checker to comply with WordPress.org Plugin Check (custom updaters are not allowed on the directory).
