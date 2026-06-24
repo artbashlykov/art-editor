@@ -527,6 +527,60 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 									</button>
 								</div>
 							</div>
+							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-padding-top-row" hidden>
+								<label class="art-editor-screen__element-editor-field-label" for="art-editor-element-padding-top">
+									<?php echo esc_html__( 'Отступ сверху', 'art-editor' ); ?>
+								</label>
+								<div class="art-editor-screen__element-editor-style-control">
+									<input
+										type="number"
+										class="art-editor-screen__element-editor-style-input"
+										id="art-editor-element-padding-top"
+										name="art-editor-element-padding-top"
+										min="0"
+										max="500"
+										step="1"
+										inputmode="numeric"
+										autocomplete="off"
+										aria-label="<?php echo esc_attr__( 'Отступ сверху', 'art-editor' ); ?>"
+									/>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-style-reset"
+										id="art-editor-element-padding-top-reset"
+										disabled
+									>
+										<?php echo esc_html__( 'Сбросить', 'art-editor' ); ?>
+									</button>
+								</div>
+							</div>
+							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-padding-bottom-row" hidden>
+								<label class="art-editor-screen__element-editor-field-label" for="art-editor-element-padding-bottom">
+									<?php echo esc_html__( 'Отступ снизу', 'art-editor' ); ?>
+								</label>
+								<div class="art-editor-screen__element-editor-style-control">
+									<input
+										type="number"
+										class="art-editor-screen__element-editor-style-input"
+										id="art-editor-element-padding-bottom"
+										name="art-editor-element-padding-bottom"
+										min="0"
+										max="500"
+										step="1"
+										inputmode="numeric"
+										autocomplete="off"
+										aria-label="<?php echo esc_attr__( 'Отступ снизу', 'art-editor' ); ?>"
+									/>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-style-reset"
+										id="art-editor-element-padding-bottom-reset"
+										disabled
+									>
+										<?php echo esc_html__( 'Сбросить', 'art-editor' ); ?>
+									</button>
+								</div>
+							</div>
 						</div>
 					</div>
 					<div class="art-editor-screen__element-editor-image" id="art-editor-element-image-controls" hidden>

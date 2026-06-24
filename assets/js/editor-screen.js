@@ -591,6 +591,8 @@
 		var fontWeightRow = document.getElementById( 'art-editor-element-font-weight-row' );
 		var textDecorationRow = document.getElementById( 'art-editor-element-text-decoration-row' );
 		var backgroundColorRow = document.getElementById( 'art-editor-element-background-color-row' );
+		var paddingTopRow = document.getElementById( 'art-editor-element-padding-top-row' );
+		var paddingBottomRow = document.getElementById( 'art-editor-element-padding-bottom-row' );
 		var fontSizeInput = document.getElementById( 'art-editor-element-font-size' );
 		var fontSizeResetButton = document.getElementById( 'art-editor-element-font-size-reset' );
 		var lineHeightInput = document.getElementById( 'art-editor-element-line-height' );
@@ -605,6 +607,10 @@
 		var lineThroughToggle = document.getElementById( 'art-editor-element-line-through-toggle' );
 		var backgroundColorInput = document.getElementById( 'art-editor-element-background-color' );
 		var backgroundColorResetButton = document.getElementById( 'art-editor-element-background-color-reset' );
+		var paddingTopInput = document.getElementById( 'art-editor-element-padding-top' );
+		var paddingTopResetButton = document.getElementById( 'art-editor-element-padding-top-reset' );
+		var paddingBottomInput = document.getElementById( 'art-editor-element-padding-bottom' );
+		var paddingBottomResetButton = document.getElementById( 'art-editor-element-padding-bottom-reset' );
 		var imageControls = document.getElementById( 'art-editor-element-image-controls' );
 		var imagePickerButton = document.getElementById( 'art-editor-element-image-picker' );
 		var elementControls = document.getElementById( 'art-editor-element-controls' );
@@ -626,6 +632,8 @@
 			textDecorationUnderline: false,
 			textDecorationLineThrough: false,
 			backgroundColor: '',
+			paddingTop: '',
+			paddingBottom: '',
 		};
 
 		function setTextDecorationToggleState( button, isActive ) {
@@ -658,6 +666,8 @@
 				textDecorationUnderline: !! ( textStyleState && textStyleState.textDecorationUnderline ),
 				textDecorationLineThrough: !! ( textStyleState && textStyleState.textDecorationLineThrough ),
 				backgroundColor: textStyleState && textStyleState.backgroundColor ? textStyleState.backgroundColor : '',
+				paddingTop: textStyleState && textStyleState.paddingTop ? textStyleState.paddingTop : '',
+				paddingBottom: textStyleState && textStyleState.paddingBottom ? textStyleState.paddingBottom : '',
 			};
 		}
 
@@ -665,7 +675,7 @@
 			var normalizedInput;
 			var normalizedSynced;
 
-			if ( 'fontSize' === property ) {
+			if ( 'fontSize' === property || 'paddingTop' === property || 'paddingBottom' === property ) {
 				normalizedInput = normalizeFontSizeInput( inputValue );
 				normalizedSynced = normalizeFontSizeInput( syncedValue );
 				return normalizedInput !== normalizedSynced;
@@ -726,6 +736,8 @@
 					textDecorationUnderline: true,
 					textDecorationLineThrough: true,
 					backgroundColor: true,
+					paddingTop: true,
+					paddingBottom: true,
 				};
 			}
 
@@ -775,6 +787,18 @@
 			if ( ! changedProperties || changedProperties.backgroundColor ) {
 				if ( shouldApplyTextStyleProperty( 'backgroundColor', values.backgroundColor, lastSyncedTextStyleState.backgroundColor ) ) {
 					effective.backgroundColor = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.paddingTop ) {
+				if ( shouldApplyTextStyleProperty( 'paddingTop', values.paddingTop, lastSyncedTextStyleState.paddingTop ) ) {
+					effective.paddingTop = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.paddingBottom ) {
+				if ( shouldApplyTextStyleProperty( 'paddingBottom', values.paddingBottom, lastSyncedTextStyleState.paddingBottom ) ) {
+					effective.paddingBottom = true;
 				}
 			}
 
@@ -844,6 +868,8 @@
 			var hasColor = !! ( textStyleState && textStyleState.color );
 			var hasFontWeight = !! ( textStyleState && textStyleState.fontWeight );
 			var hasBackgroundColor = !! ( textStyleState && textStyleState.backgroundColor );
+			var hasPaddingTop = !! ( textStyleState && textStyleState.paddingTop );
+			var hasPaddingBottom = !! ( textStyleState && textStyleState.paddingBottom );
 
 			if ( fontSizeResetButton ) {
 				fontSizeResetButton.disabled = ! hasFontSize;
@@ -864,6 +890,14 @@
 			if ( backgroundColorResetButton ) {
 				backgroundColorResetButton.disabled = ! hasBackgroundColor;
 			}
+
+			if ( paddingTopResetButton ) {
+				paddingTopResetButton.disabled = ! hasPaddingTop;
+			}
+
+			if ( paddingBottomResetButton ) {
+				paddingBottomResetButton.disabled = ! hasPaddingBottom;
+			}
 		}
 
 		function isBackgroundStyleableLocator( locator ) {
@@ -877,6 +911,7 @@
 			var isImage = isImageElementLocator( locator );
 			var isInlineTextStyleable = isInlineTextStyleableLocator( locator );
 			var canSetBackground = isBackgroundStyleableLocator( locator );
+			var canSetBlockSpacing = isBlockSpacingStyleableLocator( locator );
 
 			if ( imageControls ) {
 				imageControls.hidden = ! isImage;
@@ -906,8 +941,16 @@
 				backgroundColorRow.hidden = ! canSetBackground;
 			}
 
+			if ( paddingTopRow ) {
+				paddingTopRow.hidden = ! canSetBlockSpacing;
+			}
+
+			if ( paddingBottomRow ) {
+				paddingBottomRow.hidden = ! canSetBlockSpacing;
+			}
+
 			if ( styleControls ) {
-				styleControls.hidden = ! isInlineTextStyleable && ! canSetBackground;
+				styleControls.hidden = ! isInlineTextStyleable && ! canSetBackground && ! canSetBlockSpacing;
 			}
 
 			if ( ! locator || ! locator.path || ! locator.path.length ) {
@@ -933,6 +976,14 @@
 
 				if ( backgroundColorRow ) {
 					backgroundColorRow.hidden = true;
+				}
+
+				if ( paddingTopRow ) {
+					paddingTopRow.hidden = true;
+				}
+
+				if ( paddingBottomRow ) {
+					paddingBottomRow.hidden = true;
 				}
 
 				if ( styleControls ) {
@@ -977,6 +1028,14 @@
 					backgroundColorInput.value = '#ffffff';
 				}
 
+				if ( paddingTopInput ) {
+					paddingTopInput.value = '';
+				}
+
+				if ( paddingBottomInput ) {
+					paddingBottomInput.value = '';
+				}
+
 				updateLastSyncedTextStyleState( null );
 				updateTextStyleResetButtons( null );
 				closeLinkOptions();
@@ -985,7 +1044,7 @@
 
 			block = getBlockById( editorState.selectedId );
 
-			if ( ( isInlineTextStyleable && fontSizeInput && lineHeightInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) ) {
+			if ( ( isInlineTextStyleable && fontSizeInput && lineHeightInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) || ( canSetBlockSpacing && paddingTopInput && paddingBottomInput ) ) {
 				textStyleState = getElementTextStyleStateFromHtml( block ? block.content || '' : '', locator.path );
 
 				isSyncingTextStyleControls = true;
@@ -1003,6 +1062,11 @@
 
 				if ( canSetBackground && backgroundColorInput ) {
 					backgroundColorInput.value = textStyleState.backgroundColor || '#ffffff';
+				}
+
+				if ( canSetBlockSpacing && paddingTopInput && paddingBottomInput ) {
+					paddingTopInput.value = textStyleState.paddingTop || '';
+					paddingBottomInput.value = textStyleState.paddingBottom || '';
 				}
 
 				isSyncingTextStyleControls = false;
@@ -1219,10 +1283,14 @@
 			var textDecorationUnderlineValue;
 			var textDecorationLineThroughValue;
 			var backgroundColorValue;
+			var paddingTopValue;
+			var paddingBottomValue;
 			var isInlineTextStyleable;
 			var canSetBackground;
+			var canSetBlockSpacing;
 			var touchesText;
 			var touchesBackground;
+			var touchesBlockSpacing;
 			var effectiveChangedProperties;
 			var styleValues;
 
@@ -1232,14 +1300,12 @@
 
 			isInlineTextStyleable = isInlineTextStyleableLocator( editorState.selectedElementLocator );
 			canSetBackground = isBackgroundStyleableLocator( editorState.selectedElementLocator );
+			canSetBlockSpacing = isBlockSpacingStyleableLocator( editorState.selectedElementLocator );
 			touchesText = ! changedProperties || changedProperties.fontSize || changedProperties.lineHeight || changedProperties.lineHeightUnit || changedProperties.color || changedProperties.fontWeight || changedProperties.fontStyle || changedProperties.textDecorationUnderline || changedProperties.textDecorationLineThrough;
 			touchesBackground = ! changedProperties || changedProperties.backgroundColor;
+			touchesBlockSpacing = ! changedProperties || changedProperties.paddingTop || changedProperties.paddingBottom;
 
-			if ( touchesText && ! isInlineTextStyleable ) {
-				return;
-			}
-
-			if ( touchesBackground && ! canSetBackground ) {
+			if ( ! touchesText && ! touchesBackground && ! touchesBlockSpacing ) {
 				return;
 			}
 
@@ -1259,6 +1325,8 @@
 			textDecorationUnderlineValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'textDecorationUnderline' ) ? overrides.textDecorationUnderline : ( underlineToggle && underlineToggle.classList.contains( 'is-active' ) );
 			textDecorationLineThroughValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'textDecorationLineThrough' ) ? overrides.textDecorationLineThrough : ( lineThroughToggle && lineThroughToggle.classList.contains( 'is-active' ) );
 			backgroundColorValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'backgroundColor' ) ? overrides.backgroundColor : ( backgroundColorInput ? backgroundColorInput.value : '' );
+			paddingTopValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'paddingTop' ) ? overrides.paddingTop : ( paddingTopInput ? paddingTopInput.value : '' );
+			paddingBottomValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'paddingBottom' ) ? overrides.paddingBottom : ( paddingBottomInput ? paddingBottomInput.value : '' );
 			styleValues = {
 				fontSize: fontSizeValue,
 				lineHeight: lineHeightValue,
@@ -1269,10 +1337,36 @@
 				textDecorationUnderline: textDecorationUnderlineValue,
 				textDecorationLineThrough: textDecorationLineThroughValue,
 				backgroundColor: backgroundColorValue,
+				paddingTop: paddingTopValue,
+				paddingBottom: paddingBottomValue,
 			};
 			effectiveChangedProperties = getEffectiveChangedTextStyleProperties( changedProperties, overrides, styleValues );
 
 			if ( ! effectiveChangedProperties ) {
+				return;
+			}
+
+			if ( ! isInlineTextStyleable ) {
+				delete effectiveChangedProperties.fontSize;
+				delete effectiveChangedProperties.lineHeight;
+				delete effectiveChangedProperties.lineHeightUnit;
+				delete effectiveChangedProperties.color;
+				delete effectiveChangedProperties.fontWeight;
+				delete effectiveChangedProperties.fontStyle;
+				delete effectiveChangedProperties.textDecorationUnderline;
+				delete effectiveChangedProperties.textDecorationLineThrough;
+			}
+
+			if ( ! canSetBackground ) {
+				delete effectiveChangedProperties.backgroundColor;
+			}
+
+			if ( ! canSetBlockSpacing ) {
+				delete effectiveChangedProperties.paddingTop;
+				delete effectiveChangedProperties.paddingBottom;
+			}
+
+			if ( ! Object.keys( effectiveChangedProperties ).length ) {
 				return;
 			}
 
@@ -1315,7 +1409,7 @@
 			window.clearTimeout( textStyleApplyTimer );
 			textStyleApplyTimer = window.setTimeout( function() {
 				textStyleApplyTimer = null;
-				applyTextStyleFromControls( { fontSize: true, lineHeight: true, lineHeightUnit: true } );
+				applyTextStyleFromControls( { fontSize: true, lineHeight: true, lineHeightUnit: true, paddingTop: true, paddingBottom: true } );
 			}, 300 );
 		}
 
@@ -1341,6 +1435,8 @@
 					textDecorationUnderline: true,
 					textDecorationLineThrough: true,
 					backgroundColor: true,
+					paddingTop: true,
+					paddingBottom: true,
 				},
 				null,
 				{ skipHistory: !! settings.skipHistory }
@@ -1411,6 +1507,30 @@
 			}
 
 			applyTextStyleFromControls( { backgroundColor: true }, { backgroundColor: '' }, { skipHistory: true } );
+		}
+
+		function resetPaddingTopStyle() {
+			cancelPendingTextStyleApply();
+			flushStyleHistoryCheckpoint();
+
+			if ( paddingTopInput ) {
+				paddingTopInput.value = '';
+			}
+
+			pushHistory();
+			applyTextStyleFromControls( { paddingTop: true }, { paddingTop: '' }, { skipHistory: true } );
+		}
+
+		function resetPaddingBottomStyle() {
+			cancelPendingTextStyleApply();
+			flushStyleHistoryCheckpoint();
+
+			if ( paddingBottomInput ) {
+				paddingBottomInput.value = '';
+			}
+
+			pushHistory();
+			applyTextStyleFromControls( { paddingBottom: true }, { paddingBottom: '' }, { skipHistory: true } );
 		}
 
 		function openPanel( locator ) {
@@ -1605,6 +1725,30 @@
 
 		if ( backgroundColorResetButton ) {
 			backgroundColorResetButton.addEventListener( 'click', resetBackgroundColorStyle );
+		}
+
+		if ( paddingTopInput ) {
+			paddingTopInput.addEventListener( 'input', scheduleTextStyleApply );
+			paddingTopInput.addEventListener( 'change', function() {
+				cancelPendingTextStyleApply();
+				applyTextStyleFromControls( { paddingTop: true } );
+			} );
+		}
+
+		if ( paddingBottomInput ) {
+			paddingBottomInput.addEventListener( 'input', scheduleTextStyleApply );
+			paddingBottomInput.addEventListener( 'change', function() {
+				cancelPendingTextStyleApply();
+				applyTextStyleFromControls( { paddingBottom: true } );
+			} );
+		}
+
+		if ( paddingTopResetButton ) {
+			paddingTopResetButton.addEventListener( 'click', resetPaddingTopStyle );
+		}
+
+		if ( paddingBottomResetButton ) {
+			paddingBottomResetButton.addEventListener( 'click', resetPaddingBottomStyle );
 		}
 
 		return {
@@ -3014,6 +3158,18 @@
 		return 'DIV' !== tag && 'SECTION' !== tag;
 	}
 
+	function isBlockSpacingStyleableLocator( locator ) {
+		var tag;
+
+		if ( ! locator || ! locator.path || ! locator.path.length ) {
+			return false;
+		}
+
+		tag = String( locator.tag || '' ).toUpperCase();
+
+		return 'DIV' === tag || 'SECTION' === tag;
+	}
+
 	function cssColorToHex( color ) {
 		var rgbMatch;
 		var hex;
@@ -3297,6 +3453,8 @@
 		var color;
 		var fontWeight;
 		var backgroundColor;
+		var paddingTop;
+		var paddingBottom;
 		var fontStyle;
 		var decorationFlags;
 
@@ -3311,6 +3469,8 @@
 				textDecorationUnderline: false,
 				textDecorationLineThrough: false,
 				backgroundColor: '',
+				paddingTop: '',
+				paddingBottom: '',
 			};
 		}
 
@@ -3329,6 +3489,8 @@
 					textDecorationUnderline: false,
 					textDecorationLineThrough: false,
 					backgroundColor: '',
+					paddingTop: '',
+					paddingBottom: '',
 				};
 			}
 
@@ -3341,6 +3503,8 @@
 				target.style.getPropertyValue( 'text-decoration-line' ) || target.style.getPropertyValue( 'text-decoration' )
 			);
 			backgroundColor = cssColorToHex( target.style.getPropertyValue( 'background-color' ) );
+			paddingTop = formatFontSizeForInput( target.style.getPropertyValue( 'padding-top' ) );
+			paddingBottom = formatFontSizeForInput( target.style.getPropertyValue( 'padding-bottom' ) );
 
 			return {
 				fontSize: fontSize,
@@ -3352,6 +3516,8 @@
 				textDecorationUnderline: decorationFlags.underline,
 				textDecorationLineThrough: decorationFlags.lineThrough,
 				backgroundColor: backgroundColor,
+				paddingTop: paddingTop,
+				paddingBottom: paddingBottom,
 			};
 		} catch ( error ) {
 			return {
@@ -3364,6 +3530,8 @@
 				textDecorationUnderline: false,
 				textDecorationLineThrough: false,
 				backgroundColor: '',
+				paddingTop: '',
+				paddingBottom: '',
 			};
 		}
 	}
@@ -3377,6 +3545,8 @@
 		var color;
 		var fontWeight;
 		var backgroundColor;
+		var paddingTop;
+		var paddingBottom;
 		var fontStyle;
 		var textDecorationUnderline;
 		var textDecorationLineThrough;
@@ -3388,6 +3558,8 @@
 		var shouldUpdateFontStyle;
 		var shouldUpdateTextDecoration;
 		var shouldUpdateBackgroundColor;
+		var shouldUpdatePaddingTop;
+		var shouldUpdatePaddingBottom;
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length || ! textStyles ) {
 			return null;
@@ -3400,6 +3572,8 @@
 		shouldUpdateFontStyle = ! changedProperties || changedProperties.fontStyle;
 		shouldUpdateTextDecoration = ! changedProperties || changedProperties.textDecorationUnderline || changedProperties.textDecorationLineThrough;
 		shouldUpdateBackgroundColor = ! changedProperties || changedProperties.backgroundColor;
+		shouldUpdatePaddingTop = ! changedProperties || changedProperties.paddingTop;
+		shouldUpdatePaddingBottom = ! changedProperties || changedProperties.paddingBottom;
 		fontSize = normalizeFontSizeInput( textStyles.fontSize );
 		lineHeight = buildLineHeightCSSValue( textStyles.lineHeight, textStyles.lineHeightUnit );
 		color = cssColorToHex( textStyles.color );
@@ -3409,6 +3583,8 @@
 		textDecorationLineThrough = !! textStyles.textDecorationLineThrough;
 		textDecoration = buildTextDecorationFromFlags( textDecorationUnderline, textDecorationLineThrough );
 		backgroundColor = cssColorToHex( textStyles.backgroundColor );
+		paddingTop = normalizeFontSizeInput( textStyles.paddingTop );
+		paddingBottom = normalizeFontSizeInput( textStyles.paddingBottom );
 
 		try {
 			doc = new window.DOMParser().parseFromString( html, 'text/html' );
@@ -3473,6 +3649,22 @@
 					target.style.setProperty( 'background-color', backgroundColor );
 				} else {
 					target.style.removeProperty( 'background-color' );
+				}
+			}
+
+			if ( shouldUpdatePaddingTop ) {
+				if ( paddingTop ) {
+					target.style.setProperty( 'padding-top', paddingTop + 'px' );
+				} else {
+					target.style.removeProperty( 'padding-top' );
+				}
+			}
+
+			if ( shouldUpdatePaddingBottom ) {
+				if ( paddingBottom ) {
+					target.style.setProperty( 'padding-bottom', paddingBottom + 'px' );
+				} else {
+					target.style.removeProperty( 'padding-bottom' );
 				}
 			}
 

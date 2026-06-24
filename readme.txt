@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.5
+Stable tag: 0.2.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.6 =
+* Editor: padding-top and padding-bottom controls for div and section elements only.
+* Editor: style apply logic filters properties by element type (text, background, block spacing).
 
 = 0.2.5 =
 * Canvas: fix white gap above content when logged in (admin bar margin).
