@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.11
+Stable tag: 0.2.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,11 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.12 =
+* Settings: optional «Delete all plugin data on uninstall» checkbox (section «Данные при удалении»).
+* uninstall.php and class-uninstaller.php remove options, post meta, art_landing posts, PUC cron/transients when enabled.
+* Pages, posts, and user content are preserved; only plugin-owned data is removed.
 
 = 0.2.11 =
 * Gutenberg round-trip: non-HTML blocks import into the first HTML block on ART Editor open and restore as Gutenberg blocks on return.

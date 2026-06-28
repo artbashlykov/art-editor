@@ -14,6 +14,8 @@ class Art_Editor_Settings {
 
 	const OPTION = 'art_editor_settings';
 
+	const OPTION_DELETE_DATA_ON_UNINSTALL = 'art_editor_delete_data_on_uninstall';
+
 	/**
 	 * Register hooks.
 	 */
@@ -121,6 +123,24 @@ class Art_Editor_Settings {
 	}
 
 	/**
+	 * Whether plugin data should be removed on uninstall.
+	 *
+	 * @return bool
+	 */
+	public static function delete_data_on_uninstall_enabled() {
+		return 'yes' === get_option( self::OPTION_DELETE_DATA_ON_UNINSTALL, 'no' );
+	}
+
+	/**
+	 * Persist the uninstall data removal preference.
+	 *
+	 * @param bool $enabled Whether to delete data on uninstall.
+	 */
+	public static function set_delete_data_on_uninstall( $enabled ) {
+		update_option( self::OPTION_DELETE_DATA_ON_UNINSTALL, $enabled ? 'yes' : 'no', false );
+	}
+
+	/**
 	 * Post types available in the settings UI.
 	 *
 	 * @return WP_Post_Type[]
@@ -185,28 +205,28 @@ class Art_Editor_Settings {
 		$defaults  = self::get_default_settings();
 		$sanitized = $defaults;
 
-		if ( ! is_array( $value ) ) {
-			return $sanitized;
-		}
+		if ( is_array( $value ) ) {
+			self::set_delete_data_on_uninstall( ! empty( $value['delete_data_on_uninstall'] ) );
 
-		$allowed_slugs = array_keys( self::get_selectable_post_types() );
-		$raw_post_types = isset( $value['post_types'] ) && is_array( $value['post_types'] )
-			? $value['post_types']
-			: array();
+			$allowed_slugs = array_keys( self::get_selectable_post_types() );
+			$raw_post_types = isset( $value['post_types'] ) && is_array( $value['post_types'] )
+				? $value['post_types']
+				: array();
 
-		$sanitized['post_types'] = array();
+			$sanitized['post_types'] = array();
 
-		foreach ( $raw_post_types as $post_type ) {
-			$post_type = sanitize_key( $post_type );
+			foreach ( $raw_post_types as $post_type ) {
+				$post_type = sanitize_key( $post_type );
 
-			if ( '' === $post_type || ! in_array( $post_type, $allowed_slugs, true ) ) {
-				continue;
+				if ( '' === $post_type || ! in_array( $post_type, $allowed_slugs, true ) ) {
+					continue;
+				}
+
+				$sanitized['post_types'][] = $post_type;
 			}
 
-			$sanitized['post_types'][] = $post_type;
+			$sanitized['post_types'] = array_values( array_unique( $sanitized['post_types'] ) );
 		}
-
-		$sanitized['post_types'] = array_values( array_unique( $sanitized['post_types'] ) );
 
 		return $sanitized;
 	}
