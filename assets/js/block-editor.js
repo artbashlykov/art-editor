@@ -35,41 +35,20 @@
 		return null;
 	}
 
-	function findHeaderCenter() {
+	function findEditorContentArea() {
 		var selectors = [
-			'.edit-post-header__center',
-			'.editor-header__center',
-			'.interface-interface-skeleton__header .edit-post-header__center',
-			'.interface-interface-skeleton__header .editor-header__center',
-		];
-		var index;
-		var center;
-
-		for ( index = 0; index < selectors.length; index++ ) {
-			center = document.querySelector( selectors[ index ] );
-
-			if ( center ) {
-				return center;
-			}
-		}
-
-		return null;
-	}
-
-	function findEditorCanvasParent() {
-		var selectors = [
+			'.interface-interface-skeleton__content',
+			'.edit-post-layout__content',
 			'.block-editor-writing-flow',
-			'.is-desktop-preview',
-			'.editor-styles-wrapper',
 		];
 		var index;
-		var parent;
+		var area;
 
 		for ( index = 0; index < selectors.length; index++ ) {
-			parent = document.querySelector( selectors[ index ] );
+			area = document.querySelector( selectors[ index ] );
 
-			if ( parent ) {
-				return parent;
+			if ( area ) {
+				return area;
 			}
 		}
 
@@ -172,7 +151,7 @@
 	}
 
 	function returnToWordPressEditor() {
-		var message = __( 'Вы переключаетесь на стандартный редактор WordPress. Текущая вёрстка ART Editor останется в записи, но страница откроется в Gutenberg.', 'art-editor' );
+		var message = __( 'Вернуться к редактору Gutenberg? Блоки ART Editor останутся HTML-блоками, а ранее импортированные элементы Gutenberg снова станут обычными блоками.', 'art-editor' );
 
 		if ( ! window.confirm( message ) ) {
 			return;
@@ -230,22 +209,9 @@
 				createElement(
 					'span',
 					{ className: 'art-editor-switch-mode__label' },
-					'\u2190 ' + __( 'Вернуться к редактору WordPress', 'art-editor' )
+					'\u2190 ' + __( 'Вернуться в Gutenberg', 'art-editor' )
 				)
 			)
-		);
-	}
-
-	function CenterEditButton( props ) {
-		return createElement(
-			'button',
-			{
-				type: 'button',
-				className: 'art-editor-header-center-button',
-				onClick: props.onClick,
-			},
-			createElement( 'span', { className: 'art-editor-topbar-button__icon' }, '<>' ),
-			createElement( 'span', null, __( 'Редактировать ART Editor', 'art-editor' ) )
 		);
 	}
 
@@ -254,14 +220,28 @@
 			'div',
 			{ id: 'art-editor-gutenberg-panel', className: 'art-editor-gutenberg-panel' },
 			createElement(
+				'p',
+				{ className: 'art-editor-gutenberg-panel__hint' },
+				__( 'Эта страница редактируется в ART Editor. Чтобы не сломать вёрстку, блоки Gutenberg здесь недоступны.', 'art-editor' )
+			),
+			createElement(
 				'button',
 				{
 					type: 'button',
 					className: 'art-editor-gutenberg-panel__button',
-					onClick: props.onClick,
+					onClick: props.onEdit,
 				},
 				createElement( 'span', { className: 'art-editor-topbar-button__icon' }, '<>' ),
-				createElement( 'span', null, __( 'Редактировать ART Editor', 'art-editor' ) )
+				createElement( 'span', null, __( 'Редактировать HTML', 'art-editor' ) )
+			),
+			createElement(
+				'button',
+				{
+					type: 'button',
+					className: 'art-editor-gutenberg-panel__button art-editor-gutenberg-panel__button--secondary',
+					onClick: props.onLeave,
+				},
+				__( 'Вернуться в Gutenberg', 'art-editor' )
 			)
 		);
 	}
@@ -370,8 +350,7 @@
 
 	function BuilderModeUi() {
 		var toolbarMount = useDomMount( findEditorToolbar, 'art-editor-switch-mode-mount', '#elementor-switch-mode, #elementor-edit-button-gutenberg, #art-editor-topbar-button' );
-		var centerMount = useDomMount( findHeaderCenter, 'art-editor-header-center-mount', null );
-		var panelMount = useDomMount( findEditorCanvasParent, 'art-editor-gutenberg-panel-mount', null );
+		var panelMount = useDomMount( findEditorContentArea, 'art-editor-gutenberg-panel-mount', null );
 
 		useEffect( function() {
 			document.body.classList.add( 'art-editor-gutenberg-active' );
@@ -389,13 +368,11 @@
 				toolbarMount,
 				'art-editor-switch-mode-portal'
 			),
-			centerMount && createPortal(
-				createElement( CenterEditButton, { onClick: openEditorScreen } ),
-				centerMount,
-				'art-editor-center-edit-portal'
-			),
 			panelMount && createPortal(
-				createElement( BuilderPanel, { onClick: openEditorScreen } ),
+				createElement( BuilderPanel, {
+					onEdit: openEditorScreen,
+					onLeave: returnToWordPressEditor,
+				} ),
 				panelMount,
 				'art-editor-builder-panel-portal'
 			)

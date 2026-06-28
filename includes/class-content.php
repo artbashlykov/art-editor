@@ -12,6 +12,12 @@ defined( 'ABSPATH' ) || exit;
  */
 class Art_Editor_Content {
 
+	const META_EMBEDDED_BLOCKS = '_art_editor_embedded_blocks';
+
+	const GUTENBERG_IMPORT_START = '<!-- art-editor:gutenberg-start -->';
+
+	const GUTENBERG_IMPORT_END = '<!-- art-editor:gutenberg-end -->';
+
 	/**
 	 * Extract core/html blocks from post content.
 	 *
@@ -152,7 +158,12 @@ class Art_Editor_Content {
 		}
 
 		$sanitized_blocks = self::sanitize_blocks_payload( $blocks );
-		$new_content      = self::merge_html_blocks_into_content( $post->post_content, $sanitized_blocks );
+
+		if ( Art_Editor_Post_Meta::is_built_with_art_editor( $post_id ) ) {
+			$new_content = self::serialize_html_block_items( $sanitized_blocks );
+		} else {
+			$new_content = self::merge_html_blocks_into_content( $post->post_content, $sanitized_blocks );
+		}
 		$update_args      = array(
 			'ID'           => $post_id,
 			'post_content' => $new_content,
@@ -390,5 +401,460 @@ class Art_Editor_Content {
 			'<div id="%s" class="art-editor-anchor" aria-hidden="true"></div>',
 			esc_attr( $anchor_id )
 		);
+	}
+
+	/**
+	 * Import non-core/html Gutenberg blocks into the first HTML block for ART Editor.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return true|WP_Error
+	 */
+	public static function import_gutenberg_blocks_into_art_editor( $post_id ) {
+		$post_id = (int) $post_id;
+		$post    = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post ) {
+			return new WP_Error( 'art_editor_post_not_found', __( 'Запись не найдена.', 'art-editor' ), array( 'status' => 404 ) );
+		}
+
+		$parsed   = parse_blocks( $post->post_content );
+		$embedded = self::repair_embedded_blocks_tree( self::collect_non_html_blocks( $parsed ) );
+
+		if ( empty( $embedded ) ) {
+			return true;
+		}
+
+		$rendered = self::render_blocks_to_html( $embedded );
+
+		if ( '' === trim( $rendered ) ) {
+			return true;
+		}
+
+		$html_items = self::get_html_blocks_from_post( $post );
+
+		if ( empty( $html_items ) ) {
+			$html_items[] = array(
+				'id'          => 'html-0',
+				'type'        => 'html',
+				'title'       => self::get_block_title( '', 0 ),
+				'titleLocked' => false,
+				'content'     => '',
+			);
+		}
+
+		$first_content = (string) $html_items[0]['content'];
+
+		if ( false === strpos( $first_content, self::GUTENBERG_IMPORT_START ) ) {
+			$import_chunk = self::GUTENBERG_IMPORT_START . "\n" . $rendered . "\n" . self::GUTENBERG_IMPORT_END;
+			$first_content = '' !== trim( $first_content )
+				? $import_chunk . "\n\n" . $first_content
+				: $import_chunk;
+		}
+
+		$html_items[0]['content'] = $first_content;
+
+		self::set_embedded_gutenberg_blocks( $post_id, self::normalize_parsed_blocks( $embedded ) );
+
+		$serialized = self::serialize_html_block_items( $html_items );
+		$result     = wp_update_post(
+			wp_slash(
+				array(
+					'ID'           => $post_id,
+					'post_content' => $serialized,
+				)
+			),
+			true
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Restore embedded Gutenberg blocks when leaving ART Editor builder mode.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return true|WP_Error
+	 */
+	public static function export_art_editor_to_gutenberg( $post_id ) {
+		$post_id = (int) $post_id;
+		$post    = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post ) {
+			return new WP_Error( 'art_editor_post_not_found', __( 'Запись не найдена.', 'art-editor' ), array( 'status' => 404 ) );
+		}
+
+		$embedded   = self::get_embedded_gutenberg_blocks( $post_id );
+		$embedded   = self::normalize_parsed_blocks( $embedded );
+		$html_items = self::get_html_blocks_from_post( $post );
+		$blocks     = $embedded;
+
+		if ( ! empty( $html_items ) ) {
+			$html_items[0]['content'] = self::strip_gutenberg_import_from_html( (string) $html_items[0]['content'] );
+		}
+
+		foreach ( $html_items as $item ) {
+			$blocks[] = self::make_html_block(
+				(string) $item['content'],
+				(string) $item['title'],
+				(string) $item['type'],
+				isset( $item['anchorId'] ) ? (string) $item['anchorId'] : ''
+			);
+		}
+
+		if ( empty( $blocks ) ) {
+			self::clear_embedded_gutenberg_blocks( $post_id );
+			return true;
+		}
+
+		$result = wp_update_post(
+			wp_slash(
+				array(
+					'ID'           => $post_id,
+					'post_content' => serialize_blocks( $blocks ),
+				)
+			),
+			true
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		self::clear_embedded_gutenberg_blocks( $post_id );
+
+		return true;
+	}
+
+	/**
+	 * Collect parsed blocks that are not ART Editor HTML blocks.
+	 *
+	 * @param array<int, array<string, mixed>> $parsed Parsed post content.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function collect_non_html_blocks( array $parsed ) {
+		$blocks = array();
+
+		foreach ( $parsed as $block ) {
+			if ( ! empty( $block['blockName'] ) ) {
+				if ( 'core/html' === $block['blockName'] ) {
+					continue;
+				}
+
+				$blocks[] = $block;
+				continue;
+			}
+
+			if ( ! empty( $block['innerHTML'] ) && '' !== trim( (string) $block['innerHTML'] ) ) {
+				$blocks[] = $block;
+			}
+		}
+
+		return $blocks;
+	}
+
+	/**
+	 * Render parsed Gutenberg blocks to HTML for the first HTML block import.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks Parsed blocks.
+	 * @return string
+	 */
+	public static function render_blocks_to_html( array $blocks ) {
+		$chunks = array();
+
+		foreach ( $blocks as $block ) {
+			if ( ! empty( $block['blockName'] ) ) {
+				$chunks[] = render_block( $block );
+				continue;
+			}
+
+			if ( ! empty( $block['innerHTML'] ) ) {
+				$chunks[] = (string) $block['innerHTML'];
+			}
+		}
+
+		return trim( implode( "\n\n", array_filter( $chunks ) ) );
+	}
+
+	/**
+	 * Remove imported Gutenberg HTML markers from the first HTML block.
+	 *
+	 * @param string $html HTML block content.
+	 * @return string
+	 */
+	public static function strip_gutenberg_import_from_html( $html ) {
+		$html = (string) $html;
+
+		if ( '' === $html || false === strpos( $html, self::GUTENBERG_IMPORT_START ) ) {
+			return $html;
+		}
+
+		$pattern = '/\s*' . preg_quote( self::GUTENBERG_IMPORT_START, '/' ) . '\s*.*?\s*' . preg_quote( self::GUTENBERG_IMPORT_END, '/' ) . '\s*/is';
+
+		return trim( (string) preg_replace( $pattern, '', $html, 1 ) );
+	}
+
+	/**
+	 * Serialize sidebar HTML block items to post content with only core/html blocks.
+	 *
+	 * @param array<int, array<string, mixed>> $items HTML block items.
+	 * @return string
+	 */
+	public static function serialize_html_block_items( array $items ) {
+		$blocks = array();
+
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+
+			$blocks[] = self::make_html_block(
+				isset( $item['content'] ) ? (string) $item['content'] : '',
+				isset( $item['title'] ) ? (string) $item['title'] : '',
+				isset( $item['type'] ) ? (string) $item['type'] : 'html',
+				isset( $item['anchorId'] ) ? (string) $item['anchorId'] : ''
+			);
+		}
+
+		return serialize_blocks( $blocks );
+	}
+
+	/**
+	 * @param int $post_id Post ID.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function get_embedded_gutenberg_blocks( $post_id ) {
+		$post_id = (int) $post_id;
+		$raw     = get_post_meta( $post_id, self::META_EMBEDDED_BLOCKS, true );
+
+		if ( ! is_string( $raw ) || '' === $raw ) {
+			return array();
+		}
+
+		$blocks = self::decode_embedded_blocks_payload( $raw );
+
+		if ( ! empty( $blocks ) && ! self::is_markup_embedded_payload( $raw ) ) {
+			self::set_embedded_gutenberg_blocks( $post_id, $blocks );
+		}
+
+		return $blocks;
+	}
+
+	/**
+	 * @param int                                $post_id Post ID.
+	 * @param array<int, array<string, mixed>> $blocks  Parsed Gutenberg blocks.
+	 */
+	public static function set_embedded_gutenberg_blocks( $post_id, array $blocks ) {
+		$post_id = (int) $post_id;
+
+		if ( empty( $blocks ) ) {
+			self::clear_embedded_gutenberg_blocks( $post_id );
+			return;
+		}
+
+		update_post_meta(
+			$post_id,
+			self::META_EMBEDDED_BLOCKS,
+			self::encode_embedded_blocks_payload( $blocks )
+		);
+	}
+
+	/**
+	 * @param int $post_id Post ID.
+	 */
+	public static function clear_embedded_gutenberg_blocks( $post_id ) {
+		delete_post_meta( (int) $post_id, self::META_EMBEDDED_BLOCKS );
+	}
+
+	/**
+	 * Encode parsed blocks for safe post meta storage.
+	 *
+	 * Stores canonical Gutenberg block markup (not JSON arrays) wrapped in base64
+	 * so innerContent / innerBlocks survive round-trip without validation errors.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks Parsed Gutenberg blocks.
+	 * @return string
+	 */
+	private static function encode_embedded_blocks_payload( array $blocks ) {
+		$blocks = self::normalize_parsed_blocks( $blocks );
+
+		if ( empty( $blocks ) ) {
+			return '';
+		}
+
+		return base64_encode( serialize_blocks( $blocks ) );
+	}
+
+	/**
+	 * Decode embedded blocks payload from post meta.
+	 *
+	 * @param string $raw Raw meta value.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function decode_embedded_blocks_payload( $raw ) {
+		$raw = (string) $raw;
+
+		if ( '' === $raw ) {
+			return array();
+		}
+
+		// Legacy plain JSON array (pre-base64).
+		if ( '[' === ltrim( $raw ) ) {
+			$decoded = json_decode( $raw, true );
+
+			return is_array( $decoded ) ? self::normalize_parsed_blocks( self::repair_embedded_blocks_tree( $decoded ) ) : array();
+		}
+
+		$payload = base64_decode( $raw, true );
+
+		if ( false === $payload || '' === $payload ) {
+			return array();
+		}
+
+		// Current format: base64-wrapped block markup.
+		if ( false !== strpos( $payload, '<!-- wp:' ) ) {
+			return self::normalize_parsed_blocks( parse_blocks( $payload ) );
+		}
+
+		// Transitional format: base64-wrapped JSON array.
+		$decoded = json_decode( $payload, true );
+
+		if ( is_array( $decoded ) ) {
+			return self::normalize_parsed_blocks( self::repair_embedded_blocks_tree( $decoded ) );
+		}
+
+		return array();
+	}
+
+	/**
+	 * Detect whether embedded blocks meta stores canonical block markup.
+	 *
+	 * @param string $raw Raw meta value.
+	 * @return bool
+	 */
+	private static function is_markup_embedded_payload( $raw ) {
+		$raw = (string) $raw;
+
+		if ( '[' === ltrim( $raw ) ) {
+			return false;
+		}
+
+		$payload = base64_decode( $raw, true );
+
+		return false !== $payload && false !== strpos( $payload, '<!-- wp:' );
+	}
+
+	/**
+	 * Recursively repair strings corrupted by JSON_HEX + wp_unslash in legacy storage.
+	 *
+	 * @param mixed $value Meta tree node.
+	 * @return mixed
+	 */
+	private static function repair_embedded_blocks_tree( $value ) {
+		if ( is_array( $value ) ) {
+			$repaired = array();
+
+			foreach ( $value as $key => $item ) {
+				$repaired[ $key ] = self::repair_embedded_blocks_tree( $item );
+			}
+
+			return $repaired;
+		}
+
+		if ( ! is_string( $value ) ) {
+			return $value;
+		}
+
+		return self::repair_block_string( $value );
+	}
+
+	/**
+	 * Repair common string corruption in stored block trees.
+	 *
+	 * @param string $string Raw string.
+	 * @return string
+	 */
+	private static function repair_block_string( $string ) {
+		if ( '' === $string ) {
+			return $string;
+		}
+
+		if ( false !== strpos( $string, 'u00' ) ) {
+			$string = self::repair_unicode_escape_string( $string );
+		}
+
+		if ( false !== strpos( $string, 'nn' ) ) {
+			$string = preg_replace(
+				'/(<\/(?:li|p|div|figure|ul|ol|h[1-6]|section|article)>)nn(<(?:li|p|div|figure|ul|ol|h[1-6]|section|article))/i',
+				"$1\n\n$2",
+				$string
+			);
+		}
+
+		return $string;
+	}
+
+	/**
+	 * Restore HTML broken by `\u003C` becoming `u003C` in post meta.
+	 *
+	 * @param string $string Raw string.
+	 * @return string
+	 */
+	private static function repair_unicode_escape_string( $string ) {
+		if ( '' === $string || false === strpos( $string, 'u00' ) ) {
+			return $string;
+		}
+
+		$string = preg_replace_callback(
+			'/nu([0-9a-fA-F]{4})/',
+			static function ( $matches ) {
+				$char = json_decode( '"\\u' . $matches[1] . '"' );
+
+				return "\n" . ( is_string( $char ) ? $char : '' );
+			},
+			$string
+		);
+
+		$string = preg_replace_callback(
+			'/(?<![\\\\])u([0-9a-fA-F]{4})/',
+			static function ( $matches ) {
+				$char = json_decode( '"\\u' . $matches[1] . '"' );
+
+				return is_string( $char ) ? $char : $matches[0];
+			},
+			$string
+		);
+
+		return preg_replace( '/(<\/[^>]+>)n$/', "$1\n", $string );
+	}
+
+	/**
+	 * Normalize parsed blocks before serializing back to post content.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks Parsed blocks.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function normalize_parsed_blocks( array $blocks ) {
+		if ( empty( $blocks ) ) {
+			return array();
+		}
+
+		$blocks     = self::repair_embedded_blocks_tree( $blocks );
+		$serialized = serialize_blocks( $blocks );
+		$parsed     = parse_blocks( $serialized );
+		$normalized = array();
+
+		foreach ( $parsed as $block ) {
+			if ( empty( $block['blockName'] ) && empty( $block['innerHTML'] ) ) {
+				continue;
+			}
+
+			$normalized[] = $block;
+		}
+
+		return $normalized;
 	}
 }

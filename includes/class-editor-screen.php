@@ -41,6 +41,18 @@ class Art_Editor_Editor_Screen {
 
 		Art_Editor_Post_Meta::mark_as_art_editor( $post_id );
 
+		$import_result = Art_Editor_Content::import_gutenberg_blocks_into_art_editor( $post_id );
+
+		if ( is_wp_error( $import_result ) ) {
+			wp_die( esc_html( $import_result->get_error_message() ) );
+		}
+
+		$post = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post ) {
+			wp_die( esc_html__( 'Запись не найдена.', 'art-editor' ) );
+		}
+
 		self::load_editor_page( $post );
 		exit;
 	}

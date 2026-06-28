@@ -75,46 +75,68 @@
 	transform: translateY(1px);
 }
 
-#art-editor-header-center-mount {
-	display: flex;
+#art-editor-gutenberg-panel-mount {
+	display: none;
+}
+
+body.art-editor-gutenberg-active .interface-interface-skeleton__content,
+body.art-editor-gutenberg-active .edit-post-layout__content {
+	position: relative;
+	min-height: calc(100vh - 120px);
+}
+
+body.art-editor-gutenberg-active #art-editor-gutenberg-panel-mount {
+	position: absolute;
+	inset: 0;
+	z-index: 20;
+	display: flex !important;
 	align-items: center;
 	justify-content: center;
-	width: 100%;
+	padding: 24px;
+	box-sizing: border-box;
+	background: #f0f0f1;
+	pointer-events: auto;
 }
 
-.art-editor-header-center-button {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	height: 40px;
-	padding: 0 16px;
-	border: 0;
-	border-radius: 2px;
-	background: var( --art-editor-color-primary );
-	color: var( --art-editor-color-primary-text );
-	font-size: 13px;
-	font-weight: 600;
-	line-height: 1;
-	cursor: pointer;
-	white-space: nowrap;
-}
-
-.art-editor-header-center-button:hover,
-.art-editor-header-center-button:focus {
-	background: var( --art-editor-color-primary-hover );
-	color: var( --art-editor-color-primary-text );
+body.art-editor-gutenberg-active .interface-interface-skeleton__content > :not(#art-editor-gutenberg-panel-mount),
+body.art-editor-gutenberg-active .edit-post-layout__content > :not(#art-editor-gutenberg-panel-mount),
+body.art-editor-gutenberg-active .block-editor-writing-flow,
+body.art-editor-gutenberg-active .edit-post-visual-editor,
+body.art-editor-gutenberg-active .editor-visual-editor,
+body.art-editor-gutenberg-active .editor-styles-wrapper,
+body.art-editor-gutenberg-active .block-editor-block-list__layout,
+body.art-editor-gutenberg-active .editor-post-text-editor,
+body.art-editor-gutenberg-active .edit-post-visual-editor__post-title-wrapper,
+body.art-editor-gutenberg-active .editor-post-title,
+body.art-editor-gutenberg-active .wp-block-post-title,
+body.art-editor-gutenberg-active [data-type="core/post-title"],
+body.art-editor-gutenberg-active .block-list-appender,
+body.art-editor-gutenberg-active .block-editor-default-block-appender {
+	display: none !important;
 }
 
 .art-editor-gutenberg-panel {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	min-height: 280px;
-	margin: 24px;
-	padding: 32px;
+	gap: 16px;
+	max-width: 520px;
+	width: 100%;
+	margin: 0;
+	padding: 32px 24px;
 	border: 1px solid #dcdcde;
 	border-radius: 4px;
 	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	text-align: center;
+}
+
+.art-editor-gutenberg-panel__hint {
+	margin: 0;
+	color: #50575e;
+	font-size: 14px;
+	line-height: 1.5;
 }
 
 .art-editor-gutenberg-panel__button {
@@ -139,12 +161,14 @@
 	color: var( --art-editor-color-primary-text );
 }
 
-body.art-editor-gutenberg-active .block-editor-block-list__layout,
-body.art-editor-gutenberg-active .editor-post-text-editor,
-body.art-editor-gutenberg-active .edit-post-visual-editor__post-title-wrapper {
-	display: none !important;
+.art-editor-gutenberg-panel__button--secondary {
+	background: #f6f7f7;
+	color: #1d2327;
+	box-shadow: inset 0 0 0 1px #c3c4c7;
 }
 
-body.art-editor-gutenberg-active .editor-post-text-editor__body .editor-post-text-editor {
-	display: none;
+.art-editor-gutenberg-panel__button--secondary:hover,
+.art-editor-gutenberg-panel__button--secondary:focus {
+	background: #f0f0f1;
+	color: #1d2327;
 }

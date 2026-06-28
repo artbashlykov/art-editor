@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.9
+Stable tag: 0.2.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,16 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.11 =
+* Gutenberg round-trip: non-HTML blocks import into the first HTML block on ART Editor open and restore as Gutenberg blocks on return.
+* Builder panel: «Вернуться в Gutenberg» button (same flow as the toolbar action).
+* Fix: Gutenberg block validation errors after return (lists, paragraphs with inner blocks).
+* Embedded Gutenberg blocks are stored as canonical block markup instead of JSON arrays.
+
+= 0.2.10 =
+* Fix: returning from ART Editor to Gutenberg no longer corrupts block HTML (`u003C` instead of `<`).
+* Gutenberg blocks meta uses base64 storage; legacy corrupted meta is repaired on read/import.
 
 = 0.2.9 =
 * GitHub updates via Plugin Update Checker (PUC per art-agent-standards/PUC.md): User-Agent, art-editor.zip release assets, three-layer hide «Details».

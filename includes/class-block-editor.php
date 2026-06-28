@@ -17,6 +17,7 @@ class Art_Editor_Block_Editor {
 	 */
 	public static function init() {
 		add_action( 'enqueue_block_editor_assets', array( __CLASS__, 'enqueue_assets' ) );
+		add_filter( 'block_editor_settings_all', array( __CLASS__, 'filter_block_editor_settings' ), 10, 2 );
 	}
 
 	/**
@@ -104,5 +105,26 @@ class Art_Editor_Block_Editor {
 		}
 
 		return use_block_editor_for_post_type( $post_type ) && Art_Editor_Settings::is_post_type_enabled( $post_type );
+	}
+
+	/**
+	 * Lock Gutenberg content editing for posts managed by ART Editor.
+	 *
+	 * @param array                   $settings             Block editor settings.
+	 * @param WP_Block_Editor_Context $block_editor_context Editor context.
+	 * @return array
+	 */
+	public static function filter_block_editor_settings( $settings, $block_editor_context ) {
+		if ( empty( $block_editor_context->post ) || ! ( $block_editor_context->post instanceof WP_Post ) ) {
+			return $settings;
+		}
+
+		if ( ! Art_Editor_Post_Meta::is_built_with_art_editor( $block_editor_context->post->ID ) ) {
+			return $settings;
+		}
+
+		$settings['templateLock'] = 'all';
+
+		return $settings;
 	}
 }

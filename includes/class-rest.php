@@ -252,7 +252,13 @@ class Art_Editor_Rest {
 	 */
 	public static function leave_builder_mode( $request ) {
 		$post_id = (int) $request->get_param( 'id' );
-		$result  = Art_Editor_Post_Meta::leave_builder_mode( $post_id );
+		$export  = Art_Editor_Content::export_art_editor_to_gutenberg( $post_id );
+
+		if ( is_wp_error( $export ) ) {
+			return $export;
+		}
+
+		$result = Art_Editor_Post_Meta::leave_builder_mode( $post_id );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
