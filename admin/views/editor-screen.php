@@ -527,6 +527,10 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 									</button>
 								</div>
 							</div>
+							<hr class="art-editor-screen__element-editor-divider" id="art-editor-element-block-spacing-divider" hidden />
+							<p class="art-editor-screen__element-editor-group-title" id="art-editor-element-padding-group-title" hidden>
+								<?php echo esc_html__( 'Внутренние отступы', 'art-editor' ); ?>
+							</p>
 							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-padding-top-row" hidden>
 								<label class="art-editor-screen__element-editor-field-label" for="art-editor-element-padding-top">
 									<?php echo esc_html__( 'Отступ сверху', 'art-editor' ); ?>
@@ -542,7 +546,7 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 										step="1"
 										inputmode="numeric"
 										autocomplete="off"
-										aria-label="<?php echo esc_attr__( 'Отступ сверху', 'art-editor' ); ?>"
+										aria-label="<?php echo esc_attr__( 'Внутренний отступ сверху', 'art-editor' ); ?>"
 									/>
 									<button
 										type="button"
@@ -569,12 +573,70 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 										step="1"
 										inputmode="numeric"
 										autocomplete="off"
-										aria-label="<?php echo esc_attr__( 'Отступ снизу', 'art-editor' ); ?>"
+										aria-label="<?php echo esc_attr__( 'Внутренний отступ снизу', 'art-editor' ); ?>"
 									/>
 									<button
 										type="button"
 										class="art-editor-screen__element-editor-style-reset"
 										id="art-editor-element-padding-bottom-reset"
+										disabled
+									>
+										<?php echo esc_html__( 'Сбросить', 'art-editor' ); ?>
+									</button>
+								</div>
+							</div>
+							<hr class="art-editor-screen__element-editor-divider" id="art-editor-element-margin-divider" hidden />
+							<p class="art-editor-screen__element-editor-group-title" id="art-editor-element-margin-group-title" hidden>
+								<?php echo esc_html__( 'Внешние отступы', 'art-editor' ); ?>
+							</p>
+							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-margin-top-row" hidden>
+								<label class="art-editor-screen__element-editor-field-label" for="art-editor-element-margin-top">
+									<?php echo esc_html__( 'Отступ сверху', 'art-editor' ); ?>
+								</label>
+								<div class="art-editor-screen__element-editor-style-control">
+									<input
+										type="number"
+										class="art-editor-screen__element-editor-style-input"
+										id="art-editor-element-margin-top"
+										name="art-editor-element-margin-top"
+										min="-200"
+										max="500"
+										step="1"
+										inputmode="numeric"
+										autocomplete="off"
+										aria-label="<?php echo esc_attr__( 'Внешний отступ сверху', 'art-editor' ); ?>"
+									/>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-style-reset"
+										id="art-editor-element-margin-top-reset"
+										disabled
+									>
+										<?php echo esc_html__( 'Сбросить', 'art-editor' ); ?>
+									</button>
+								</div>
+							</div>
+							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-margin-bottom-row" hidden>
+								<label class="art-editor-screen__element-editor-field-label" for="art-editor-element-margin-bottom">
+									<?php echo esc_html__( 'Отступ снизу', 'art-editor' ); ?>
+								</label>
+								<div class="art-editor-screen__element-editor-style-control">
+									<input
+										type="number"
+										class="art-editor-screen__element-editor-style-input"
+										id="art-editor-element-margin-bottom"
+										name="art-editor-element-margin-bottom"
+										min="-200"
+										max="500"
+										step="1"
+										inputmode="numeric"
+										autocomplete="off"
+										aria-label="<?php echo esc_attr__( 'Внешний отступ снизу', 'art-editor' ); ?>"
+									/>
+									<button
+										type="button"
+										class="art-editor-screen__element-editor-style-reset"
+										id="art-editor-element-margin-bottom-reset"
 										disabled
 									>
 										<?php echo esc_html__( 'Сбросить', 'art-editor' ); ?>
@@ -593,6 +655,7 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 						</button>
 					</div>
 					<div class="art-editor-screen__element-editor-controls" id="art-editor-element-controls" hidden>
+						<hr class="art-editor-screen__element-editor-controls-divider" id="art-editor-element-link-divider" hidden />
 						<div class="art-editor-screen__element-editor-field">
 							<div class="art-editor-screen__element-editor-field-label" id="art-editor-element-link-label">
 								<?php echo esc_html__( 'Ссылка', 'art-editor' ); ?>

@@ -594,6 +594,12 @@
 		var backgroundColorRow = document.getElementById( 'art-editor-element-background-color-row' );
 		var paddingTopRow = document.getElementById( 'art-editor-element-padding-top-row' );
 		var paddingBottomRow = document.getElementById( 'art-editor-element-padding-bottom-row' );
+		var blockSpacingDivider = document.getElementById( 'art-editor-element-block-spacing-divider' );
+		var paddingGroupTitle = document.getElementById( 'art-editor-element-padding-group-title' );
+		var marginDivider = document.getElementById( 'art-editor-element-margin-divider' );
+		var marginGroupTitle = document.getElementById( 'art-editor-element-margin-group-title' );
+		var marginTopRow = document.getElementById( 'art-editor-element-margin-top-row' );
+		var marginBottomRow = document.getElementById( 'art-editor-element-margin-bottom-row' );
 		var fontSizeInput = document.getElementById( 'art-editor-element-font-size' );
 		var fontSizeResetButton = document.getElementById( 'art-editor-element-font-size-reset' );
 		var lineHeightInput = document.getElementById( 'art-editor-element-line-height' );
@@ -612,6 +618,11 @@
 		var paddingTopResetButton = document.getElementById( 'art-editor-element-padding-top-reset' );
 		var paddingBottomInput = document.getElementById( 'art-editor-element-padding-bottom' );
 		var paddingBottomResetButton = document.getElementById( 'art-editor-element-padding-bottom-reset' );
+		var marginTopInput = document.getElementById( 'art-editor-element-margin-top' );
+		var marginTopResetButton = document.getElementById( 'art-editor-element-margin-top-reset' );
+		var marginBottomInput = document.getElementById( 'art-editor-element-margin-bottom' );
+		var marginBottomResetButton = document.getElementById( 'art-editor-element-margin-bottom-reset' );
+		var linkDivider = document.getElementById( 'art-editor-element-link-divider' );
 		var imageControls = document.getElementById( 'art-editor-element-image-controls' );
 		var imagePickerButton = document.getElementById( 'art-editor-element-image-picker' );
 		var elementControls = document.getElementById( 'art-editor-element-controls' );
@@ -635,6 +646,8 @@
 			backgroundColor: '',
 			paddingTop: '',
 			paddingBottom: '',
+			marginTop: '',
+			marginBottom: '',
 		};
 
 		function setTextDecorationToggleState( button, isActive ) {
@@ -669,6 +682,8 @@
 				backgroundColor: textStyleState && textStyleState.backgroundColor ? textStyleState.backgroundColor : '',
 				paddingTop: textStyleState && textStyleState.paddingTop ? textStyleState.paddingTop : '',
 				paddingBottom: textStyleState && textStyleState.paddingBottom ? textStyleState.paddingBottom : '',
+				marginTop: textStyleState && textStyleState.marginTop ? textStyleState.marginTop : '',
+				marginBottom: textStyleState && textStyleState.marginBottom ? textStyleState.marginBottom : '',
 			};
 		}
 
@@ -679,6 +694,12 @@
 			if ( 'fontSize' === property || 'paddingTop' === property || 'paddingBottom' === property ) {
 				normalizedInput = normalizeFontSizeInput( inputValue );
 				normalizedSynced = normalizeFontSizeInput( syncedValue );
+				return normalizedInput !== normalizedSynced;
+			}
+
+			if ( 'marginTop' === property || 'marginBottom' === property ) {
+				normalizedInput = normalizeMarginInput( inputValue );
+				normalizedSynced = normalizeMarginInput( syncedValue );
 				return normalizedInput !== normalizedSynced;
 			}
 
@@ -739,6 +760,8 @@
 					backgroundColor: true,
 					paddingTop: true,
 					paddingBottom: true,
+					marginTop: true,
+					marginBottom: true,
 				};
 			}
 
@@ -800,6 +823,18 @@
 			if ( ! changedProperties || changedProperties.paddingBottom ) {
 				if ( shouldApplyTextStyleProperty( 'paddingBottom', values.paddingBottom, lastSyncedTextStyleState.paddingBottom ) ) {
 					effective.paddingBottom = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.marginTop ) {
+				if ( shouldApplyTextStyleProperty( 'marginTop', values.marginTop, lastSyncedTextStyleState.marginTop ) ) {
+					effective.marginTop = true;
+				}
+			}
+
+			if ( ! changedProperties || changedProperties.marginBottom ) {
+				if ( shouldApplyTextStyleProperty( 'marginBottom', values.marginBottom, lastSyncedTextStyleState.marginBottom ) ) {
+					effective.marginBottom = true;
 				}
 			}
 
@@ -871,6 +906,8 @@
 			var hasBackgroundColor = !! ( textStyleState && textStyleState.backgroundColor );
 			var hasPaddingTop = !! ( textStyleState && textStyleState.paddingTop );
 			var hasPaddingBottom = !! ( textStyleState && textStyleState.paddingBottom );
+			var hasMarginTop = !! ( textStyleState && textStyleState.marginTop );
+			var hasMarginBottom = !! ( textStyleState && textStyleState.marginBottom );
 
 			if ( fontSizeResetButton ) {
 				fontSizeResetButton.disabled = ! hasFontSize;
@@ -898,6 +935,56 @@
 
 			if ( paddingBottomResetButton ) {
 				paddingBottomResetButton.disabled = ! hasPaddingBottom;
+			}
+
+			if ( marginTopResetButton ) {
+				marginTopResetButton.disabled = ! hasMarginTop;
+			}
+
+			if ( marginBottomResetButton ) {
+				marginBottomResetButton.disabled = ! hasMarginBottom;
+			}
+		}
+
+		function setBlockSpacingSectionVisible( isVisible ) {
+			if ( blockSpacingDivider ) {
+				blockSpacingDivider.hidden = ! isVisible;
+			}
+
+			if ( paddingGroupTitle ) {
+				paddingGroupTitle.hidden = ! isVisible;
+			}
+
+			if ( paddingTopRow ) {
+				paddingTopRow.hidden = ! isVisible;
+			}
+
+			if ( paddingBottomRow ) {
+				paddingBottomRow.hidden = ! isVisible;
+			}
+
+			if ( marginDivider ) {
+				marginDivider.hidden = ! isVisible;
+			}
+
+			if ( marginGroupTitle ) {
+				marginGroupTitle.hidden = ! isVisible;
+			}
+
+			if ( marginTopRow ) {
+				marginTopRow.hidden = ! isVisible;
+			}
+
+			if ( marginBottomRow ) {
+				marginBottomRow.hidden = ! isVisible;
+			}
+
+			if ( linkDivider ) {
+				linkDivider.hidden = ! isVisible;
+			}
+
+			if ( elementControls ) {
+				elementControls.classList.toggle( 'art-editor-screen__element-editor-controls--with-link-divider', isVisible );
 			}
 		}
 
@@ -942,13 +1029,7 @@
 				backgroundColorRow.hidden = ! canSetBackground;
 			}
 
-			if ( paddingTopRow ) {
-				paddingTopRow.hidden = ! canSetBlockSpacing;
-			}
-
-			if ( paddingBottomRow ) {
-				paddingBottomRow.hidden = ! canSetBlockSpacing;
-			}
+			setBlockSpacingSectionVisible( canSetBlockSpacing );
 
 			if ( styleControls ) {
 				styleControls.hidden = ! isInlineTextStyleable && ! canSetBackground && ! canSetBlockSpacing;
@@ -979,13 +1060,7 @@
 					backgroundColorRow.hidden = true;
 				}
 
-				if ( paddingTopRow ) {
-					paddingTopRow.hidden = true;
-				}
-
-				if ( paddingBottomRow ) {
-					paddingBottomRow.hidden = true;
-				}
+				setBlockSpacingSectionVisible( false );
 
 				if ( styleControls ) {
 					styleControls.hidden = true;
@@ -1037,6 +1112,14 @@
 					paddingBottomInput.value = '';
 				}
 
+				if ( marginTopInput ) {
+					marginTopInput.value = '';
+				}
+
+				if ( marginBottomInput ) {
+					marginBottomInput.value = '';
+				}
+
 				updateLastSyncedTextStyleState( null );
 				updateTextStyleResetButtons( null );
 				closeLinkOptions();
@@ -1045,7 +1128,7 @@
 
 			block = getBlockById( editorState.selectedId );
 
-			if ( ( isInlineTextStyleable && fontSizeInput && lineHeightInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) || ( canSetBlockSpacing && paddingTopInput && paddingBottomInput ) ) {
+			if ( ( isInlineTextStyleable && fontSizeInput && lineHeightInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) || ( canSetBlockSpacing && paddingTopInput && paddingBottomInput && marginTopInput && marginBottomInput ) ) {
 				textStyleState = getElementTextStyleStateFromHtml( block ? block.content || '' : '', locator.path );
 
 				isSyncingTextStyleControls = true;
@@ -1065,9 +1148,11 @@
 					backgroundColorInput.value = textStyleState.backgroundColor || '#ffffff';
 				}
 
-				if ( canSetBlockSpacing && paddingTopInput && paddingBottomInput ) {
+				if ( canSetBlockSpacing && paddingTopInput && paddingBottomInput && marginTopInput && marginBottomInput ) {
 					paddingTopInput.value = textStyleState.paddingTop || '';
 					paddingBottomInput.value = textStyleState.paddingBottom || '';
+					marginTopInput.value = textStyleState.marginTop || '';
+					marginBottomInput.value = textStyleState.marginBottom || '';
 				}
 
 				isSyncingTextStyleControls = false;
@@ -1286,6 +1371,8 @@
 			var backgroundColorValue;
 			var paddingTopValue;
 			var paddingBottomValue;
+			var marginTopValue;
+			var marginBottomValue;
 			var isInlineTextStyleable;
 			var canSetBackground;
 			var canSetBlockSpacing;
@@ -1304,7 +1391,7 @@
 			canSetBlockSpacing = isBlockSpacingStyleableLocator( editorState.selectedElementLocator );
 			touchesText = ! changedProperties || changedProperties.fontSize || changedProperties.lineHeight || changedProperties.lineHeightUnit || changedProperties.color || changedProperties.fontWeight || changedProperties.fontStyle || changedProperties.textDecorationUnderline || changedProperties.textDecorationLineThrough;
 			touchesBackground = ! changedProperties || changedProperties.backgroundColor;
-			touchesBlockSpacing = ! changedProperties || changedProperties.paddingTop || changedProperties.paddingBottom;
+			touchesBlockSpacing = ! changedProperties || changedProperties.paddingTop || changedProperties.paddingBottom || changedProperties.marginTop || changedProperties.marginBottom;
 
 			if ( ! touchesText && ! touchesBackground && ! touchesBlockSpacing ) {
 				return;
@@ -1328,6 +1415,8 @@
 			backgroundColorValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'backgroundColor' ) ? overrides.backgroundColor : ( backgroundColorInput ? backgroundColorInput.value : '' );
 			paddingTopValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'paddingTop' ) ? overrides.paddingTop : ( paddingTopInput ? paddingTopInput.value : '' );
 			paddingBottomValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'paddingBottom' ) ? overrides.paddingBottom : ( paddingBottomInput ? paddingBottomInput.value : '' );
+			marginTopValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'marginTop' ) ? overrides.marginTop : ( marginTopInput ? marginTopInput.value : '' );
+			marginBottomValue = overrides && Object.prototype.hasOwnProperty.call( overrides, 'marginBottom' ) ? overrides.marginBottom : ( marginBottomInput ? marginBottomInput.value : '' );
 			styleValues = {
 				fontSize: fontSizeValue,
 				lineHeight: lineHeightValue,
@@ -1340,6 +1429,8 @@
 				backgroundColor: backgroundColorValue,
 				paddingTop: paddingTopValue,
 				paddingBottom: paddingBottomValue,
+				marginTop: marginTopValue,
+				marginBottom: marginBottomValue,
 			};
 			effectiveChangedProperties = getEffectiveChangedTextStyleProperties( changedProperties, overrides, styleValues );
 
@@ -1365,6 +1456,8 @@
 			if ( ! canSetBlockSpacing ) {
 				delete effectiveChangedProperties.paddingTop;
 				delete effectiveChangedProperties.paddingBottom;
+				delete effectiveChangedProperties.marginTop;
+				delete effectiveChangedProperties.marginBottom;
 			}
 
 			if ( ! Object.keys( effectiveChangedProperties ).length ) {
@@ -1410,7 +1503,7 @@
 			window.clearTimeout( textStyleApplyTimer );
 			textStyleApplyTimer = window.setTimeout( function() {
 				textStyleApplyTimer = null;
-				applyTextStyleFromControls( { fontSize: true, lineHeight: true, lineHeightUnit: true, paddingTop: true, paddingBottom: true } );
+				applyTextStyleFromControls( { fontSize: true, lineHeight: true, lineHeightUnit: true, paddingTop: true, paddingBottom: true, marginTop: true, marginBottom: true } );
 			}, 300 );
 		}
 
@@ -1438,6 +1531,8 @@
 					backgroundColor: true,
 					paddingTop: true,
 					paddingBottom: true,
+					marginTop: true,
+					marginBottom: true,
 				},
 				null,
 				{ skipHistory: !! settings.skipHistory }
@@ -1532,6 +1627,30 @@
 
 			pushHistory();
 			applyTextStyleFromControls( { paddingBottom: true }, { paddingBottom: '' }, { skipHistory: true } );
+		}
+
+		function resetMarginTopStyle() {
+			cancelPendingTextStyleApply();
+			flushStyleHistoryCheckpoint();
+
+			if ( marginTopInput ) {
+				marginTopInput.value = '';
+			}
+
+			pushHistory();
+			applyTextStyleFromControls( { marginTop: true }, { marginTop: '' }, { skipHistory: true } );
+		}
+
+		function resetMarginBottomStyle() {
+			cancelPendingTextStyleApply();
+			flushStyleHistoryCheckpoint();
+
+			if ( marginBottomInput ) {
+				marginBottomInput.value = '';
+			}
+
+			pushHistory();
+			applyTextStyleFromControls( { marginBottom: true }, { marginBottom: '' }, { skipHistory: true } );
 		}
 
 		function openPanel( locator ) {
@@ -1750,6 +1869,30 @@
 
 		if ( paddingBottomResetButton ) {
 			paddingBottomResetButton.addEventListener( 'click', resetPaddingBottomStyle );
+		}
+
+		if ( marginTopInput ) {
+			marginTopInput.addEventListener( 'input', scheduleTextStyleApply );
+			marginTopInput.addEventListener( 'change', function() {
+				cancelPendingTextStyleApply();
+				applyTextStyleFromControls( { marginTop: true } );
+			} );
+		}
+
+		if ( marginBottomInput ) {
+			marginBottomInput.addEventListener( 'input', scheduleTextStyleApply );
+			marginBottomInput.addEventListener( 'change', function() {
+				cancelPendingTextStyleApply();
+				applyTextStyleFromControls( { marginBottom: true } );
+			} );
+		}
+
+		if ( marginTopResetButton ) {
+			marginTopResetButton.addEventListener( 'click', resetMarginTopStyle );
+		}
+
+		if ( marginBottomResetButton ) {
+			marginBottomResetButton.addEventListener( 'click', resetMarginBottomStyle );
 		}
 
 		return {
@@ -3246,6 +3389,50 @@
 		return normalized;
 	}
 
+	function formatPxSpacingForInput( value ) {
+		var match;
+
+		if ( 'string' !== typeof value ) {
+			return '';
+		}
+
+		match = /^(-?[\d.]+)px$/i.exec( value.trim() );
+
+		if ( ! match ) {
+			return '';
+		}
+
+		return match[1].replace( /\.0+$/, '' );
+	}
+
+	function normalizeMarginInput( value ) {
+		var normalized;
+		var isNegative;
+
+		if ( 'number' === typeof value ) {
+			value = String( value );
+		}
+
+		if ( 'string' !== typeof value ) {
+			return '';
+		}
+
+		normalized = value.trim();
+
+		if ( ! normalized ) {
+			return '';
+		}
+
+		isNegative = '-' === normalized.charAt( 0 );
+		normalized = normalized.replace( /[^\d.]/g, '' );
+
+		if ( ! normalized || ! /^\d+(\.\d+)?$/.test( normalized ) ) {
+			return '';
+		}
+
+		return ( isNegative ? '-' : '' ) + normalized;
+	}
+
 	function parseLineHeightInlineValue( value ) {
 		var pxMatch;
 		var percentMatch;
@@ -3456,6 +3643,8 @@
 		var backgroundColor;
 		var paddingTop;
 		var paddingBottom;
+		var marginTop;
+		var marginBottom;
 		var fontStyle;
 		var decorationFlags;
 
@@ -3472,6 +3661,8 @@
 				backgroundColor: '',
 				paddingTop: '',
 				paddingBottom: '',
+				marginTop: '',
+				marginBottom: '',
 			};
 		}
 
@@ -3492,6 +3683,8 @@
 					backgroundColor: '',
 					paddingTop: '',
 					paddingBottom: '',
+					marginTop: '',
+					marginBottom: '',
 				};
 			}
 
@@ -3504,8 +3697,10 @@
 				target.style.getPropertyValue( 'text-decoration-line' ) || target.style.getPropertyValue( 'text-decoration' )
 			);
 			backgroundColor = cssColorToHex( target.style.getPropertyValue( 'background-color' ) );
-			paddingTop = formatFontSizeForInput( target.style.getPropertyValue( 'padding-top' ) );
-			paddingBottom = formatFontSizeForInput( target.style.getPropertyValue( 'padding-bottom' ) );
+			paddingTop = formatPxSpacingForInput( target.style.getPropertyValue( 'padding-top' ) );
+			paddingBottom = formatPxSpacingForInput( target.style.getPropertyValue( 'padding-bottom' ) );
+			marginTop = formatPxSpacingForInput( target.style.getPropertyValue( 'margin-top' ) );
+			marginBottom = formatPxSpacingForInput( target.style.getPropertyValue( 'margin-bottom' ) );
 
 			return {
 				fontSize: fontSize,
@@ -3519,6 +3714,8 @@
 				backgroundColor: backgroundColor,
 				paddingTop: paddingTop,
 				paddingBottom: paddingBottom,
+				marginTop: marginTop,
+				marginBottom: marginBottom,
 			};
 		} catch ( error ) {
 			return {
@@ -3533,6 +3730,8 @@
 				backgroundColor: '',
 				paddingTop: '',
 				paddingBottom: '',
+				marginTop: '',
+				marginBottom: '',
 			};
 		}
 	}
@@ -3548,6 +3747,8 @@
 		var backgroundColor;
 		var paddingTop;
 		var paddingBottom;
+		var marginTop;
+		var marginBottom;
 		var fontStyle;
 		var textDecorationUnderline;
 		var textDecorationLineThrough;
@@ -3561,6 +3762,8 @@
 		var shouldUpdateBackgroundColor;
 		var shouldUpdatePaddingTop;
 		var shouldUpdatePaddingBottom;
+		var shouldUpdateMarginTop;
+		var shouldUpdateMarginBottom;
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length || ! textStyles ) {
 			return null;
@@ -3575,6 +3778,8 @@
 		shouldUpdateBackgroundColor = ! changedProperties || changedProperties.backgroundColor;
 		shouldUpdatePaddingTop = ! changedProperties || changedProperties.paddingTop;
 		shouldUpdatePaddingBottom = ! changedProperties || changedProperties.paddingBottom;
+		shouldUpdateMarginTop = ! changedProperties || changedProperties.marginTop;
+		shouldUpdateMarginBottom = ! changedProperties || changedProperties.marginBottom;
 		fontSize = normalizeFontSizeInput( textStyles.fontSize );
 		lineHeight = buildLineHeightCSSValue( textStyles.lineHeight, textStyles.lineHeightUnit );
 		color = cssColorToHex( textStyles.color );
@@ -3586,6 +3791,8 @@
 		backgroundColor = cssColorToHex( textStyles.backgroundColor );
 		paddingTop = normalizeFontSizeInput( textStyles.paddingTop );
 		paddingBottom = normalizeFontSizeInput( textStyles.paddingBottom );
+		marginTop = normalizeMarginInput( textStyles.marginTop );
+		marginBottom = normalizeMarginInput( textStyles.marginBottom );
 
 		try {
 			doc = new window.DOMParser().parseFromString( html, 'text/html' );
@@ -3666,6 +3873,22 @@
 					target.style.setProperty( 'padding-bottom', paddingBottom + 'px' );
 				} else {
 					target.style.removeProperty( 'padding-bottom' );
+				}
+			}
+
+			if ( shouldUpdateMarginTop ) {
+				if ( marginTop ) {
+					target.style.setProperty( 'margin-top', marginTop + 'px' );
+				} else {
+					target.style.removeProperty( 'margin-top' );
+				}
+			}
+
+			if ( shouldUpdateMarginBottom ) {
+				if ( marginBottom ) {
+					target.style.setProperty( 'margin-bottom', marginBottom + 'px' );
+				} else {
+					target.style.removeProperty( 'margin-bottom' );
 				}
 			}
 

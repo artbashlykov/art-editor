@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.14
+Stable tag: 0.2.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,11 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.15 =
+* Element editor for div/section: grouped internal padding and external margin controls (top/bottom).
+* Margin supports negative values (-200 to 500 px); inline styles override CSS classes.
+* Panel layout: section dividers and group titles before link settings.
 
 = 0.2.14 =
 * HTML block isolation: unified CSS scoping for Edit, View, and frontend (body/html/:root remapped to block wrapper).
