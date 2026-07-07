@@ -5214,6 +5214,7 @@
 		var editPanel = document.getElementById( 'art-editor-panel-edit' );
 		var anchorPanel = document.getElementById( 'art-editor-panel-anchor' );
 		var viewPanel = document.getElementById( 'art-editor-panel-view' );
+		var deviceToggle = document.getElementById( 'art-editor-device-toggle' );
 		var isAnchor = isAnchorBlock( block );
 		var currentTab = getActiveCanvasTabName();
 
@@ -5261,35 +5262,15 @@
 				viewPanel.classList.toggle( 'is-active', 'view' === currentTab );
 			}
 
+			if ( deviceToggle ) {
+				deviceToggle.hidden = 'edit' !== currentTab && 'view' !== currentTab;
+			}
+
 			return;
 		}
 
 		if ( elementEditorController ) {
 			elementEditorController.closePanel();
-		}
-
-		if ( 'view' === currentTab ) {
-			if ( anchorPanel ) {
-				anchorPanel.hidden = true;
-				anchorPanel.classList.remove( 'is-active' );
-			}
-
-			if ( codePanel ) {
-				codePanel.hidden = true;
-				codePanel.classList.remove( 'is-active' );
-			}
-
-			if ( editPanel ) {
-				editPanel.hidden = true;
-				editPanel.classList.remove( 'is-active' );
-			}
-
-			if ( viewPanel ) {
-				viewPanel.hidden = false;
-				viewPanel.classList.add( 'is-active' );
-			}
-
-			return;
 		}
 
 		if ( codeTab ) {
@@ -5325,6 +5306,10 @@
 		if ( anchorPanel ) {
 			anchorPanel.hidden = false;
 			anchorPanel.classList.add( 'is-active' );
+		}
+
+		if ( deviceToggle ) {
+			deviceToggle.hidden = true;
 		}
 	}
 
@@ -5485,6 +5470,8 @@
 
 		if ( isAnchorBlock( previousBlock ) && ! isAnchorBlock( nextBlock ) ) {
 			switchToCodeTab();
+		} else if ( ! isAnchorBlock( nextBlock ) && 'view' === getActiveCanvasTabName() && typeof activateCanvasTab === 'function' ) {
+			activateCanvasTab( 'edit' );
 		}
 	}
 
