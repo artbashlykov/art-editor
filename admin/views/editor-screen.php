@@ -801,36 +801,6 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 			</div>
 			<div class="art-editor-screen__canvas-panels">
 				<div
-					class="art-editor-screen__canvas-panel"
-					id="art-editor-panel-anchor"
-					role="tabpanel"
-					aria-labelledby="art-editor-tab-code"
-					hidden
-				>
-					<div class="art-editor-screen__anchor-panel">
-						<label class="art-editor-screen__anchor-label" for="art-editor-anchor-id">
-							<?php echo esc_html__( 'Добавьте якорную ссылку', 'art-editor' ); ?>
-						</label>
-						<div class="art-editor-screen__anchor-input-row">
-							<span class="art-editor-screen__anchor-prefix" aria-hidden="true">#</span>
-							<input
-								type="text"
-								class="art-editor-screen__anchor-input"
-								id="art-editor-anchor-id"
-								name="art-editor-anchor-id"
-								value=""
-								autocomplete="off"
-								spellcheck="false"
-								placeholder="<?php echo esc_attr__( 'pricing', 'art-editor' ); ?>"
-								aria-describedby="art-editor-anchor-hint"
-							/>
-						</div>
-						<p class="art-editor-screen__anchor-hint" id="art-editor-anchor-hint">
-							<?php echo esc_html__( 'Используйте короткое латинское имя: буквы, цифры и дефис. В ссылках на лендинге указывайте #имя, например #pricing.', 'art-editor' ); ?>
-						</p>
-					</div>
-				</div>
-				<div
 					class="art-editor-screen__canvas-panel is-active"
 					id="art-editor-panel-code"
 					role="tabpanel"
@@ -855,6 +825,28 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					aria-labelledby="art-editor-tab-edit"
 					hidden
 				>
+					<div class="art-editor-screen__anchor-panel" id="art-editor-edit-anchor-settings" hidden>
+						<label class="art-editor-screen__anchor-label" for="art-editor-anchor-id">
+							<?php echo esc_html__( 'Добавьте якорную ссылку', 'art-editor' ); ?>
+						</label>
+						<div class="art-editor-screen__anchor-input-row">
+							<span class="art-editor-screen__anchor-prefix" aria-hidden="true">#</span>
+							<input
+								type="text"
+								class="art-editor-screen__anchor-input"
+								id="art-editor-anchor-id"
+								name="art-editor-anchor-id"
+								value=""
+								autocomplete="off"
+								spellcheck="false"
+								placeholder="<?php echo esc_attr__( 'pricing', 'art-editor' ); ?>"
+								aria-describedby="art-editor-anchor-hint"
+							/>
+						</div>
+						<p class="art-editor-screen__anchor-hint" id="art-editor-anchor-hint">
+							<?php echo esc_html__( 'Используйте короткое латинское имя: буквы, цифры и дефис. В ссылках на лендинге указывайте #имя, например #pricing.', 'art-editor' ); ?>
+						</p>
+					</div>
 					<div class="art-editor-screen__device-stage" id="art-editor-edit-preview-stage">
 						<div class="art-editor-screen__device-frame">
 							<iframe

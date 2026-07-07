@@ -917,6 +917,10 @@ body.art-editor-screen {
 	color: var( --art-editor-color-primary-text );
 }
 
+.art-editor-screen__canvas-tab[hidden] {
+	display: none;
+}
+
 .art-editor-screen__canvas-tab:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
@@ -1628,6 +1632,22 @@ body.art-editor-screen {
 .art-editor-screen__code-panel .CodeMirror .art-editor-code-element-mark {
 	background-color: rgba( 34, 113, 177, 0.2 );
 	border-radius: 2px;
+}
+
+#art-editor-panel-edit {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+#art-editor-panel-edit .art-editor-screen__device-stage {
+	flex: 1;
+	min-height: 0;
+}
+
+#art-editor-edit-anchor-settings {
+	flex: 1;
+	overflow: auto;
 }
 
 #art-editor-panel-edit .art-editor-screen__preview-frame {

@@ -2539,6 +2539,11 @@
 
 		renderStructure();
 		syncCodeFromSelection();
+
+		if ( editorState.selectedId && ! isAnchorBlock( getBlockById( editorState.selectedId ) ) && typeof activateCanvasTab === 'function' ) {
+			activateCanvasTab( 'edit' );
+		}
+
 		scheduleUnsavedIndicatorUpdate();
 	}
 
@@ -5206,107 +5211,122 @@
 			} );
 	}
 
-	function updateCanvasModeForBlock( block ) {
+	function applyCanvasTabState( tabName ) {
 		var codeTab = document.getElementById( 'art-editor-tab-code' );
 		var editTab = document.getElementById( 'art-editor-tab-edit' );
 		var viewTab = document.getElementById( 'art-editor-tab-view' );
 		var codePanel = document.getElementById( 'art-editor-panel-code' );
 		var editPanel = document.getElementById( 'art-editor-panel-edit' );
-		var anchorPanel = document.getElementById( 'art-editor-panel-anchor' );
 		var viewPanel = document.getElementById( 'art-editor-panel-view' );
 		var deviceToggle = document.getElementById( 'art-editor-device-toggle' );
+		var tabButtons = [ codeTab, editTab, viewTab ];
+		var panels = [ codePanel, editPanel, viewPanel ];
+		var index;
+
+		for ( index = 0; index < tabButtons.length; index++ ) {
+			if ( ! tabButtons[ index ] ) {
+				continue;
+			}
+
+			tabButtons[ index ].classList.toggle(
+				'is-active',
+				tabButtons[ index ].getAttribute( 'data-tab' ) === tabName
+			);
+			tabButtons[ index ].setAttribute(
+				'aria-selected',
+				tabButtons[ index ].getAttribute( 'data-tab' ) === tabName ? 'true' : 'false'
+			);
+		}
+
+		for ( index = 0; index < panels.length; index++ ) {
+			if ( ! panels[ index ] ) {
+				continue;
+			}
+
+			panels[ index ].classList.toggle(
+				'is-active',
+				panels[ index ].id === 'art-editor-panel-' + tabName
+			);
+
+			if ( panels[ index ].id === 'art-editor-panel-' + tabName ) {
+				panels[ index ].removeAttribute( 'hidden' );
+			} else {
+				panels[ index ].setAttribute( 'hidden', 'hidden' );
+			}
+		}
+
+		if ( deviceToggle ) {
+			deviceToggle.hidden = 'edit' !== tabName && 'view' !== tabName;
+		}
+	}
+
+	function syncEditPanelContent( block ) {
 		var isAnchor = isAnchorBlock( block );
-		var currentTab = getActiveCanvasTabName();
+		var anchorSettings = document.getElementById( 'art-editor-edit-anchor-settings' );
+		var previewStage = document.getElementById( 'art-editor-edit-preview-stage' );
+
+		if ( anchorSettings ) {
+			anchorSettings.hidden = ! isAnchor;
+		}
+
+		if ( previewStage ) {
+			previewStage.hidden = !! isAnchor;
+		}
+	}
+
+	function setCanvasTabVisibilityForBlock( block ) {
+		var viewTab = document.getElementById( 'art-editor-tab-view' );
+		var codeTab = document.getElementById( 'art-editor-tab-code' );
+		var editTab = document.getElementById( 'art-editor-tab-edit' );
+		var isAnchor = isAnchorBlock( block );
+
+		if ( viewTab ) {
+			viewTab.hidden = !! isAnchor;
+		}
 
 		if ( codeTab ) {
-			codeTab.disabled = isAnchor;
+			codeTab.disabled = !! isAnchor;
 		}
 
 		if ( editTab ) {
-			editTab.disabled = isAnchor;
+			editTab.disabled = false;
+		}
+	}
+
+	function updateCanvasModeForBlock( block ) {
+		var currentTab = getActiveCanvasTabName();
+		var targetTab = currentTab;
+		var isAnchor = isAnchorBlock( block );
+
+		setCanvasTabVisibilityForBlock( block );
+		syncEditPanelContent( block );
+
+		if ( isAnchor ) {
+			if ( elementEditorController ) {
+				elementEditorController.closePanel();
+			}
+
+			targetTab = 'edit';
+		} else if ( ! currentTab ) {
+			targetTab = 'edit';
 		}
 
-		if ( ! isAnchor ) {
-			if ( anchorPanel ) {
-				anchorPanel.hidden = true;
-				anchorPanel.classList.remove( 'is-active' );
-			}
-
-			if ( codeTab ) {
-				codeTab.classList.toggle( 'is-active', 'code' === currentTab );
-				codeTab.setAttribute( 'aria-selected', 'code' === currentTab ? 'true' : 'false' );
-			}
-
-			if ( editTab ) {
-				editTab.classList.toggle( 'is-active', 'edit' === currentTab );
-				editTab.setAttribute( 'aria-selected', 'edit' === currentTab ? 'true' : 'false' );
-			}
-
-			if ( viewTab ) {
-				viewTab.classList.toggle( 'is-active', 'view' === currentTab );
-				viewTab.setAttribute( 'aria-selected', 'view' === currentTab ? 'true' : 'false' );
-			}
-
-			if ( codePanel ) {
-				codePanel.hidden = 'code' !== currentTab;
-				codePanel.classList.toggle( 'is-active', 'code' === currentTab );
-			}
-
-			if ( editPanel ) {
-				editPanel.hidden = 'edit' !== currentTab;
-				editPanel.classList.toggle( 'is-active', 'edit' === currentTab );
-			}
-
-			if ( viewPanel ) {
-				viewPanel.hidden = 'view' !== currentTab;
-				viewPanel.classList.toggle( 'is-active', 'view' === currentTab );
-			}
-
-			if ( deviceToggle ) {
-				deviceToggle.hidden = 'edit' !== currentTab && 'view' !== currentTab;
-			}
-
+		if ( targetTab && targetTab !== currentTab && typeof activateCanvasTab === 'function' ) {
+			activateCanvasTab( targetTab );
 			return;
 		}
 
-		if ( elementEditorController ) {
-			elementEditorController.closePanel();
+		if ( targetTab ) {
+			applyCanvasTabState( targetTab );
 		}
 
-		if ( codeTab ) {
-			codeTab.classList.remove( 'is-active' );
-			codeTab.setAttribute( 'aria-selected', 'false' );
+		if ( isAnchor ) {
+			hideDeviceToggle();
 		}
+	}
 
-		if ( editTab ) {
-			editTab.classList.remove( 'is-active' );
-			editTab.setAttribute( 'aria-selected', 'false' );
-		}
-
-		if ( viewTab ) {
-			viewTab.classList.remove( 'is-active' );
-			viewTab.setAttribute( 'aria-selected', 'false' );
-		}
-
-		if ( codePanel ) {
-			codePanel.hidden = true;
-			codePanel.classList.remove( 'is-active' );
-		}
-
-		if ( editPanel ) {
-			editPanel.hidden = true;
-			editPanel.classList.remove( 'is-active' );
-		}
-
-		if ( viewPanel ) {
-			viewPanel.hidden = true;
-			viewPanel.classList.remove( 'is-active' );
-		}
-
-		if ( anchorPanel ) {
-			anchorPanel.hidden = false;
-			anchorPanel.classList.add( 'is-active' );
-		}
+	function hideDeviceToggle() {
+		var deviceToggle = document.getElementById( 'art-editor-device-toggle' );
 
 		if ( deviceToggle ) {
 			deviceToggle.hidden = true;
@@ -5319,8 +5339,12 @@
 		}
 	}
 
-	function syncSelectionFromBlock() {
+	function syncSelectionFromBlock( options ) {
+		var settings = options || {};
+		var showLoading = !! settings.showLoading;
+		var activeTab = getActiveCanvasTabName();
 		var block = getBlockById( editorState.selectedId );
+		var previewOptions = showLoading ? { showLoading: true } : undefined;
 
 		clearSelectedElementLocator();
 		updateCanvasModeForBlock( block );
@@ -5340,7 +5364,12 @@
 			setCodeEditorEnabled( true );
 		}
 
-		updatePreview();
+		if ( 'edit' === activeTab ) {
+			updatePreview( previewOptions );
+		} else {
+			updatePreview();
+		}
+
 		updatePagePreview();
 	}
 
@@ -5445,6 +5474,7 @@
 		var isSameBlock = editorState.selectedId === blockId;
 		var previousBlock = getBlockById( editorState.selectedId );
 		var nextBlock;
+		var wasOnEditTab = 'edit' === getActiveCanvasTabName();
 
 		if ( isSaving() ) {
 			return;
@@ -5466,11 +5496,21 @@
 		editorState.selectedId = blockId;
 		nextBlock = getBlockById( blockId );
 		renderStructure();
-		syncSelectionFromBlock();
+		syncSelectionFromBlock( { showLoading: wasOnEditTab } );
 
-		if ( isAnchorBlock( previousBlock ) && ! isAnchorBlock( nextBlock ) ) {
-			switchToCodeTab();
-		} else if ( ! isAnchorBlock( nextBlock ) && 'view' === getActiveCanvasTabName() && typeof activateCanvasTab === 'function' ) {
+		if ( isAnchorBlock( nextBlock ) ) {
+			if ( typeof activateCanvasTab === 'function' ) {
+				activateCanvasTab( 'edit' );
+			}
+		} else if ( wasOnEditTab || 'view' === getActiveCanvasTabName() || isAnchorBlock( previousBlock ) ) {
+			if ( typeof activateCanvasTab === 'function' ) {
+				activateCanvasTab( 'edit' );
+			}
+		}
+	}
+
+	function switchToEditTab() {
+		if ( typeof activateCanvasTab === 'function' ) {
 			activateCanvasTab( 'edit' );
 		}
 	}
@@ -5506,6 +5546,10 @@
 		renderStructure();
 		syncSelectionFromBlock();
 		scheduleUnsavedIndicatorUpdate();
+
+		if ( typeof activateCanvasTab === 'function' ) {
+			activateCanvasTab( 'edit' );
+		}
 
 		if ( anchorIdInput ) {
 			anchorIdInput.focus();
@@ -5774,7 +5818,8 @@
 			setDeviceMode: setDeviceMode,
 			syncMobileFrameWidth: syncMobileFrameWidth,
 			updateVisibility: function( tabName ) {
-				var showToggle = 'edit' === tabName || 'view' === tabName;
+				var selectedBlock = getBlockById( editorState.selectedId );
+				var showToggle = ( 'edit' === tabName || 'view' === tabName ) && ! isAnchorBlock( selectedBlock );
 
 				deviceToggle.hidden = ! showToggle;
 			},
@@ -5796,7 +5841,7 @@
 			tabButtons.forEach( function( button ) {
 				var tabName = button.getAttribute( 'data-tab' );
 
-				if ( ! disabled && isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'edit' === tabName ) ) {
+				if ( ! disabled && isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'view' === tabName ) ) {
 					button.disabled = true;
 					return;
 				}
@@ -5808,39 +5853,32 @@
 		function performTabActivation( tabName ) {
 			var selectedBlock = getBlockById( editorState.selectedId );
 
-			if ( isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'edit' === tabName ) ) {
+			if ( isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'view' === tabName ) ) {
 				return;
 			}
 
-			tabButtons.forEach( function( button ) {
-				var isActive = button.getAttribute( 'data-tab' ) === tabName;
+			applyCanvasTabState( tabName );
 
-				button.classList.toggle( 'is-active', isActive );
-				button.setAttribute( 'aria-selected', isActive ? 'true' : 'false' );
-			} );
-
-			panels.forEach( function( panel ) {
-				var isActive = panel.id === 'art-editor-panel-' + tabName;
-
-				panel.classList.toggle( 'is-active', isActive );
-
-				if ( isActive ) {
-					panel.removeAttribute( 'hidden' );
-				} else {
-					panel.setAttribute( 'hidden', 'hidden' );
-				}
-			} );
-
-			if ( 'edit' === tabName && ! isAnchorBlock( selectedBlock ) ) {
+			if ( 'edit' === tabName ) {
 				commitCodeToSelectedBlock();
-				updatePreview( { showLoading: true } );
 
-				if ( devicePreview ) {
-					devicePreview.syncMobileFrameWidth();
-				}
+				if ( isAnchorBlock( selectedBlock ) ) {
+					syncAnchorEditorFromBlock( selectedBlock );
+					updatePagePreview();
 
-				if ( isSelectedElementLocatorForCurrentBlock() && elementEditorController && ! isPageSettingsPanelOpen() ) {
-					elementEditorController.openPanel( editorState.selectedElementLocator );
+					if ( devicePreview ) {
+						devicePreview.syncMobileFrameWidth();
+					}
+				} else {
+					updatePreview( { showLoading: true } );
+
+					if ( devicePreview ) {
+						devicePreview.syncMobileFrameWidth();
+					}
+
+					if ( isSelectedElementLocatorForCurrentBlock() && elementEditorController && ! isPageSettingsPanelOpen() ) {
+						elementEditorController.openPanel( editorState.selectedElementLocator );
+					}
 				}
 			}
 
@@ -5887,7 +5925,7 @@
 				return;
 			}
 
-			if ( isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'edit' === tabName ) ) {
+			if ( isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'view' === tabName ) ) {
 				return;
 			}
 
