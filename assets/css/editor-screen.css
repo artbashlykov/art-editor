@@ -430,6 +430,24 @@ body.art-editor-screen {
 	display: none;
 }
 
+.art-editor-screen__element-editor-controls-divider--external-margin {
+	margin-top: 12px;
+	margin-bottom: 12px;
+}
+
+.art-editor-screen__element-editor-external-margin {
+	display: grid;
+	grid-template-columns: minmax( 0, 1fr ) auto;
+	column-gap: 12px;
+	row-gap: 10px;
+	align-items: center;
+	width: 100%;
+}
+
+.art-editor-screen__element-editor-external-margin[hidden] {
+	display: none;
+}
+
 .art-editor-screen__element-editor-controls--with-link-divider {
 	margin-top: 0;
 }

@@ -650,7 +650,7 @@
 		var paddingBottomRow = document.getElementById( 'art-editor-element-padding-bottom-row' );
 		var blockSpacingDivider = document.getElementById( 'art-editor-element-block-spacing-divider' );
 		var paddingGroupTitle = document.getElementById( 'art-editor-element-padding-group-title' );
-		var marginDivider = document.getElementById( 'art-editor-element-margin-divider' );
+		var externalMarginDivider = document.getElementById( 'art-editor-element-external-margin-divider' );
 		var marginGroupTitle = document.getElementById( 'art-editor-element-margin-group-title' );
 		var marginTopRow = document.getElementById( 'art-editor-element-margin-top-row' );
 		var marginBottomRow = document.getElementById( 'art-editor-element-margin-bottom-row' );
@@ -1068,8 +1068,18 @@
 				paddingBottomRow.hidden = ! isVisible;
 			}
 
-			if ( marginDivider ) {
-				marginDivider.hidden = ! isVisible;
+			if ( linkDivider ) {
+				linkDivider.hidden = ! isVisible;
+			}
+
+			if ( elementControls ) {
+				elementControls.classList.toggle( 'art-editor-screen__element-editor-controls--with-link-divider', isVisible );
+			}
+		}
+
+		function setExternalMarginSectionVisible( isVisible ) {
+			if ( externalMarginDivider ) {
+				externalMarginDivider.hidden = ! isVisible;
 			}
 
 			if ( marginGroupTitle ) {
@@ -1082,14 +1092,6 @@
 
 			if ( marginBottomRow ) {
 				marginBottomRow.hidden = ! isVisible;
-			}
-
-			if ( linkDivider ) {
-				linkDivider.hidden = ! isVisible;
-			}
-
-			if ( elementControls ) {
-				elementControls.classList.toggle( 'art-editor-screen__element-editor-controls--with-link-divider', isVisible );
 			}
 		}
 
@@ -1105,6 +1107,7 @@
 			var isInlineTextStyleable = isInlineTextStyleableLocator( locator );
 			var canSetBackground = isBackgroundStyleableLocator( locator );
 			var canSetBlockSpacing = isBlockSpacingStyleableLocator( locator );
+			var canSetMargin = isMarginStyleableLocator( locator );
 
 			if ( imageControls ) {
 				imageControls.hidden = ! isImage;
@@ -1135,6 +1138,7 @@
 			}
 
 			setBlockSpacingSectionVisible( canSetBlockSpacing );
+			setExternalMarginSectionVisible( canSetMargin );
 
 			if ( styleControls ) {
 				styleControls.hidden = ! isInlineTextStyleable && ! canSetBackground && ! canSetBlockSpacing;
@@ -1166,6 +1170,7 @@
 				}
 
 				setBlockSpacingSectionVisible( false );
+				setExternalMarginSectionVisible( false );
 
 				if ( styleControls ) {
 					styleControls.hidden = true;
@@ -1233,7 +1238,7 @@
 
 			block = getBlockById( editorState.selectedId );
 
-			if ( ( isInlineTextStyleable && fontSizeInput && lineHeightInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) || ( canSetBlockSpacing && paddingTopInput && paddingBottomInput && marginTopInput && marginBottomInput ) ) {
+			if ( ( isInlineTextStyleable && fontSizeInput && lineHeightInput && textColorInput && fontWeightInput ) || ( canSetBackground && backgroundColorInput ) || ( canSetBlockSpacing && paddingTopInput && paddingBottomInput ) || ( canSetMargin && marginTopInput && marginBottomInput ) ) {
 				textStyleState = getElementTextStyleStateFromHtml( block ? block.content || '' : '', locator.path );
 
 				isSyncingTextStyleControls = true;
@@ -1253,9 +1258,12 @@
 					backgroundColorInput.value = textStyleState.backgroundColor || '#ffffff';
 				}
 
-				if ( canSetBlockSpacing && paddingTopInput && paddingBottomInput && marginTopInput && marginBottomInput ) {
+				if ( canSetBlockSpacing && paddingTopInput && paddingBottomInput ) {
 					paddingTopInput.value = textStyleState.paddingTop || '';
 					paddingBottomInput.value = textStyleState.paddingBottom || '';
+				}
+
+				if ( canSetMargin && marginTopInput && marginBottomInput ) {
 					marginTopInput.value = textStyleState.marginTop || '';
 					marginBottomInput.value = textStyleState.marginBottom || '';
 				}
@@ -1481,9 +1489,11 @@
 			var isInlineTextStyleable;
 			var canSetBackground;
 			var canSetBlockSpacing;
+			var canSetMargin;
 			var touchesText;
 			var touchesBackground;
-			var touchesBlockSpacing;
+			var touchesPadding;
+			var touchesMargin;
 			var effectiveChangedProperties;
 			var styleValues;
 
@@ -1494,11 +1504,13 @@
 			isInlineTextStyleable = isInlineTextStyleableLocator( editorState.selectedElementLocator );
 			canSetBackground = isBackgroundStyleableLocator( editorState.selectedElementLocator );
 			canSetBlockSpacing = isBlockSpacingStyleableLocator( editorState.selectedElementLocator );
+			canSetMargin = isMarginStyleableLocator( editorState.selectedElementLocator );
 			touchesText = ! changedProperties || changedProperties.fontSize || changedProperties.lineHeight || changedProperties.lineHeightUnit || changedProperties.color || changedProperties.fontWeight || changedProperties.fontStyle || changedProperties.textDecorationUnderline || changedProperties.textDecorationLineThrough;
 			touchesBackground = ! changedProperties || changedProperties.backgroundColor;
-			touchesBlockSpacing = ! changedProperties || changedProperties.paddingTop || changedProperties.paddingBottom || changedProperties.marginTop || changedProperties.marginBottom;
+			touchesPadding = ! changedProperties || changedProperties.paddingTop || changedProperties.paddingBottom;
+			touchesMargin = ! changedProperties || changedProperties.marginTop || changedProperties.marginBottom;
 
-			if ( ! touchesText && ! touchesBackground && ! touchesBlockSpacing ) {
+			if ( ! touchesText && ! touchesBackground && ! touchesPadding && ! touchesMargin ) {
 				return;
 			}
 
@@ -1561,6 +1573,9 @@
 			if ( ! canSetBlockSpacing ) {
 				delete effectiveChangedProperties.paddingTop;
 				delete effectiveChangedProperties.paddingBottom;
+			}
+
+			if ( ! canSetMargin ) {
 				delete effectiveChangedProperties.marginTop;
 				delete effectiveChangedProperties.marginBottom;
 			}
@@ -3623,6 +3638,10 @@
 		tag = String( locator.tag || '' ).toUpperCase();
 
 		return 'DIV' === tag || 'SECTION' === tag;
+	}
+
+	function isMarginStyleableLocator( locator ) {
+		return !! ( locator && locator.path && locator.path.length && ! isImageElementLocator( locator ) );
 	}
 
 	function cssColorToHex( color ) {
