@@ -235,6 +235,8 @@ class Art_Editor_Editor_Screen {
 				'elementEditor'       => __( 'Редактор элемента', 'art-editor' ),
 				'clearElementSelection' => __( 'Сбросить выбор элемента', 'art-editor' ),
 				'elementEditorTag'    => __( 'Тег', 'art-editor' ),
+				'elementEditorSelectParent' => __( 'Родитель', 'art-editor' ),
+				'elementEditorSelectParentTitle' => __( 'Выбрать родительский элемент', 'art-editor' ),
 				'elementEditorFontSize' => __( 'Размер шрифта', 'art-editor' ),
 				'elementEditorTextColor' => __( 'Цвет текста', 'art-editor' ),
 				'elementEditorBackgroundColor' => __( 'Цвет фона', 'art-editor' ),

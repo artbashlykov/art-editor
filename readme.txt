@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.19
+Stable tag: 0.2.20
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.20 =
+* Element editor: select parent containers (section, div) via repeated click at the same spot, Alt+click, or the new Parent button in the sidebar.
+* Fixes cases where only inner content was selectable because children covered the full section area.
 
 = 0.2.19 =
 * Fix CSS scoping: skip block comments so @media rules and selectors after /* comments */ stay valid (AI-generated HTML).

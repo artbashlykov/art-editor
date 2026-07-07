@@ -630,6 +630,7 @@
 		var settingsPanel = document.getElementById( 'art-editor-settings-panel' );
 		var settingsToggle = document.getElementById( 'art-editor-settings-toggle' );
 		var elementSummary = document.getElementById( 'art-editor-element-summary' );
+		var elementParentButton = document.getElementById( 'art-editor-element-parent' );
 		var styleControls = document.getElementById( 'art-editor-element-style-controls' );
 		var fontSizeRow = document.getElementById( 'art-editor-element-font-size-row' );
 		var lineHeightRow = document.getElementById( 'art-editor-element-line-height-row' );
@@ -924,6 +925,7 @@
 		function updateElementSummary( locator ) {
 			var tagLabel;
 			var tagName;
+			var canSelectParent;
 
 			if ( ! elementSummary ) {
 				return;
@@ -932,15 +934,65 @@
 			if ( ! locator || ! locator.tag ) {
 				elementSummary.hidden = true;
 				elementSummary.textContent = '';
+
+				if ( elementParentButton ) {
+					elementParentButton.hidden = true;
+					elementParentButton.disabled = true;
+				}
+
 				return;
 			}
 
 			tagLabel = i18n.elementEditorTag || 'Тег';
 			tagName = String( locator.tag ).toLowerCase();
+			canSelectParent = !!( locator.path && locator.path.length > 1 );
 			elementSummary.textContent = '';
 			elementSummary.appendChild( document.createElement( 'strong' ) ).textContent = tagLabel + ':';
 			elementSummary.appendChild( document.createTextNode( ' <' + tagName + '>' ) );
 			elementSummary.hidden = false;
+
+			if ( elementParentButton ) {
+				elementParentButton.hidden = false;
+				elementParentButton.disabled = ! canSelectParent;
+				elementParentButton.title = i18n.elementEditorSelectParentTitle || 'Выбрать родительский элемент';
+			}
+		}
+
+		function selectParentElement() {
+			var locator;
+			var block;
+			var parentPath;
+			var pageSettings;
+			var expandedPath;
+
+			if ( ! isSelectedElementLocatorForCurrentBlock() ) {
+				return;
+			}
+
+			locator = editorState.selectedElementLocator;
+
+			if ( ! locator || ! locator.path || locator.path.length <= 1 ) {
+				return;
+			}
+
+			if ( ! previewFrame || ! previewFrame.contentWindow ) {
+				return;
+			}
+
+			block = getBlockById( editorState.selectedId );
+			parentPath = cloneElementPath( locator.path.slice( 0, -1 ) );
+			pageSettings = getPageSettingsFromDom();
+			expandedPath = expandBlockContentPathForPreviewIframe(
+				parentPath,
+				block ? block.content || '' : '',
+				pageSettings.layoutMode
+			);
+
+			previewFrame.contentWindow.postMessage( {
+				source: 'art-editor-parent',
+				type: 'selectElementByPath',
+				path: expandedPath,
+			}, '*' );
 		}
 
 		function updateTextStyleResetButtons( textStyleState ) {
@@ -1726,6 +1778,10 @@
 
 		if ( elementClose ) {
 			elementClose.addEventListener( 'click', clearActiveElement );
+		}
+
+		if ( elementParentButton ) {
+			elementParentButton.addEventListener( 'click', selectParentElement );
 		}
 
 		if ( linkSettingsToggle ) {
@@ -4628,6 +4684,29 @@
 			'}',
 			'return null;',
 			'}',
+			'function getInspectableParent(node){',
+			'var htmlBlock=node&&node.closest?node.closest(".art-editor-html-block"):null;',
+			'var parent=node?node.parentElement:null;',
+			'while(parent&&parent!==document.body&&parent!==document.documentElement){',
+			'if(htmlBlock&&parent===htmlBlock){return null;}',
+			'if(!ignored[parent.tagName]){return parent;}',
+			'parent=parent.parentElement;',
+			'}',
+			'return null;',
+			'}',
+			'function getInspectableAncestorChain(node){',
+			'var chain=[];',
+			'var current=getInspectableElement(node);',
+			'while(current){',
+			'chain.push(current);',
+			'current=getInspectableParent(current);',
+			'}',
+			'return chain;',
+			'}',
+			'var lastPickX=null;',
+			'var lastPickY=null;',
+			'var lastPickChain=[];',
+			'var lastPickIndex=0;',
 			'function hasEditableText(node){',
 			'return!!(node&&node.textContent&&node.textContent.replace(/\\s+/g,"").length);',
 			'}',
@@ -4738,9 +4817,40 @@
 			'document.addEventListener("mousedown",preventAnchorActivation,true);',
 			'document.addEventListener("click",function(event){',
 			'var target;',
+			'var chain;',
+			'var dx;',
+			'var dy;',
+			'var sameChain;',
+			'var index;',
 			'if(editing){return;}',
 			'preventAnchorActivation(event);',
+			'if(event.altKey){',
 			'target=getInspectableElement(event.target);',
+			'target=target?getInspectableParent(target):null;',
+			'lastPickX=null;',
+			'lastPickY=null;',
+			'lastPickChain=[];',
+			'lastPickIndex=0;',
+			'}else{',
+			'chain=getInspectableAncestorChain(event.target);',
+			'dx=lastPickX===null?999:Math.abs(event.clientX-lastPickX);',
+			'dy=lastPickY===null?999:Math.abs(event.clientY-lastPickY);',
+			'sameChain=dx<4&&dy<4&&lastPickChain.length===chain.length;',
+			'if(sameChain){',
+			'for(index=0;index<chain.length;index++){',
+			'if(chain[index]!==lastPickChain[index]){sameChain=false;break;}',
+			'}',
+			'}',
+			'if(sameChain&&chain.length){',
+			'lastPickIndex=(lastPickIndex+1)%chain.length;',
+			'}else{',
+			'lastPickIndex=0;',
+			'}',
+			'lastPickX=event.clientX;',
+			'lastPickY=event.clientY;',
+			'lastPickChain=chain;',
+			'target=chain[lastPickIndex]||null;',
+			'}',
 			'event.preventDefault();',
 			'event.stopPropagation();',
 			'setActive(target);',

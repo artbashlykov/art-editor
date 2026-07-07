@@ -339,7 +339,18 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					</button>
 				</div>
 				<div class="art-editor-screen__sidebar-element-editor-body">
-					<p class="art-editor-screen__element-editor-summary" id="art-editor-element-summary" hidden></p>
+					<div class="art-editor-screen__element-editor-selection">
+						<p class="art-editor-screen__element-editor-summary" id="art-editor-element-summary" hidden></p>
+						<button
+							type="button"
+							class="art-editor-screen__element-editor-parent"
+							id="art-editor-element-parent"
+							hidden
+							disabled
+						>
+							<?php echo esc_html__( 'Родитель', 'art-editor' ); ?>
+						</button>
+					</div>
 					<div class="art-editor-screen__element-editor-text-styles" id="art-editor-element-style-controls" hidden>
 						<div class="art-editor-screen__element-editor-style-grid">
 							<div class="art-editor-screen__element-editor-style-row" id="art-editor-element-font-size-row" hidden>

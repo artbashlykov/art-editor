@@ -323,11 +323,46 @@ body.art-editor-screen {
 	padding: 12px;
 }
 
+.art-editor-screen__element-editor-selection {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 0;
+}
+
 .art-editor-screen__element-editor-summary {
 	margin: 0;
 	color: #646970;
 	font-size: 13px;
 	line-height: 1.5;
+	flex: 1;
+	min-width: 0;
+}
+
+.art-editor-screen__element-editor-parent {
+	flex-shrink: 0;
+	margin: 0;
+	padding: 4px 10px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+	color: #1d2327;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.4;
+	cursor: pointer;
+}
+
+.art-editor-screen__element-editor-parent:hover:not( :disabled ),
+.art-editor-screen__element-editor-parent:focus:not( :disabled ) {
+	border-color: var( --art-editor-color-primary );
+	color: var( --art-editor-color-primary );
+}
+
+.art-editor-screen__element-editor-parent:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
 }
 
 .art-editor-screen__element-editor-summary strong {
