@@ -92,6 +92,8 @@ class Art_Editor_Rest {
 		);
 
 		register_rest_route(
+			'art-editor/v1',
+			'/posts/(?P<id>\d+)/leave-builder',
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( __CLASS__, 'leave_builder_mode' ),

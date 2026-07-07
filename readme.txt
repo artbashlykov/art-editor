@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.16
+Stable tag: 0.2.17
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.17 =
+* Fix fatal REST error: register leave-builder route with correct namespace and path (preview-document and preview-edit-block no longer return 500).
 
 = 0.2.16 =
 * Fix multi-block preview overlap: scoped wrappers now reserve min-height when block CSS uses viewport-positioned fixed/absolute layouts.
