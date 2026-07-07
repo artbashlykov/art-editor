@@ -3083,7 +3083,39 @@
 		return true;
 	}
 
+	function isFormFieldElement( element ) {
+		var tagName;
+
+		if ( ! element || element === document.body || element === document.documentElement ) {
+			return false;
+		}
+
+		if ( element.isContentEditable ) {
+			return true;
+		}
+
+		tagName = element.tagName;
+
+		if ( 'INPUT' === tagName || 'TEXTAREA' === tagName || 'SELECT' === tagName ) {
+			return true;
+		}
+
+		if ( element.closest && element.closest( '.CodeMirror' ) ) {
+			return true;
+		}
+
+		return false;
+	}
+
 	function isElementDeleteShortcutTarget( target ) {
+		if ( isFormFieldElement( document.activeElement ) ) {
+			return false;
+		}
+
+		if ( editorState.renamingBlockId ) {
+			return false;
+		}
+
 		if ( ! target || ! target.closest ) {
 			return true;
 		}
@@ -3093,6 +3125,10 @@
 		}
 
 		if ( target.closest( 'input, textarea, select' ) ) {
+			return false;
+		}
+
+		if ( target.closest( '#art-editor-element-panel input, #art-editor-element-panel textarea, #art-editor-element-panel select' ) ) {
 			return false;
 		}
 
@@ -3112,7 +3148,7 @@
 			return;
 		}
 
-		if ( 'Backspace' !== event.key && 'Delete' !== event.key ) {
+		if ( 'Delete' !== event.key ) {
 			return;
 		}
 
@@ -4743,6 +4779,10 @@
 			}
 
 			if ( 'deleteSelectedElement' === data.type ) {
+				if ( isFormFieldElement( document.activeElement ) ) {
+					return;
+				}
+
 				deleteSelectedElement();
 				return;
 			}
@@ -4990,7 +5030,7 @@
 			'return;',
 			'}',
 			'if(!active){return;}',
-			'if("Backspace"===event.key||"Delete"===event.key){',
+			'if("Delete"===event.key){',
 			'event.preventDefault();',
 			'window.parent.postMessage({source:"art-editor-preview",type:"deleteSelectedElement"},"*");',
 			'}',
