@@ -35,6 +35,9 @@
 	var codeInput = document.getElementById( 'art-editor-code-input' );
 	var previewFrame = document.getElementById( 'art-editor-preview-frame' );
 	var pagePreviewFrame = document.getElementById( 'art-editor-page-preview-frame' );
+	var previewStatusBanner = document.getElementById( 'art-editor-preview-status' );
+	var previewStatusText = document.getElementById( 'art-editor-preview-status-text' );
+	var previewStatusRetry = document.getElementById( 'art-editor-preview-status-retry' );
 	var structureList = document.getElementById( 'art-editor-structure-list' );
 	var structureEmpty = document.getElementById( 'art-editor-structure-empty' );
 	var createHtmlButton = document.getElementById( 'art-editor-create-html' );
@@ -117,6 +120,11 @@
 	};
 
 	var unsavedIndicatorTimer = null;
+
+	var previewHealth = {
+		edit: '',
+		view: '',
+	};
 
 	function isAnchorBlock( block ) {
 		return !! ( block && 'anchor' === block.type );
@@ -3086,79 +3094,64 @@
 		}
 	}
 
-	function parseBlockContent( html ) {
-		var styles = [];
-		var bodyHtml = html || '';
-		var doc;
-		var styleNodes;
-		var index;
-
-		if ( ! html || ! String( html ).trim() || ! window.DOMParser ) {
-			return {
-				styles: styles,
-				body: bodyHtml,
-			};
+	function setPreviewHealth( target, message ) {
+		if ( 'edit' === target ) {
+			previewHealth.edit = message || '';
+		} else if ( 'view' === target ) {
+			previewHealth.view = message || '';
 		}
 
-		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
-			styleNodes = doc.querySelectorAll( 'head style, body style' );
-
-			for ( index = 0; index < styleNodes.length; index++ ) {
-				styles.push( styleNodes[ index ].outerHTML );
-			}
-
-			if ( doc.body ) {
-				bodyHtml = doc.body.innerHTML;
-			}
-		} catch ( error ) {
-			// Keep the raw HTML when parsing fails.
-		}
-
-		return {
-			styles: styles,
-			body: bodyHtml,
-		};
+		syncPreviewStatusBanner();
 	}
 
-	function buildPreviewDocument( bodyHtml, blockStyles, options ) {
-		var editMode = options && options.editMode;
-		var blockLinkNavigation = options && options.blockLinkNavigation;
-		var headExtras = '';
-		var siteIconHead = config.siteIconHead || '';
+	function syncPreviewStatusBanner() {
+		var tab = getActiveCanvasTabName();
+		var message = '';
 
-		if ( editMode ) {
-			headExtras += getEditInspectHeadMarkup();
+		if ( ! previewStatusBanner || ! previewStatusText ) {
+			return;
 		}
 
-		if ( blockLinkNavigation || editMode ) {
-			headExtras += getPreviewLinkGuardMarkup();
+		if ( 'edit' === tab ) {
+			message = previewHealth.edit;
+		} else if ( 'view' === tab ) {
+			message = previewHealth.view;
 		}
 
-		return [
-			'<!doctype html>',
-			'<html>',
-			'<head>',
-			'<meta charset="utf-8">',
-			'<meta name="viewport" content="' + getPreviewViewportMetaContent() + '">',
-			siteIconHead,
-			'<style>',
-			'html,body{margin:0;padding:0;box-sizing:border-box;}',
-			'*,*::before,*::after{box-sizing:inherit;}',
-			'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1e1e1e;}',
-			'img,video,iframe,svg{max-width:100%;}',
-			'@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth;}}',
-			editMode ? 'body a{color:inherit;font-size:inherit;font-weight:inherit;font-family:inherit;background-color:transparent;}' : '',
-			'body a:not([style*="text-decoration"]):not(:has([style*="text-decoration"])){text-decoration:none;}',
-			'</style>',
-			blockStyles || '',
-			headExtras,
-			'</head>',
-			'<body>',
-			bodyHtml || '',
-			'</body>',
-			'</html>',
-		].join( '' );
+		if ( message ) {
+			previewStatusText.textContent = message;
+			previewStatusBanner.hidden = false;
+
+			if ( previewStatusRetry ) {
+				previewStatusRetry.hidden = false;
+			}
+		} else {
+			previewStatusText.textContent = '';
+			previewStatusBanner.hidden = true;
+
+			if ( previewStatusRetry ) {
+				previewStatusRetry.hidden = true;
+			}
+		}
+	}
+
+	function retryPreviewUpdate() {
+		var tab = getActiveCanvasTabName();
+
+		if ( 'edit' === tab ) {
+			updatePreview();
+			return;
+		}
+
+		if ( 'view' === tab ) {
+			updatePagePreview();
+		}
+	}
+
+	function initPreviewStatusBanner() {
+		if ( previewStatusRetry ) {
+			previewStatusRetry.addEventListener( 'click', retryPreviewUpdate );
+		}
 	}
 
 	function cloneElementPath( path ) {
@@ -4923,34 +4916,6 @@
 		return html;
 	}
 
-	function getSelectedBlockPreviewDocument() {
-		var parts = parseBlockContent( getCodeValue() );
-
-		return buildPreviewDocument( parts.body, parts.styles.join( '\n' ), { editMode: true } );
-	}
-
-	function getAllBlocksPreviewDocument() {
-		var allStyles = [];
-		var allBodies = [];
-		var index;
-		var block;
-		var parts;
-
-		commitCodeToSelectedBlock();
-
-		for ( index = 0; index < editorState.blocks.length; index++ ) {
-			block = editorState.blocks[ index ];
-			parts = parseBlockContent( block.content || '' );
-			allStyles = allStyles.concat( parts.styles );
-
-			if ( parts.body ) {
-				allBodies.push( parts.body );
-			}
-		}
-
-		return buildPreviewDocument( allBodies.join( '\n' ), allStyles.join( '\n' ), { blockLinkNavigation: true } );
-	}
-
 	function updatePreview() {
 		if ( ! previewFrame ) {
 			return;
@@ -4971,7 +4936,10 @@
 		}
 
 		if ( ! config.previewEditBlockUrl || ! config.nonce ) {
-			previewFrame.srcdoc = injectEditInspectIntoDocument( getSelectedBlockPreviewDocument() );
+			setPreviewHealth( 'edit', i18n.previewEditUnavailable || 'Серверное превью блока недоступно. Обновите страницу или проверьте REST API.' );
+			pendingElementSelectionPath = null;
+			pendingElementSelectionGeneration = 0;
+			clearSelectedElementLocator( { skipIframe: true } );
 			return;
 		}
 
@@ -5000,6 +4968,7 @@
 
 				if ( data && 'string' === typeof data.document && data.document ) {
 					previewFrame.srcdoc = injectEditInspectIntoDocument( data.document );
+					setPreviewHealth( 'edit', '' );
 					return;
 				}
 
@@ -5012,7 +4981,8 @@
 
 				pendingElementSelectionPath = null;
 				pendingElementSelectionGeneration = 0;
-				previewFrame.srcdoc = injectEditInspectIntoDocument( getSelectedBlockPreviewDocument() );
+				clearSelectedElementLocator( { skipIframe: true } );
+				setPreviewHealth( 'edit', i18n.previewEditError || 'Не удалось обновить превью блока. Показана последняя рабочая версия.' );
 			} );
 	}
 
@@ -5024,7 +4994,7 @@
 		commitCodeToSelectedBlock();
 
 		if ( ! config.previewDocumentUrl || ! config.nonce ) {
-			pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( getAllBlocksPreviewDocument() );
+			setPreviewHealth( 'view', i18n.previewViewUnavailable || 'Серверный просмотр страницы недоступен. Обновите страницу или проверьте REST API.' );
 			return;
 		}
 
@@ -5056,13 +5026,14 @@
 			.then( function( data ) {
 				if ( data && 'string' === typeof data.document && data.document ) {
 					pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( data.document );
+					setPreviewHealth( 'view', '' );
 					return;
 				}
 
 				throw new Error( 'page_preview_empty' );
 			} )
 			.catch( function() {
-				pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( getAllBlocksPreviewDocument() );
+				setPreviewHealth( 'view', i18n.previewViewError || 'Не удалось обновить просмотр страницы. Показана последняя рабочая версия.' );
 			} );
 	}
 
@@ -5736,6 +5707,8 @@
 				}
 			}
 
+			syncPreviewStatusBanner();
+
 			if ( 'code' === tabName && ! isAnchorBlock( selectedBlock ) ) {
 				refreshCodeEditor();
 				window.setTimeout( function() {
@@ -6219,6 +6192,7 @@
 	initVisualTextEditBridge();
 	elementEditorController = initElementEditorPanel();
 	initCanvasTabs();
+	initPreviewStatusBanner();
 	initSaveAndPreview();
 	initPageSettings();
 	updateSavedBaseline();

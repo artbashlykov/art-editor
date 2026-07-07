@@ -786,6 +786,17 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					</button>
 				</div>
 			</div>
+			<div class="art-editor-screen__preview-status" id="art-editor-preview-status" hidden role="status" aria-live="polite">
+				<p class="art-editor-screen__preview-status-text" id="art-editor-preview-status-text"></p>
+				<button
+					type="button"
+					class="art-editor-screen__preview-status-retry"
+					id="art-editor-preview-status-retry"
+					hidden
+				>
+					<?php echo esc_html__( 'Повторить', 'art-editor' ); ?>
+				</button>
+			</div>
 			<div class="art-editor-screen__canvas-panels">
 				<div
 					class="art-editor-screen__canvas-panel"

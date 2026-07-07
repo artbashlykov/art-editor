@@ -1263,6 +1263,52 @@ body.art-editor-screen {
 	border-bottom: 1px solid #dcdcde;
 }
 
+.art-editor-screen__preview-status {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 12px;
+	border-bottom: 1px solid #f0c33c;
+	background: #fcf9e8;
+	color: #6f4e00;
+}
+
+.art-editor-screen__preview-status[hidden] {
+	display: none !important;
+}
+
+.art-editor-screen__preview-status-text {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.45;
+}
+
+.art-editor-screen__preview-status-retry {
+	flex-shrink: 0;
+	margin: 0;
+	padding: 4px 10px;
+	border: 1px solid #c3a32a;
+	border-radius: 4px;
+	background: #fff;
+	color: #6f4e00;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.4;
+	cursor: pointer;
+}
+
+.art-editor-screen__preview-status-retry:hover,
+.art-editor-screen__preview-status-retry:focus {
+	border-color: #a88b1f;
+	color: #4a3600;
+}
+
+.art-editor-screen__preview-status-retry[hidden] {
+	display: none !important;
+}
+
 .art-editor-screen__canvas-tabs {
 	display: flex;
 	flex: 1;

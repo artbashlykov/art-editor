@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.20
+Stable tag: 0.2.21
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.21 =
+* Preview stability: remove client-side unscoped preview fallback when REST fails; keep the last good server preview and show a warning banner with retry.
+* Preview errors are shown separately for Edit and View tabs.
 
 = 0.2.20 =
 * Element editor: select parent containers (section, div) via repeated click at the same spot, Alt+click, or the new Parent button in the sidebar.
