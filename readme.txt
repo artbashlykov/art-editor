@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.31
+Stable tag: 0.2.32
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,11 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.32 =
+* Fix anchor block id resetting on page reload and when switching blocks (preserve stored anchor id when the input is stale/empty).
+* Fix slow block loading: stop duplicate preview REST calls when switching blocks; skip page preview refresh on Edit tab block switch.
+* Restore link field blur behavior: finalize link edits only when focus stays inside the element panel; flush pending link edits when switching blocks.
 
 = 0.2.31 =
 * Link editor: safe live editing for all URL types (`#anchor`, `/path`, `mailto:`, `tel:`, external) — no premature `https://`, no stripping `<a>` while typing, new links wrap only on blur/save.

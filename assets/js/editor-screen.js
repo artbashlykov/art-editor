@@ -59,6 +59,8 @@
 	var previewRestoreGeneration = 0;
 	var previewRequestGeneration = 0;
 	var pagePreviewRequestGeneration = 0;
+	var suppressNextEditPreviewRefresh = false;
+	var suppressNextViewPreviewRefresh = false;
 	var suppressCodeChangeEvents = false;
 
 	var previewLoadingUi = {
@@ -238,6 +240,14 @@
 		normalized = normalized.replace( /^-+|-+$/g, '' );
 
 		return normalized;
+	}
+
+	function getAnchorIdFromBlock( block ) {
+		if ( ! block ) {
+			return '';
+		}
+
+		return normalizeAnchorId( block.anchorId || parseAnchorIdFromContent( block.content || '' ) );
 	}
 
 	function buildAnchorBlockContent( anchorId ) {
@@ -1923,10 +1933,16 @@
 
 		if ( linkUrlInput ) {
 			linkUrlInput.addEventListener( 'input', scheduleLinkApply );
-			linkUrlInput.addEventListener( 'blur', function() {
+			linkUrlInput.addEventListener( 'blur', function( event ) {
+				var relatedTarget = event.relatedTarget;
+
 				cancelPendingLinkApply();
 
 				if ( isSyncingLinkControls ) {
+					return;
+				}
+
+				if ( ! relatedTarget || ! elementPanel.contains( relatedTarget ) ) {
 					return;
 				}
 
@@ -2722,15 +2738,29 @@
 		}
 	}
 
-	function commitAnchorToSelectedBlock() {
+	function commitAnchorToSelectedBlock( options ) {
+		var settings = options || {};
 		var block = getBlockById( editorState.selectedId );
+		var fromInput;
 		var anchorId;
+		var storedAnchorId;
 
 		if ( ! isAnchorBlock( block ) ) {
 			return;
 		}
 
-		anchorId = anchorIdInput ? normalizeAnchorId( anchorIdInput.value ) : normalizeAnchorId( block.anchorId || '' );
+		storedAnchorId = getAnchorIdFromBlock( block );
+		fromInput = anchorIdInput ? normalizeAnchorId( anchorIdInput.value ) : '';
+
+		if ( fromInput ) {
+			anchorId = fromInput;
+		} else if ( settings.allowEmpty ) {
+			anchorId = '';
+		} else if ( anchorIdInput && document.activeElement === anchorIdInput ) {
+			anchorId = '';
+		} else {
+			anchorId = storedAnchorId;
+		}
 
 		if ( anchorIdInput && anchorIdInput.value !== anchorId ) {
 			anchorIdInput.value = anchorId;
@@ -5391,9 +5421,22 @@
 	}
 
 	function syncAnchorEditorFromBlock( block ) {
-		if ( anchorIdInput ) {
-			anchorIdInput.value = block && block.anchorId ? block.anchorId : '';
+		var anchorId;
+
+		if ( ! anchorIdInput ) {
+			return;
 		}
+
+		anchorId = getAnchorIdFromBlock( block );
+
+		if ( block && anchorId && ! block.anchorId ) {
+			block.anchorId = anchorId;
+			block.content = buildAnchorBlockContent( anchorId );
+			block.title = getAnchorBlockTitle( anchorId );
+			block.titleLocked = true;
+		}
+
+		anchorIdInput.value = anchorId;
 	}
 
 	function syncSelectionFromBlock( options ) {
@@ -5409,7 +5452,8 @@
 		if ( isAnchorBlock( block ) ) {
 			syncAnchorEditorFromBlock( block );
 			setCodeEditorEnabled( false );
-			updatePagePreview();
+			updatePagePreview( previewOptions );
+			suppressNextViewPreviewRefresh = !! showLoading;
 			return;
 		}
 
@@ -5423,11 +5467,11 @@
 
 		if ( 'edit' === activeTab ) {
 			updatePreview( previewOptions );
-		} else {
-			updatePreview();
+			suppressNextEditPreviewRefresh = true;
+		} else if ( 'view' === activeTab ) {
+			updatePagePreview( previewOptions );
+			suppressNextViewPreviewRefresh = true;
 		}
-
-		updatePagePreview();
 	}
 
 	function syncCodeFromSelection() {
@@ -5548,6 +5592,7 @@
 		}
 
 		clearSelectedElementLocator();
+		flushPendingElementEdits( { skipHistory: true } );
 		pushHistory();
 		commitCodeToSelectedBlock();
 		editorState.selectedId = blockId;
@@ -5662,7 +5707,6 @@
 			commitAnchorToSelectedBlock();
 			renderStructure();
 			scheduleUnsavedIndicatorUpdate();
-			updatePagePreview();
 		} );
 
 		anchorIdInput.addEventListener( 'blur', function() {
@@ -5670,7 +5714,7 @@
 				return;
 			}
 
-			commitAnchorToSelectedBlock();
+			commitAnchorToSelectedBlock( { allowEmpty: true } );
 			renderStructure();
 			scheduleUnsavedIndicatorUpdate();
 			updatePagePreview();
@@ -5921,10 +5965,25 @@
 
 				if ( isAnchorBlock( selectedBlock ) ) {
 					syncAnchorEditorFromBlock( selectedBlock );
-					updatePagePreview();
+
+					if ( ! suppressNextViewPreviewRefresh ) {
+						updatePagePreview();
+					} else {
+						suppressNextViewPreviewRefresh = false;
+					}
 
 					if ( devicePreview ) {
 						devicePreview.syncMobileFrameWidth();
+					}
+				} else if ( suppressNextEditPreviewRefresh ) {
+					suppressNextEditPreviewRefresh = false;
+
+					if ( devicePreview ) {
+						devicePreview.syncMobileFrameWidth();
+					}
+
+					if ( isSelectedElementLocatorForCurrentBlock() && elementEditorController && ! isPageSettingsPanelOpen() ) {
+						elementEditorController.openPanel( editorState.selectedElementLocator );
 					}
 				} else {
 					updatePreview( { showLoading: true } );
@@ -5951,7 +6010,12 @@
 
 			if ( 'view' === tabName ) {
 				commitCodeToSelectedBlock();
-				updatePagePreview( { showLoading: true } );
+
+				if ( ! suppressNextViewPreviewRefresh ) {
+					updatePagePreview( { showLoading: true } );
+				} else {
+					suppressNextViewPreviewRefresh = false;
+				}
 
 				if ( devicePreview ) {
 					devicePreview.syncMobileFrameWidth();
