@@ -30,28 +30,57 @@ class Art_Editor_Preview {
 	 * Parse raw block HTML into body markup and style contents.
 	 *
 	 * @param string $html Block HTML.
-	 * @return array{styles:string[],body:string}
+	 * @param int    $depth Recursion guard for nested document shells.
+	 * @return array{styles:string[],body:string,links:string[]}
 	 */
-	public static function parse_block_parts( $html ) {
-		$html   = (string) $html;
+	public static function parse_block_parts( $html, $depth = 0 ) {
+		$html   = self::normalize_block_html( $html );
 		$styles = array();
+		$links  = array();
 		$body   = $html;
 
 		if ( '' === trim( $html ) || ! class_exists( 'DOMDocument' ) ) {
 			return array(
 				'styles' => $styles,
 				'body'   => $body,
+				'links'  => $links,
 			);
 		}
+
+		$trimmed     = ltrim( $html );
+		$is_full_doc = 0 === stripos( $trimmed, '<!doctype' ) || 0 === stripos( $trimmed, '<html' );
+		$load_html   = $is_full_doc
+			? $html
+			: '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' . $html . '</body></html>';
 
 		$previous = libxml_use_internal_errors( true );
 		$document = new DOMDocument();
 		$loaded   = $document->loadHTML(
-			'<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' . $html . '</body></html>',
+			$load_html,
 			LIBXML_HTML_NODEFDTD | LIBXML_HTML_NODEFDTD
 		);
 
 		if ( $loaded ) {
+			$link_nodes = $document->getElementsByTagName( 'link' );
+
+			for ( $index = $link_nodes->length - 1; $index >= 0; $index-- ) {
+				$link_node = $link_nodes->item( $index );
+
+				if ( ! $link_node instanceof DOMElement ) {
+					continue;
+				}
+
+				$rel  = strtolower( trim( (string) $link_node->getAttribute( 'rel' ) ) );
+				$href = trim( (string) $link_node->getAttribute( 'href' ) );
+
+				if ( 'stylesheet' !== $rel || '' === $href ) {
+					continue;
+				}
+
+				$links[] = esc_url_raw( $href );
+				$link_node->parentNode->removeChild( $link_node );
+			}
+
 			$style_nodes = $document->getElementsByTagName( 'style' );
 
 			for ( $index = $style_nodes->length - 1; $index >= 0; $index-- ) {
@@ -79,10 +108,42 @@ class Art_Editor_Preview {
 		libxml_clear_errors();
 		libxml_use_internal_errors( $previous );
 
+		$body  = trim( (string) $body );
+		$links = array_values( array_unique( array_filter( $links ) ) );
+
+		if ( $depth < 1 && '' !== $body && preg_match( '/<html\b/i', $body ) ) {
+			$nested = self::parse_block_parts( $body, $depth + 1 );
+
+			return array(
+				'styles' => array_merge( $styles, $nested['styles'] ),
+				'body'   => $nested['body'],
+				'links'  => array_values( array_unique( array_merge( $links, $nested['links'] ) ) ),
+			);
+		}
+
 		return array(
 			'styles' => $styles,
 			'body'   => $body,
+			'links'  => $links,
 		);
+	}
+
+	/**
+	 * Trim and strip a UTF-8 BOM from raw block HTML.
+	 *
+	 * @param string $html Block HTML.
+	 * @return string
+	 */
+	public static function normalize_block_html( $html ) {
+		$html = (string) $html;
+
+		if ( '' === $html ) {
+			return '';
+		}
+
+		$html = preg_replace( '/^\xEF\xBB\xBF/', '', $html );
+
+		return trim( $html );
 	}
 
 	/**
@@ -96,7 +157,7 @@ class Art_Editor_Preview {
 		$index = max( 0, (int) $index );
 		$parts = self::parse_block_parts( $html );
 		$scope = '.art-editor-html-block[data-art-editor-block="' . $index . '"]';
-		$css   = '';
+		$css   = $scope . '{position:relative;isolation:isolate;}';
 
 		foreach ( $parts['styles'] as $style_content ) {
 			$scoped = self::scope_stylesheet( $style_content, $scope );
@@ -108,7 +169,7 @@ class Art_Editor_Preview {
 
 		$markup = '<div class="art-editor-html-block" data-art-editor-block="' . $index . '">';
 
-		if ( '' !== $css ) {
+		if ( '' !== trim( $css ) ) {
 			$markup = '<style>' . $css . '</style>' . $markup;
 		}
 
@@ -116,6 +177,27 @@ class Art_Editor_Preview {
 		$markup .= '</div>';
 
 		return $markup;
+	}
+
+	/**
+	 * Collect unique stylesheet links referenced by HTML blocks.
+	 *
+	 * @param string[] $blocks Block HTML strings.
+	 * @return string[]
+	 */
+	public static function collect_block_stylesheet_links( $blocks ) {
+		$links = array();
+
+		if ( ! is_array( $blocks ) ) {
+			return $links;
+		}
+
+		foreach ( $blocks as $block_html ) {
+			$parts = self::parse_block_parts( (string) $block_html );
+			$links = array_merge( $links, $parts['links'] );
+		}
+
+		return array_values( array_unique( array_filter( $links ) ) );
 	}
 
 	/**
@@ -132,7 +214,9 @@ class Art_Editor_Preview {
 			return '';
 		}
 
-		return self::scope_css_chunk( $css, $scope_selector );
+		$css = self::scope_css_chunk( $css, $scope_selector );
+
+		return self::fix_leaking_declarations( $css );
 	}
 
 	/**
@@ -162,10 +246,75 @@ class Art_Editor_Preview {
 			$body = '<div class="art-editor-canvas"><div class="art-editor-canvas__content">' . $body . '</div></div>';
 		}
 
+		return self::wrap_document_body(
+			$body,
+			array(
+				'layout_mode'           => $options['layout_mode'],
+				'block_link_navigation' => ! empty( $options['block_link_navigation'] ),
+				'stylesheet_links'      => self::collect_block_stylesheet_links( $blocks ),
+			)
+		);
+	}
+
+	/**
+	 * Build a scoped iframe document for the editor "Edit" tab (single block).
+	 *
+	 * @param string $html    Block HTML.
+	 * @param array  $options Preview options.
+	 * @return string
+	 */
+	public static function build_edit_block_document( $html, $options = array() ) {
+		$defaults = array(
+			'layout_mode' => Art_Editor_Post_Meta::LAYOUT_CANVAS,
+			'block_index' => 0,
+		);
+		$options  = wp_parse_args( $options, $defaults );
+		$body     = self::scope_block_html( $html, (int) $options['block_index'] );
+
+		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
+			$body = '<div class="art-editor-canvas"><div class="art-editor-canvas__content">' . $body . '</div></div>';
+		}
+
+		return self::wrap_document_body(
+			$body,
+			array(
+				'layout_mode'           => $options['layout_mode'],
+				'block_link_navigation' => true,
+				'stylesheet_links'      => self::collect_block_stylesheet_links( array( $html ) ),
+			)
+		);
+	}
+
+	/**
+	 * Wrap preview body markup in a full HTML document.
+	 *
+	 * @param string $body    Document body HTML.
+	 * @param array  $options Wrapper options.
+	 * @return string
+	 */
+	private static function wrap_document_body( $body, $options = array() ) {
+		$defaults = array(
+			'layout_mode'           => Art_Editor_Post_Meta::LAYOUT_CANVAS,
+			'block_link_navigation' => false,
+			'stylesheet_links'      => array(),
+		);
+		$options  = wp_parse_args( $options, $defaults );
+
 		$head_parts   = array();
 		$head_parts[] = '<meta charset="utf-8">';
 		$head_parts[] = '<meta name="viewport" content="width=device-width, initial-scale=1">';
 		$head_parts[] = Art_Editor_Editor_Screen::get_site_icon_head_markup();
+
+		foreach ( (array) $options['stylesheet_links'] as $href ) {
+			$href = esc_url( (string) $href );
+
+			if ( '' === $href ) {
+				continue;
+			}
+
+			$head_parts[] = '<link rel="stylesheet" href="' . $href . '">';
+		}
+
 		$head_parts[] = '<style id="art-editor-preview-base">' . self::get_base_styles() . '</style>';
 
 		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
@@ -417,5 +566,23 @@ class Art_Editor_Preview {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Rewrite CSS declarations that leak outside a scoped HTML block.
+	 *
+	 * @param string $css Scoped CSS.
+	 * @return string
+	 */
+	private static function fix_leaking_declarations( $css ) {
+		$css = (string) $css;
+
+		if ( '' === $css ) {
+			return '';
+		}
+
+		$css = preg_replace( '/\bposition\s*:\s*fixed\b/i', 'position:absolute', $css );
+
+		return is_string( $css ) ? $css : '';
 	}
 }

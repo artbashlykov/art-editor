@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.13
+Stable tag: 0.2.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,12 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.14 =
+* HTML block isolation: unified CSS scoping for Edit, View, and frontend (body/html/:root remapped to block wrapper).
+* AI HTML normalization: strip document shell (DOCTYPE/html/body), collect styles and stylesheet links.
+* Scoped blocks use isolation and rewrite position:fixed to position:absolute inside blocks.
+* Edit tab preview now uses server-side scoping (same pipeline as View tab).
 
 = 0.2.13 =
 * Fix: «Delete data on uninstall» checkbox now saves on the first submit (WordPress double-sanitize).

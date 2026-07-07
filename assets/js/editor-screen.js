@@ -54,6 +54,7 @@
 	var pendingElementSelectionPath = null;
 	var pendingElementSelectionGeneration = 0;
 	var previewRestoreGeneration = 0;
+	var previewRequestGeneration = 0;
 	var suppressCodeChangeEvents = false;
 
 	var editorUiState = {
@@ -4296,6 +4297,22 @@
 		].join( '' );
 	}
 
+	function injectEditInspectIntoDocument( documentHtml ) {
+		var html = String( documentHtml || '' );
+		var extras = [
+			'<style id="art-editor-edit-base">',
+			'body a{color:inherit;font-size:inherit;font-weight:inherit;font-family:inherit;background-color:transparent;}',
+			'</style>',
+			getEditInspectHeadMarkup(),
+		].join( '' );
+
+		if ( -1 !== html.indexOf( '</head>' ) ) {
+			return html.replace( '</head>', extras + '</head>' );
+		}
+
+		return html;
+	}
+
 	function getSelectedBlockPreviewDocument() {
 		var parts = parseBlockContent( getCodeValue() );
 
@@ -4330,6 +4347,9 @@
 		}
 
 		previewRestoreGeneration += 1;
+		previewRequestGeneration += 1;
+
+		var requestGeneration = previewRequestGeneration;
 
 		if ( isSelectedElementLocatorForCurrentBlock() && editorState.selectedElementLocator.path ) {
 			pendingElementSelectionPath = editorState.selectedElementLocator.path;
@@ -4339,7 +4359,50 @@
 			pendingElementSelectionGeneration = 0;
 		}
 
-		previewFrame.srcdoc = getSelectedBlockPreviewDocument();
+		if ( ! config.previewEditBlockUrl || ! config.nonce ) {
+			previewFrame.srcdoc = injectEditInspectIntoDocument( getSelectedBlockPreviewDocument() );
+			return;
+		}
+
+		var pageSettings = getPageSettingsFromDom();
+
+		window.fetch( config.previewEditBlockUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-WP-Nonce': config.nonce,
+			},
+			body: JSON.stringify( {
+				html: getCodeValue(),
+				layoutMode: pageSettings.layoutMode,
+			} ),
+		} )
+			.then( function( response ) {
+				if ( ! response.ok ) {
+					throw new Error( 'edit_preview_failed' );
+				}
+
+				return response.json();
+			} )
+			.then( function( data ) {
+				if ( requestGeneration !== previewRequestGeneration ) {
+					return;
+				}
+
+				if ( data && 'string' === typeof data.document && data.document ) {
+					previewFrame.srcdoc = injectEditInspectIntoDocument( data.document );
+					return;
+				}
+
+				throw new Error( 'edit_preview_empty' );
+			} )
+			.catch( function() {
+				if ( requestGeneration !== previewRequestGeneration ) {
+					return;
+				}
+
+				previewFrame.srcdoc = injectEditInspectIntoDocument( getSelectedBlockPreviewDocument() );
+			} );
 	}
 
 	function updatePagePreview() {

@@ -174,6 +174,7 @@ class Art_Editor_Editor_Screen {
 			'saveBlocksUrl'    => esc_url_raw( rest_url( 'art-editor/v1/posts/' . (int) $post->ID . '/html-blocks' ) ),
 			'saveSettingsUrl'  => esc_url_raw( rest_url( 'art-editor/v1/posts/' . (int) $post->ID . '/page-settings' ) ),
 			'previewDocumentUrl' => esc_url_raw( rest_url( 'art-editor/v1/posts/' . (int) $post->ID . '/preview-document' ) ),
+			'previewEditBlockUrl' => esc_url_raw( rest_url( 'art-editor/v1/posts/' . (int) $post->ID . '/preview-edit-block' ) ),
 			'previewUrl'       => esc_url_raw( self::get_preview_url( $post ) ),
 			'htmlBlocks'       => Art_Editor_Content::get_html_blocks_from_post( $post ),
 			'layoutMode'       => Art_Editor_Post_Meta::get_layout_mode( $post->ID ),

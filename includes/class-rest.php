@@ -76,7 +76,22 @@ class Art_Editor_Rest {
 
 		register_rest_route(
 			'art-editor/v1',
-			'/posts/(?P<id>\d+)/leave-builder',
+			'/posts/(?P<id>\d+)/preview-edit-block',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'preview_edit_block' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_post' ),
+				'args'                => array(
+					'id' => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( __CLASS__, 'leave_builder_mode' ),
@@ -239,6 +254,41 @@ class Art_Editor_Rest {
 				'postId'     => $post_id,
 				'layoutMode' => Art_Editor_Post_Meta::sanitize_layout_mode( $layout_mode ),
 				'styleMode'  => Art_Editor_Post_Meta::sanitize_style_mode( $style_mode ),
+				'document'   => $document,
+			)
+		);
+	}
+
+	/**
+	 * Build a scoped preview iframe document for the editor "Edit" tab.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public static function preview_edit_block( $request ) {
+		$post_id = (int) $request->get_param( 'id' );
+		$post    = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post ) {
+			return new WP_Error( 'art_editor_post_not_found', __( 'Запись не найдена.', 'art-editor' ), array( 'status' => 404 ) );
+		}
+
+		$payload     = $request->get_json_params();
+		$layout_mode = isset( $payload['layoutMode'] ) ? $payload['layoutMode'] : Art_Editor_Post_Meta::get_layout_mode( $post_id );
+		$html        = isset( $payload['html'] ) ? (string) $payload['html'] : '';
+
+		$document = Art_Editor_Preview::build_edit_block_document(
+			$html,
+			array(
+				'layout_mode' => $layout_mode,
+				'block_index' => 0,
+			)
+		);
+
+		return rest_ensure_response(
+			array(
+				'postId'     => $post_id,
+				'layoutMode' => Art_Editor_Post_Meta::sanitize_layout_mode( $layout_mode ),
 				'document'   => $document,
 			)
 		);
