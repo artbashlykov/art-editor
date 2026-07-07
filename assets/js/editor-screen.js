@@ -68,6 +68,48 @@
 		mobileWidthMax: 520,
 	};
 
+	function clampMobilePreviewWidth( width ) {
+		return Math.min(
+			devicePreviewLimits.mobileWidthMax,
+			Math.max( devicePreviewLimits.mobileWidthMin, Math.round( width ) )
+		);
+	}
+
+	function getPreviewViewportMetaContent() {
+		if ( 'mobile' === editorUiState.deviceMode ) {
+			return 'width=' + clampMobilePreviewWidth( editorUiState.mobileFrameWidth ) + ', initial-scale=1';
+		}
+
+		return 'width=device-width, initial-scale=1';
+	}
+
+	function applyPreviewViewportToDocument( documentHtml ) {
+		var html = String( documentHtml || '' );
+		var viewportMeta = '<meta name="viewport" content="' + getPreviewViewportMetaContent() + '">';
+
+		if ( /\<meta\s+name=["']viewport["']/i.test( html ) ) {
+			return html.replace(
+				/\<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
+				viewportMeta
+			);
+		}
+
+		return html;
+	}
+
+	function refreshPreviewForDeviceMode() {
+		var activeTab = getActiveCanvasTabName();
+
+		if ( 'edit' === activeTab ) {
+			updatePreview();
+			return;
+		}
+
+		if ( 'view' === activeTab ) {
+			updatePagePreview();
+		}
+	}
+
 	var persistenceState = {
 		savedBlocksSnapshot: '',
 		savedSettingsSnapshot: '',
@@ -3042,7 +3084,7 @@
 			'<html>',
 			'<head>',
 			'<meta charset="utf-8">',
-			'<meta name="viewport" content="width=device-width, initial-scale=1">',
+			'<meta name="viewport" content="' + getPreviewViewportMetaContent() + '">',
 			siteIconHead,
 			'<style>',
 			'html,body{margin:0;padding:0;box-sizing:border-box;}',
@@ -4756,7 +4798,7 @@
 	}
 
 	function injectEditInspectIntoDocument( documentHtml ) {
-		var html = String( documentHtml || '' );
+		var html = applyPreviewViewportToDocument( documentHtml );
 		var extras = [
 			'<style id="art-editor-edit-base">',
 			'body a{color:inherit;font-size:inherit;font-weight:inherit;font-family:inherit;background-color:transparent;}',
@@ -4872,7 +4914,7 @@
 		commitCodeToSelectedBlock();
 
 		if ( ! config.previewDocumentUrl || ! config.nonce ) {
-			pagePreviewFrame.srcdoc = getAllBlocksPreviewDocument();
+			pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( getAllBlocksPreviewDocument() );
 			return;
 		}
 
@@ -4903,14 +4945,14 @@
 			} )
 			.then( function( data ) {
 				if ( data && 'string' === typeof data.document && data.document ) {
-					pagePreviewFrame.srcdoc = data.document;
+					pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( data.document );
 					return;
 				}
 
 				throw new Error( 'page_preview_empty' );
 			} )
 			.catch( function() {
-				pagePreviewFrame.srcdoc = getAllBlocksPreviewDocument();
+				pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( getAllBlocksPreviewDocument() );
 			} );
 	}
 
@@ -5337,10 +5379,7 @@
 		}
 
 		function clampMobileFrameWidth( width ) {
-			return Math.min(
-				devicePreviewLimits.mobileWidthMax,
-				Math.max( devicePreviewLimits.mobileWidthMin, Math.round( width ) )
-			);
+			return clampMobilePreviewWidth( width );
 		}
 
 		function applyMobileFrameWidth() {
@@ -5393,9 +5432,12 @@
 			}
 
 			applyDeviceMode();
+			refreshPreviewForDeviceMode();
 		}
 
 		function finishResizeDrag() {
+			var shouldRefreshPreview = !! resizeDragState;
+
 			if ( ! resizeDragState ) {
 				return;
 			}
@@ -5403,6 +5445,10 @@
 			resizeDragState.handle.classList.remove( 'is-dragging' );
 			canvas.classList.remove( 'is-mobile-resizing' );
 			resizeDragState = null;
+
+			if ( shouldRefreshPreview && 'mobile' === editorUiState.deviceMode ) {
+				refreshPreviewForDeviceMode();
+			}
 		}
 
 		function bindMobileResizeHandle( handle ) {

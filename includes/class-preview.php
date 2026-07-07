@@ -539,6 +539,19 @@ class Art_Editor_Preview {
 				continue;
 			}
 
+			if ( self::css_starts_with_comment( $css, $index ) ) {
+				$comment_end = self::find_css_comment_end( $css, $index );
+
+				if ( false === $comment_end ) {
+					$output .= substr( $css, $index );
+					break;
+				}
+
+				$output .= substr( $css, $index, $comment_end - $index + 1 );
+				$index   = $comment_end + 1;
+				continue;
+			}
+
 			if ( '@' === $css[ $index ] ) {
 				$rule_end = self::find_css_block_end( $css, $index );
 
@@ -673,6 +686,28 @@ class Art_Editor_Preview {
 		for ( ; $index < $length; $index++ ) {
 			$char = $css[ $index ];
 
+			if ( self::css_starts_with_comment( $css, $index ) ) {
+				$comment_end = self::find_css_comment_end( $css, $index );
+
+				if ( false === $comment_end ) {
+					return false;
+				}
+
+				$index = $comment_end;
+				continue;
+			}
+
+			if ( "'" === $char || '"' === $char ) {
+				$string_end = self::skip_css_string( $css, $index );
+
+				if ( false === $string_end ) {
+					return false;
+				}
+
+				$index = $string_end;
+				continue;
+			}
+
 			if ( '{' === $char ) {
 				++$depth;
 				continue;
@@ -685,6 +720,60 @@ class Art_Editor_Preview {
 			--$depth;
 
 			if ( 0 === $depth ) {
+				return $index;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether a CSS comment starts at the given offset.
+	 *
+	 * @param string $css   CSS string.
+	 * @param int    $index Current offset.
+	 * @return bool
+	 */
+	private static function css_starts_with_comment( $css, $index ) {
+		return isset( $css[ $index ], $css[ $index + 1 ] ) && '/' === $css[ $index ] && '*' === $css[ $index + 1 ];
+	}
+
+	/**
+	 * Find the closing offset of a CSS block comment.
+	 *
+	 * @param string $css   CSS string.
+	 * @param int    $start Comment start offset.
+	 * @return int|false
+	 */
+	private static function find_css_comment_end( $css, $start ) {
+		$close = strpos( $css, '*/', $start + 2 );
+
+		if ( false === $close ) {
+			return false;
+		}
+
+		return $close + 1;
+	}
+
+	/**
+	 * Skip a quoted CSS string and return the closing quote offset.
+	 *
+	 * @param string $css   CSS string.
+	 * @param int    $start Opening quote offset.
+	 * @return int|false
+	 */
+	private static function skip_css_string( $css, $start ) {
+		$quote  = $css[ $start ];
+		$length = strlen( $css );
+		$index  = $start + 1;
+
+		for ( ; $index < $length; $index++ ) {
+			if ( '\\' === $css[ $index ] ) {
+				++$index;
+				continue;
+			}
+
+			if ( $quote === $css[ $index ] ) {
 				return $index;
 			}
 		}

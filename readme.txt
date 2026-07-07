@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.18
+Stable tag: 0.2.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,11 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.19 =
+* Fix CSS scoping: skip block comments so @media rules and selectors after /* comments */ stay valid (AI-generated HTML).
+* Improve scoping parser: ignore braces inside CSS strings and comments.
+* Mobile preview: set iframe viewport width to the device frame width so media queries match the preview.
 
 = 0.2.18 =
 * Fix element editor after server-side preview scoping (0.2.14+): normalize DOM paths between scoped iframe and block HTML so styles, padding, margin, links, images, delete, and text edits apply again.
