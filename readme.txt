@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.26
+Stable tag: 0.2.27
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.27 =
+* Fix split canvas: Edit preview no longer stays visible on Code and View tabs (CSS panel visibility regression from 0.2.26).
 
 = 0.2.26 =
 * Anchor editor: settings now live on the Edit tab (not a separate panel); View tab and device toggle are hidden for anchors.

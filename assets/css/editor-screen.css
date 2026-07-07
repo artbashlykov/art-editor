@@ -1580,6 +1580,10 @@ body.art-editor-screen {
 	min-height: 0;
 }
 
+.art-editor-screen__canvas-panel[hidden] {
+	display: none !important;
+}
+
 .art-editor-screen__canvas-panel.is-active {
 	display: flex;
 	flex-direction: column;
@@ -1634,7 +1638,7 @@ body.art-editor-screen {
 	border-radius: 2px;
 }
 
-#art-editor-panel-edit {
+#art-editor-panel-edit.is-active {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
