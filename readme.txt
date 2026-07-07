@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.22
+Stable tag: 0.2.23
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.23 =
+* Fix white gaps between HTML blocks on frontend and in preview: stop reserving min-height on block wrappers.
+* Strip viewport height (100vh and similar) from scoped html/body/:root reset rules so each block wrapper is not forced to full-screen height.
 
 = 0.2.22 =
 * Element editor: external margin (top/bottom) for all elements except images; margin controls moved below the link section.

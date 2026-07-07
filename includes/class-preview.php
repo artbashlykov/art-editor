@@ -157,7 +157,7 @@ class Art_Editor_Preview {
 		$index = max( 0, (int) $index );
 		$parts = self::parse_block_parts( $html );
 		$scope = '.art-editor-html-block[data-art-editor-block="' . $index . '"]';
-		$css   = self::build_wrapper_css( $scope, $parts );
+		$css   = self::build_wrapper_css( $scope );
 
 		foreach ( $parts['styles'] as $style_content ) {
 			$scoped = self::scope_stylesheet( $style_content, $scope );
@@ -184,98 +184,11 @@ class Art_Editor_Preview {
 	/**
 	 * Build base wrapper CSS for a scoped HTML block.
 	 *
-	 * @param string               $scope Scope selector.
-	 * @param array{styles:string[],body:string,links:string[]} $parts Parsed block parts.
+	 * @param string $scope Scope selector.
 	 * @return string
 	 */
-	private static function build_wrapper_css( $scope, $parts ) {
-		$declarations = array(
-			'position:relative',
-			'isolation:isolate',
-			'display:flow-root',
-		);
-		$min_height   = self::detect_block_min_height( implode( "\n", $parts['styles'] ), $parts['body'] );
-
-		if ( '' !== $min_height ) {
-			$declarations[] = 'min-height:' . $min_height;
-		}
-
-		return $scope . '{' . implode( ';', $declarations ) . ';}';
-	}
-
-	/**
-	 * Detect whether a block needs a flow min-height to avoid collapsed wrappers.
-	 *
-	 * @param string $raw_css   Raw CSS from the block.
-	 * @param string $body_html Block body HTML.
-	 * @return string CSS length or empty string.
-	 */
-	private static function detect_block_min_height( $raw_css, $body_html ) {
-		$raw_css   = (string) $raw_css;
-		$body_html = (string) $body_html;
-
-		if ( preg_match( '/\b(?:html|body|:root)\b[^{]*\{[^}]*\bmin-height\s*:\s*([^;}\s]+)/is', $raw_css, $match ) ) {
-			return self::sanitize_css_length( $match[1] );
-		}
-
-		if ( preg_match( '/\bposition\s*:\s*fixed\b/i', $raw_css ) || preg_match( '/\bposition\s*:\s*fixed\b/i', $body_html ) ) {
-			return self::detect_viewport_height_from_css( $raw_css ) ?: '100vh';
-		}
-
-		if (
-			preg_match( '/\bposition\s*:\s*absolute\b/i', $raw_css )
-			&& preg_match( '/\b(?:top|inset)\s*:/i', $raw_css )
-			&& preg_match( '/\b(?:height|min-height)\s*:\s*100(?:vh|dvh|svh)\b/i', $raw_css )
-		) {
-			return self::detect_viewport_height_from_css( $raw_css ) ?: '100vh';
-		}
-
-		if (
-			preg_match( '/\bposition\s*:\s*absolute\b/i', $body_html )
-			&& preg_match( '/\b(?:height|min-height)\s*:\s*100(?:vh|dvh|svh)\b/i', $body_html )
-		) {
-			return '100vh';
-		}
-
-		if (
-			preg_match( '/\bposition\s*:\s*(?:fixed|absolute)\b/i', $raw_css )
-			&& preg_match( '/\btop\s*:\s*0\b/i', $raw_css )
-			&& preg_match( '/\bwidth\s*:\s*100%/i', $raw_css )
-		) {
-			return self::detect_viewport_height_from_css( $raw_css ) ?: '100vh';
-		}
-
-		return '';
-	}
-
-	/**
-	 * Extract the first viewport height length from CSS.
-	 *
-	 * @param string $css Raw CSS.
-	 * @return string
-	 */
-	private static function detect_viewport_height_from_css( $css ) {
-		if ( preg_match( '/\b(?:min-height|height)\s*:\s*(100(?:vh|dvh|svh))\b/i', (string) $css, $match ) ) {
-			return strtolower( $match[1] );
-		}
-
-		return '';
-	}
-
-	/**
-	 * Sanitize a CSS length value for safe inline output.
-	 *
-	 * @param string $value Raw length.
-	 * @return string
-	 */
-	private static function sanitize_css_length( $value ) {
-		$value = strtolower( trim( (string) $value ) );
-
-		if ( preg_match( '/^(\d+(\.\d+)?(px|em|rem|vh|dvh|svh|vw|vmin|vmax|%))$/', $value ) ) {
-			return $value;
-		}
-
-		return '';
+	private static function build_wrapper_css( $scope ) {
+		return $scope . '{position:relative;isolation:isolate;display:flow-root;}';
 	}
 
 	/**
@@ -634,7 +547,61 @@ class Art_Editor_Preview {
 			return $rule;
 		}
 
+		if ( self::rule_targets_document_shell( $selectors ) ) {
+			$body = self::strip_document_shell_sizing( $body );
+
+			if ( '' === trim( $body, " \t\n\r\0\x0B{}" ) ) {
+				return '';
+			}
+		}
+
 		return self::prefix_selectors( $selectors, $scope_selector ) . $body;
+	}
+
+	/**
+	 * Whether a CSS rule selector list targets only document shell roots.
+	 *
+	 * @param string $selectors Selector list.
+	 * @return bool
+	 */
+	private static function rule_targets_document_shell( $selectors ) {
+		$parts = array_filter( array_map( 'trim', explode( ',', (string) $selectors ) ) );
+
+		if ( empty( $parts ) ) {
+			return false;
+		}
+
+		foreach ( $parts as $selector ) {
+			if ( ! preg_match( '/^(html|body|:root)$/i', $selector ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Remove viewport document sizing from html/body/:root rules before scoping.
+	 *
+	 * @param string $rule_body CSS declarations block including braces.
+	 * @return string
+	 */
+	private static function strip_document_shell_sizing( $rule_body ) {
+		$rule_body = (string) $rule_body;
+
+		if ( '' === $rule_body || '{' !== $rule_body[0] ) {
+			return $rule_body;
+		}
+
+		$declarations = substr( $rule_body, 1, -1 );
+		$declarations = preg_replace( '/\bmin-height\s*:\s*100(?:vh|dvh|svh|%)\s*;?/i', '', $declarations );
+		$declarations = preg_replace( '/\bheight\s*:\s*100(?:vh|dvh|svh|%)\s*;?/i', '', $declarations );
+
+		if ( ! is_string( $declarations ) ) {
+			return $rule_body;
+		}
+
+		return '{' . trim( $declarations, " \t\n\r\0\x0B;" ) . '}';
 	}
 
 	/**
