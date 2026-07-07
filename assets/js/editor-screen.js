@@ -548,6 +548,8 @@
 	}
 
 	function handleElementSelection( locator ) {
+		var block;
+
 		if ( elementEditorController && elementEditorController.cancelPendingLinkApply ) {
 			elementEditorController.cancelPendingLinkApply();
 		}
@@ -565,9 +567,10 @@
 			return;
 		}
 
+		block = getBlockById( editorState.selectedId );
 		editorState.selectedElementLocator = {
 			blockId: editorState.selectedId,
-			path: locator.path,
+			path: normalizePreviewElementPathToBlockContent( locator.path, block ? block.content || '' : '' ),
 			tag: locator.tag || '',
 			outerHtml: locator.outerHtml || '',
 			textContent: locator.textContent || '',
@@ -3060,6 +3063,223 @@
 		].join( '' );
 	}
 
+	function cloneElementPath( path ) {
+		if ( ! path || ! path.length ) {
+			return [];
+		}
+
+		return path.map( function( step ) {
+			return {
+				tag: step.tag,
+				index: step.index,
+			};
+		} );
+	}
+
+	function countBlockBodyStylePrefixLength( blockHtml ) {
+		var doc;
+		var children;
+		var index;
+
+		if ( ! blockHtml || ! window.DOMParser ) {
+			return 0;
+		}
+
+		try {
+			doc = new window.DOMParser().parseFromString( blockHtml, 'text/html' );
+
+			if ( ! doc.body ) {
+				return 0;
+			}
+
+			children = doc.body.children;
+
+			for ( index = 0; index < children.length; index++ ) {
+				if ( 'STYLE' === children[ index ].tagName || 'LINK' === children[ index ].tagName ) {
+					continue;
+				}
+
+				return index;
+			}
+
+			return children.length;
+		} catch ( error ) {
+			return 0;
+		}
+	}
+
+	function findElementPathInBlockHtml( blockHtml, path ) {
+		var doc;
+
+		if ( ! blockHtml || ! window.DOMParser || ! path || ! path.length ) {
+			return null;
+		}
+
+		try {
+			doc = new window.DOMParser().parseFromString( blockHtml, 'text/html' );
+
+			return findElementByPath( doc.body, path );
+		} catch ( error ) {
+			return null;
+		}
+	}
+
+	function stripPreviewShellPrefixFromPath( path ) {
+		var stripped = cloneElementPath( path );
+
+		if ( stripped.length >= 3 && 'DIV' === stripped[ 0 ].tag && 'DIV' === stripped[ 1 ].tag && 'DIV' === stripped[ 2 ].tag ) {
+			return stripped.slice( 3 );
+		}
+
+		if ( stripped.length >= 1 && 'DIV' === stripped[ 0 ].tag ) {
+			return stripped.slice( 1 );
+		}
+
+		return stripped;
+	}
+
+	function applyStyleOffsetToElementPath( path, blockHtml ) {
+		var adjusted = cloneElementPath( path );
+		var styleOffset = countBlockBodyStylePrefixLength( blockHtml );
+
+		if ( ! styleOffset || ! adjusted.length ) {
+			return adjusted;
+		}
+
+		adjusted[ 0 ] = {
+			tag: adjusted[ 0 ].tag,
+			index: adjusted[ 0 ].index + styleOffset,
+		};
+
+		return adjusted;
+	}
+
+	function normalizePreviewElementPathToBlockContent( previewPath, blockHtml ) {
+		var stripped;
+		var adjusted;
+		var shellStripped;
+
+		if ( ! previewPath || ! previewPath.length ) {
+			return previewPath || [];
+		}
+
+		if ( findElementPathInBlockHtml( blockHtml, previewPath ) ) {
+			return cloneElementPath( previewPath );
+		}
+
+		stripped = stripPreviewShellPrefixFromPath( previewPath );
+		shellStripped = stripped.length !== previewPath.length;
+
+		if ( shellStripped ) {
+			adjusted = applyStyleOffsetToElementPath( stripped, blockHtml );
+
+			if ( findElementPathInBlockHtml( blockHtml, adjusted ) ) {
+				return adjusted;
+			}
+		}
+
+		adjusted = applyStyleOffsetToElementPath( previewPath, blockHtml );
+
+		if ( findElementPathInBlockHtml( blockHtml, adjusted ) ) {
+			return adjusted;
+		}
+
+		return cloneElementPath( previewPath );
+	}
+
+	function getPreviewHtmlBlockShellPath() {
+		var doc;
+		var htmlBlock;
+		var path = [];
+		var node;
+		var parent;
+		var index;
+
+		if ( ! previewFrame || ! previewFrame.srcdoc || ! window.DOMParser ) {
+			return null;
+		}
+
+		try {
+			doc = new window.DOMParser().parseFromString( previewFrame.srcdoc, 'text/html' );
+
+			if ( ! doc.body ) {
+				return null;
+			}
+
+			htmlBlock = doc.querySelector( '.art-editor-html-block' );
+
+			if ( ! htmlBlock ) {
+				return null;
+			}
+
+			node = htmlBlock;
+
+			while ( node && node !== doc.body ) {
+				parent = node.parentElement;
+
+				if ( ! parent ) {
+					break;
+				}
+
+				index = Array.prototype.indexOf.call( parent.children, node );
+				path.unshift( {
+					tag: node.tagName,
+					index: index,
+				} );
+				node = parent;
+			}
+
+			return path.length ? path : null;
+		} catch ( error ) {
+			return null;
+		}
+	}
+
+	function previewUsesScopedBlockWrapper() {
+		return !! ( previewFrame && previewFrame.srcdoc && -1 !== previewFrame.srcdoc.indexOf( 'art-editor-html-block' ) );
+	}
+
+	function expandBlockContentPathForPreviewIframe( blockPath, blockHtml, layoutMode ) {
+		var path = cloneElementPath( blockPath );
+		var shellPath;
+		var styleOffset;
+
+		if ( ! path.length ) {
+			return path;
+		}
+
+		if ( ! previewUsesScopedBlockWrapper() ) {
+			return path;
+		}
+
+		styleOffset = countBlockBodyStylePrefixLength( blockHtml );
+
+		if ( styleOffset ) {
+			path[ 0 ] = {
+				tag: path[ 0 ].tag,
+				index: path[ 0 ].index - styleOffset,
+			};
+		}
+
+		shellPath = getPreviewHtmlBlockShellPath();
+
+		if ( shellPath && shellPath.length ) {
+			return shellPath.concat( path );
+		}
+
+		if ( 'canvas' === layoutMode ) {
+			return [
+				{ tag: 'DIV', index: 0 },
+				{ tag: 'DIV', index: 0 },
+				{ tag: 'DIV', index: 1 },
+			].concat( path );
+		}
+
+		return [
+			{ tag: 'DIV', index: 1 },
+		].concat( path );
+	}
+
 	function findElementByPath( root, path ) {
 		var node = root;
 		var index;
@@ -4192,7 +4412,11 @@
 			return;
 		}
 
-		nextHtml = applyVisualTextEdit( block.content || '', path, innerHtml );
+		nextHtml = applyVisualTextEdit(
+			block.content || '',
+			normalizePreviewElementPathToBlockContent( path, block.content || '' ),
+			innerHtml
+		);
 
 		if ( null !== nextHtml ) {
 			pushHistory();
@@ -4253,6 +4477,8 @@
 
 		previewFrame.addEventListener( 'load', function() {
 			var restoreGeneration;
+			var pageSettings;
+			var restorePath;
 
 			if ( ! pendingElementSelectionPath || ! previewFrame.contentWindow ) {
 				return;
@@ -4266,10 +4492,17 @@
 				return;
 			}
 
+			pageSettings = getPageSettingsFromDom();
+			restorePath = expandBlockContentPathForPreviewIframe(
+				pendingElementSelectionPath,
+				getCodeValue(),
+				pageSettings.layoutMode
+			);
+
 			previewFrame.contentWindow.postMessage( {
 				source: 'art-editor-parent',
 				type: 'selectElementByPath',
-				path: pendingElementSelectionPath,
+				path: restorePath,
 			}, '*' );
 			pendingElementSelectionPath = null;
 			pendingElementSelectionGeneration = 0;
@@ -4360,7 +4593,9 @@
 			'var path=[];',
 			'var parent;',
 			'var index;',
+			'var htmlBlock=node&&node.closest?node.closest(".art-editor-html-block"):null;',
 			'while(node&&node!==document.body&&node!==document.documentElement){',
+			'if(htmlBlock&&node===htmlBlock){break;}',
 			'parent=node.parentElement;',
 			'if(!parent){break;}',
 			'index=Array.prototype.indexOf.call(parent.children,node);',
@@ -4573,9 +4808,10 @@
 		previewRequestGeneration += 1;
 
 		var requestGeneration = previewRequestGeneration;
+		var pageSettings = getPageSettingsFromDom();
 
 		if ( isSelectedElementLocatorForCurrentBlock() && editorState.selectedElementLocator.path ) {
-			pendingElementSelectionPath = editorState.selectedElementLocator.path;
+			pendingElementSelectionPath = cloneElementPath( editorState.selectedElementLocator.path );
 			pendingElementSelectionGeneration = previewRestoreGeneration;
 		} else {
 			pendingElementSelectionPath = null;
@@ -4586,8 +4822,6 @@
 			previewFrame.srcdoc = injectEditInspectIntoDocument( getSelectedBlockPreviewDocument() );
 			return;
 		}
-
-		var pageSettings = getPageSettingsFromDom();
 
 		window.fetch( config.previewEditBlockUrl, {
 			method: 'POST',
@@ -4624,6 +4858,8 @@
 					return;
 				}
 
+				pendingElementSelectionPath = null;
+				pendingElementSelectionGeneration = 0;
 				previewFrame.srcdoc = injectEditInspectIntoDocument( getSelectedBlockPreviewDocument() );
 			} );
 	}
