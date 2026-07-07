@@ -242,7 +242,7 @@
 
 	function buildAnchorBlockContent( anchorId ) {
 		if ( ! anchorId ) {
-			return '';
+			return '<div class="art-editor-anchor" aria-hidden="true"></div>';
 		}
 
 		return '<div id="' + anchorId + '" class="art-editor-anchor" aria-hidden="true"></div>';
@@ -1375,7 +1375,7 @@
 			linkState = getElementLinkStateFromHtml( block ? block.content || '' : '', locator.path );
 
 			isSyncingLinkControls = true;
-			linkUrlInput.value = normalizeLinkHref( linkState.href );
+			linkUrlInput.value = linkState.href || '';
 			linkBlankCheckbox.checked = linkState.openInNew;
 
 			if ( elementControls ) {
@@ -1491,6 +1491,8 @@
 			var rawHref;
 			var normalizedHref;
 			var openInNew;
+			var isLiveApply;
+			var hasExistingAnchor;
 
 			cancelPendingTextStyleApply();
 
@@ -1506,10 +1508,16 @@
 
 			locator = editorState.selectedElementLocator;
 			rawHref = linkUrlInput ? linkUrlInput.value : '';
-			normalizedHref = normalizeLinkHref( rawHref );
+			isLiveApply = !! settings.live && ! settings.finalize;
+			hasExistingAnchor = elementHasLinkAnchorInHtml( block.content || '', locator.path );
+			normalizedHref = normalizeLinkHref( rawHref, { live: isLiveApply } );
 			openInNew = linkBlankCheckbox ? linkBlankCheckbox.checked : false;
 
-			if ( linkUrlInput && linkUrlInput.value !== normalizedHref ) {
+			if ( isLiveApply && ! hasExistingAnchor ) {
+				return;
+			}
+
+			if ( linkUrlInput && linkUrlInput.value !== normalizedHref && ! isLiveApply ) {
 				isSyncingLinkControls = true;
 				linkUrlInput.value = normalizedHref;
 				isSyncingLinkControls = false;
@@ -1519,7 +1527,8 @@
 				block.content || '',
 				locator.path,
 				normalizedHref,
-				openInNew
+				openInNew,
+				{ live: isLiveApply }
 			);
 
 			if ( ! result || result.html === block.content ) {
@@ -1554,7 +1563,7 @@
 			window.clearTimeout( linkApplyTimer );
 			linkApplyTimer = window.setTimeout( function() {
 				linkApplyTimer = null;
-				applyLinkFromControls();
+				applyLinkFromControls( { live: true } );
 			}, 400 );
 		}
 
@@ -1732,7 +1741,7 @@
 
 			cancelPendingLinkApply();
 			cancelPendingTextStyleApply();
-			applyLinkFromControls( { skipHistory: !! settings.skipHistory } );
+			applyLinkFromControls( { skipHistory: !! settings.skipHistory, finalize: true } );
 			applyTextStyleFromControls(
 				{
 					fontSize: true,
@@ -1914,25 +1923,21 @@
 
 		if ( linkUrlInput ) {
 			linkUrlInput.addEventListener( 'input', scheduleLinkApply );
-			linkUrlInput.addEventListener( 'blur', function( event ) {
-				var relatedTarget = event.relatedTarget;
-
+			linkUrlInput.addEventListener( 'blur', function() {
 				cancelPendingLinkApply();
 
 				if ( isSyncingLinkControls ) {
 					return;
 				}
 
-				if ( ! relatedTarget || ! elementPanel.contains( relatedTarget ) ) {
-					return;
-				}
-
-				applyLinkFromControls();
+				applyLinkFromControls( { finalize: true } );
 			} );
 		}
 
 		if ( linkBlankCheckbox ) {
-			linkBlankCheckbox.addEventListener( 'change', applyLinkFromControls );
+			linkBlankCheckbox.addEventListener( 'change', function() {
+				applyLinkFromControls( { finalize: true } );
+			} );
 		}
 
 		if ( fontSizeInput ) {
@@ -3597,7 +3602,26 @@
 		return null;
 	}
 
-	function normalizeLinkHref( href ) {
+	function elementHasLinkAnchorInHtml( html, path ) {
+		var doc;
+		var target;
+
+		if ( ! html || ! window.DOMParser || ! path || ! path.length ) {
+			return false;
+		}
+
+		try {
+			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			target = findElementByPath( doc.body, path );
+
+			return !! ( target && findLinkAnchorForElement( target, doc.body ) );
+		} catch ( error ) {
+			return false;
+		}
+	}
+
+	function normalizeLinkHref( href, options ) {
+		var settings = options || {};
 		var trimmed;
 		var schemeMatch;
 
@@ -3620,12 +3644,16 @@
 		}
 
 		if ( 0 === trimmed.indexOf( '//' ) ) {
-			return 'https:' + trimmed;
+			return settings.live ? trimmed : 'https:' + trimmed;
 		}
 
 		schemeMatch = trimmed.match( /^([a-z][a-z0-9+.-]*):/i );
 
 		if ( schemeMatch ) {
+			return trimmed;
+		}
+
+		if ( settings.live ) {
 			return trimmed;
 		}
 
@@ -4442,18 +4470,19 @@
 		}
 	}
 
-	function applyElementLinkEdit( html, path, href, openInNew ) {
+	function applyElementLinkEdit( html, path, href, openInNew, options ) {
 		var doc;
 		var target;
 		var anchor;
 		var newAnchor;
 		var selectionPath;
+		var settings = options || {};
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length ) {
 			return null;
 		}
 
-		href = normalizeLinkHref( href );
+		href = normalizeLinkHref( href, { live: !! settings.live } );
 
 		try {
 			doc = new window.DOMParser().parseFromString( html, 'text/html' );

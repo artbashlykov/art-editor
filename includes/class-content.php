@@ -394,7 +394,7 @@ class Art_Editor_Content {
 		$anchor_id = self::sanitize_anchor_id( $anchor_id );
 
 		if ( '' === $anchor_id ) {
-			return '';
+			return '<div class="art-editor-anchor" aria-hidden="true"></div>';
 		}
 
 		return sprintf(

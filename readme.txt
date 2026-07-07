@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.30
+Stable tag: 0.2.31
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.31 =
+* Link editor: safe live editing for all URL types (`#anchor`, `/path`, `mailto:`, `tel:`, external) — no premature `https://`, no stripping `<a>` while typing, new links wrap only on blur/save.
+* Anchor block: clearing the anchor id no longer removes the placeholder markup while editing.
 
 = 0.2.30 =
 * Fix link editor: clearing the URL field (e.g. removing `#` from `href="#"`) no longer unwraps the `<a>` tag and strips button markup.
