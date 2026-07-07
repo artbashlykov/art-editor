@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.15
+Stable tag: 0.2.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,11 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.16 =
+* Fix multi-block preview overlap: scoped wrappers now reserve min-height when block CSS uses viewport-positioned fixed/absolute layouts.
+* Rewrite inline position:fixed in block HTML during scoping.
+* Canvas layout: flow-root stacking for .art-editor-html-block wrappers.
 
 = 0.2.15 =
 * Element editor for div/section: grouped internal padding and external margin controls (top/bottom).

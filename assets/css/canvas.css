@@ -40,6 +40,11 @@ body.art-editor-template-canvas {
 	margin-top: 0;
 }
 
+.art-editor-canvas__content > .art-editor-html-block {
+	position: relative;
+	display: flow-root;
+}
+
 .art-editor-canvas__content a:not( [style*='text-decoration'] ):not( :has( [style*='text-decoration'] ) ) {
 	text-decoration: none;
 }

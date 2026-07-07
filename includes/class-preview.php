@@ -157,7 +157,7 @@ class Art_Editor_Preview {
 		$index = max( 0, (int) $index );
 		$parts = self::parse_block_parts( $html );
 		$scope = '.art-editor-html-block[data-art-editor-block="' . $index . '"]';
-		$css   = $scope . '{position:relative;isolation:isolate;}';
+		$css   = self::build_wrapper_css( $scope, $parts );
 
 		foreach ( $parts['styles'] as $style_content ) {
 			$scoped = self::scope_stylesheet( $style_content, $scope );
@@ -167,16 +167,140 @@ class Art_Editor_Preview {
 			}
 		}
 
+		$body = self::fix_inline_leaking_styles( $parts['body'] );
+
 		$markup = '<div class="art-editor-html-block" data-art-editor-block="' . $index . '">';
 
 		if ( '' !== trim( $css ) ) {
 			$markup = '<style>' . $css . '</style>' . $markup;
 		}
 
-		$markup .= $parts['body'];
+		$markup .= $body;
 		$markup .= '</div>';
 
 		return $markup;
+	}
+
+	/**
+	 * Build base wrapper CSS for a scoped HTML block.
+	 *
+	 * @param string               $scope Scope selector.
+	 * @param array{styles:string[],body:string,links:string[]} $parts Parsed block parts.
+	 * @return string
+	 */
+	private static function build_wrapper_css( $scope, $parts ) {
+		$declarations = array(
+			'position:relative',
+			'isolation:isolate',
+			'display:flow-root',
+		);
+		$min_height   = self::detect_block_min_height( implode( "\n", $parts['styles'] ), $parts['body'] );
+
+		if ( '' !== $min_height ) {
+			$declarations[] = 'min-height:' . $min_height;
+		}
+
+		return $scope . '{' . implode( ';', $declarations ) . ';}';
+	}
+
+	/**
+	 * Detect whether a block needs a flow min-height to avoid collapsed wrappers.
+	 *
+	 * @param string $raw_css   Raw CSS from the block.
+	 * @param string $body_html Block body HTML.
+	 * @return string CSS length or empty string.
+	 */
+	private static function detect_block_min_height( $raw_css, $body_html ) {
+		$raw_css   = (string) $raw_css;
+		$body_html = (string) $body_html;
+
+		if ( preg_match( '/\b(?:html|body|:root)\b[^{]*\{[^}]*\bmin-height\s*:\s*([^;}\s]+)/is', $raw_css, $match ) ) {
+			return self::sanitize_css_length( $match[1] );
+		}
+
+		if ( preg_match( '/\bposition\s*:\s*fixed\b/i', $raw_css ) || preg_match( '/\bposition\s*:\s*fixed\b/i', $body_html ) ) {
+			return self::detect_viewport_height_from_css( $raw_css ) ?: '100vh';
+		}
+
+		if (
+			preg_match( '/\bposition\s*:\s*absolute\b/i', $raw_css )
+			&& preg_match( '/\b(?:top|inset)\s*:/i', $raw_css )
+			&& preg_match( '/\b(?:height|min-height)\s*:\s*100(?:vh|dvh|svh)\b/i', $raw_css )
+		) {
+			return self::detect_viewport_height_from_css( $raw_css ) ?: '100vh';
+		}
+
+		if (
+			preg_match( '/\bposition\s*:\s*absolute\b/i', $body_html )
+			&& preg_match( '/\b(?:height|min-height)\s*:\s*100(?:vh|dvh|svh)\b/i', $body_html )
+		) {
+			return '100vh';
+		}
+
+		if (
+			preg_match( '/\bposition\s*:\s*(?:fixed|absolute)\b/i', $raw_css )
+			&& preg_match( '/\btop\s*:\s*0\b/i', $raw_css )
+			&& preg_match( '/\bwidth\s*:\s*100%/i', $raw_css )
+		) {
+			return self::detect_viewport_height_from_css( $raw_css ) ?: '100vh';
+		}
+
+		return '';
+	}
+
+	/**
+	 * Extract the first viewport height length from CSS.
+	 *
+	 * @param string $css Raw CSS.
+	 * @return string
+	 */
+	private static function detect_viewport_height_from_css( $css ) {
+		if ( preg_match( '/\b(?:min-height|height)\s*:\s*(100(?:vh|dvh|svh))\b/i', (string) $css, $match ) ) {
+			return strtolower( $match[1] );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Sanitize a CSS length value for safe inline output.
+	 *
+	 * @param string $value Raw length.
+	 * @return string
+	 */
+	private static function sanitize_css_length( $value ) {
+		$value = strtolower( trim( (string) $value ) );
+
+		if ( preg_match( '/^(\d+(\.\d+)?(px|em|rem|vh|dvh|svh|vw|vmin|vmax|%))$/', $value ) ) {
+			return $value;
+		}
+
+		return '';
+	}
+
+	/**
+	 * Rewrite inline styles that leak outside a scoped HTML block.
+	 *
+	 * @param string $html Block body HTML.
+	 * @return string
+	 */
+	private static function fix_inline_leaking_styles( $html ) {
+		$html = (string) $html;
+
+		if ( '' === $html ) {
+			return '';
+		}
+
+		return (string) preg_replace_callback(
+			'/\bstyle=(["\'])(.*?)\1/is',
+			static function ( $matches ) {
+				$quote = $matches[1];
+				$style = preg_replace( '/\bposition\s*:\s*fixed\b/i', 'position:absolute', $matches[2] );
+
+				return 'style=' . $quote . ( is_string( $style ) ? $style : $matches[2] ) . $quote;
+			},
+			$html
+		);
 	}
 
 	/**
