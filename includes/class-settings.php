@@ -206,7 +206,9 @@ class Art_Editor_Settings {
 		$sanitized = $defaults;
 
 		if ( is_array( $value ) ) {
-			self::set_delete_data_on_uninstall( ! empty( $value['delete_data_on_uninstall'] ) );
+			if ( array_key_exists( 'delete_data_on_uninstall', $value ) ) {
+				self::set_delete_data_on_uninstall( 'yes' === self::parse_yes_no_setting( $value['delete_data_on_uninstall'] ) );
+			}
 
 			$allowed_slugs = array_keys( self::get_selectable_post_types() );
 			$raw_post_types = isset( $value['post_types'] ) && is_array( $value['post_types'] )
@@ -229,5 +231,21 @@ class Art_Editor_Settings {
 		}
 
 		return $sanitized;
+	}
+
+	/**
+	 * Normalize yes/no flag from a checkbox (0/1) or stored yes/no string.
+	 *
+	 * WordPress may run sanitize callbacks twice; stored "no" must not pass !empty().
+	 *
+	 * @param mixed $value Raw value.
+	 * @return string "yes" or "no".
+	 */
+	public static function parse_yes_no_setting( $value ) {
+		if ( is_string( $value ) && in_array( $value, array( 'yes', 'no' ), true ) ) {
+			return $value;
+		}
+
+		return ! empty( $value ) ? 'yes' : 'no';
 	}
 }

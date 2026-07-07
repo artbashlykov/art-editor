@@ -71,6 +71,11 @@ $art_editor_post_types      = Art_Editor_Settings::get_selectable_post_types();
 						<legend class="screen-reader-text"><?php echo esc_html__( 'Данные при удалении', 'art-editor' ); ?></legend>
 						<label class="art-editor-settings-checklist__label" for="art-editor-delete-data-on-uninstall">
 							<input
+								type="hidden"
+								name="<?php echo esc_attr( $art_editor_settings_option ); ?>[delete_data_on_uninstall]"
+								value="0"
+							/>
+							<input
 								type="checkbox"
 								class="art-editor-settings-checklist__input"
 								id="art-editor-delete-data-on-uninstall"
