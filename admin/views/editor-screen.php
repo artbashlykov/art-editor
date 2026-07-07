@@ -855,13 +855,19 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					aria-labelledby="art-editor-tab-edit"
 					hidden
 				>
-					<div class="art-editor-screen__device-stage">
+					<div class="art-editor-screen__device-stage" id="art-editor-edit-preview-stage">
 						<div class="art-editor-screen__device-frame">
 							<iframe
 								id="art-editor-preview-frame"
 								class="art-editor-screen__preview-frame"
 								title="<?php echo esc_attr__( 'Визуальное редактирование HTML', 'art-editor' ); ?>"
 							></iframe>
+							<div class="art-editor-screen__preview-loading" id="art-editor-edit-preview-loading" hidden>
+								<div class="art-editor-screen__preview-loading-inner" role="status" aria-live="polite">
+									<span class="art-editor-screen__preview-spinner" aria-hidden="true"></span>
+									<span class="art-editor-screen__preview-loading-text"><?php echo esc_html__( 'Загрузка…', 'art-editor' ); ?></span>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -872,13 +878,19 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					aria-labelledby="art-editor-tab-view"
 					hidden
 				>
-					<div class="art-editor-screen__device-stage">
+					<div class="art-editor-screen__device-stage" id="art-editor-view-preview-stage">
 						<div class="art-editor-screen__device-frame">
 							<iframe
 								id="art-editor-page-preview-frame"
 								class="art-editor-screen__preview-frame"
 								title="<?php echo esc_attr__( 'Просмотр всех HTML-блоков', 'art-editor' ); ?>"
 							></iframe>
+							<div class="art-editor-screen__preview-loading" id="art-editor-view-preview-loading" hidden>
+								<div class="art-editor-screen__preview-loading-inner" role="status" aria-live="polite">
+									<span class="art-editor-screen__preview-spinner" aria-hidden="true"></span>
+									<span class="art-editor-screen__preview-loading-text"><?php echo esc_html__( 'Загрузка…', 'art-editor' ); ?></span>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

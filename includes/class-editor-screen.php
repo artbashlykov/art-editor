@@ -237,6 +237,7 @@ class Art_Editor_Editor_Screen {
 				'previewEditUnavailable' => __( 'Серверное превью блока недоступно. Обновите страницу или проверьте REST API.', 'art-editor' ),
 				'previewViewUnavailable' => __( 'Серверный просмотр страницы недоступен. Обновите страницу или проверьте REST API.', 'art-editor' ),
 				'previewRetry'      => __( 'Повторить', 'art-editor' ),
+				'previewLoading'    => __( 'Загрузка…', 'art-editor' ),
 				'elementEditor'       => __( 'Редактор элемента', 'art-editor' ),
 				'clearElementSelection' => __( 'Сбросить выбор элемента', 'art-editor' ),
 				'elementEditorTag'    => __( 'Тег', 'art-editor' ),

@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.23
+Stable tag: 0.2.24
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.24 =
+* Preview loading overlay: semi-transparent backdrop with spinner while Edit/View iframe previews reload.
+* Blocks scrolling during reload when switching to Edit/View tabs or desktop/mobile preview modes.
 
 = 0.2.23 =
 * Fix white gaps between HTML blocks on frontend and in preview: stop reserving min-height on block wrappers.

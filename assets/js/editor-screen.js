@@ -58,7 +58,24 @@
 	var pendingElementSelectionGeneration = 0;
 	var previewRestoreGeneration = 0;
 	var previewRequestGeneration = 0;
+	var pagePreviewRequestGeneration = 0;
 	var suppressCodeChangeEvents = false;
+
+	var previewLoadingUi = {
+		edit: {
+			stage: null,
+			overlay: null,
+		},
+		view: {
+			stage: null,
+			overlay: null,
+		},
+	};
+
+	var previewLoadingWait = {
+		edit: 0,
+		view: 0,
+	};
 
 	var editorUiState = {
 		deviceMode: 'desktop',
@@ -102,15 +119,93 @@
 
 	function refreshPreviewForDeviceMode() {
 		var activeTab = getActiveCanvasTabName();
+		var loadingOptions = { showLoading: true };
 
 		if ( 'edit' === activeTab ) {
-			updatePreview();
+			updatePreview( loadingOptions );
 			return;
 		}
 
 		if ( 'view' === activeTab ) {
-			updatePagePreview();
+			updatePagePreview( loadingOptions );
 		}
+	}
+
+	function initPreviewLoadingUi() {
+		previewLoadingUi.edit.stage = document.getElementById( 'art-editor-edit-preview-stage' );
+		previewLoadingUi.edit.overlay = document.getElementById( 'art-editor-edit-preview-loading' );
+		previewLoadingUi.view.stage = document.getElementById( 'art-editor-view-preview-stage' );
+		previewLoadingUi.view.overlay = document.getElementById( 'art-editor-view-preview-loading' );
+	}
+
+	function setPreviewLoadingVisible( target, isVisible ) {
+		var ui = previewLoadingUi[ target ];
+
+		if ( ! ui || ! ui.stage || ! ui.overlay ) {
+			return;
+		}
+
+		ui.stage.classList.toggle( 'is-preview-loading', isVisible );
+		ui.overlay.hidden = ! isVisible;
+		ui.overlay.setAttribute( 'aria-hidden', isVisible ? 'false' : 'true' );
+
+		if ( isVisible ) {
+			ui.stage.setAttribute( 'aria-busy', 'true' );
+		} else {
+			ui.stage.removeAttribute( 'aria-busy' );
+		}
+	}
+
+	function beginPreviewLoading( target, generation ) {
+		previewLoadingWait[ target ] = generation;
+		setPreviewLoadingVisible( target, true );
+	}
+
+	function finishPreviewLoading( target, generation ) {
+		if ( generation !== previewLoadingWait[ target ] ) {
+			return;
+		}
+
+		previewLoadingWait[ target ] = 0;
+		setPreviewLoadingVisible( target, false );
+	}
+
+	function assignPreviewFrameDocument( target, frame, html, generation ) {
+		var loadHandler;
+		var timeoutId;
+
+		function cleanup() {
+			if ( loadHandler && frame ) {
+				frame.removeEventListener( 'load', loadHandler );
+			}
+
+			loadHandler = null;
+
+			if ( timeoutId ) {
+				window.clearTimeout( timeoutId );
+				timeoutId = null;
+			}
+		}
+
+		if ( ! frame || generation !== previewLoadingWait[ target ] ) {
+			if ( frame ) {
+				frame.srcdoc = html;
+			}
+
+			return;
+		}
+
+		loadHandler = function() {
+			cleanup();
+			finishPreviewLoading( target, generation );
+		};
+
+		frame.addEventListener( 'load', loadHandler );
+		timeoutId = window.setTimeout( function() {
+			cleanup();
+			finishPreviewLoading( target, generation );
+		}, 20000 );
+		frame.srcdoc = html;
 	}
 
 	var persistenceState = {
@@ -3152,14 +3247,15 @@
 
 	function retryPreviewUpdate() {
 		var tab = getActiveCanvasTabName();
+		var loadingOptions = { showLoading: true };
 
 		if ( 'edit' === tab ) {
-			updatePreview();
+			updatePreview( loadingOptions );
 			return;
 		}
 
 		if ( 'view' === tab ) {
-			updatePagePreview();
+			updatePagePreview( loadingOptions );
 		}
 	}
 
@@ -4935,16 +5031,23 @@
 		return html;
 	}
 
-	function updatePreview() {
+	function updatePreview( options ) {
 		if ( ! previewFrame ) {
 			return;
 		}
+
+		var settings = options || {};
+		var showLoading = !! settings.showLoading;
 
 		previewRestoreGeneration += 1;
 		previewRequestGeneration += 1;
 
 		var requestGeneration = previewRequestGeneration;
 		var pageSettings = getPageSettingsFromDom();
+
+		if ( showLoading ) {
+			beginPreviewLoading( 'edit', requestGeneration );
+		}
 
 		if ( isSelectedElementLocatorForCurrentBlock() && editorState.selectedElementLocator.path ) {
 			pendingElementSelectionPath = cloneElementPath( editorState.selectedElementLocator.path );
@@ -4959,6 +5062,11 @@
 			pendingElementSelectionPath = null;
 			pendingElementSelectionGeneration = 0;
 			clearSelectedElementLocator( { skipIframe: true } );
+
+			if ( showLoading ) {
+				finishPreviewLoading( 'edit', requestGeneration );
+			}
+
 			return;
 		}
 
@@ -4986,7 +5094,12 @@
 				}
 
 				if ( data && 'string' === typeof data.document && data.document ) {
-					previewFrame.srcdoc = injectEditInspectIntoDocument( data.document );
+					if ( showLoading ) {
+						assignPreviewFrameDocument( 'edit', previewFrame, injectEditInspectIntoDocument( data.document ), requestGeneration );
+					} else {
+						previewFrame.srcdoc = injectEditInspectIntoDocument( data.document );
+					}
+
 					setPreviewHealth( 'edit', '' );
 					return;
 				}
@@ -5002,18 +5115,38 @@
 				pendingElementSelectionGeneration = 0;
 				clearSelectedElementLocator( { skipIframe: true } );
 				setPreviewHealth( 'edit', i18n.previewEditError || 'Не удалось обновить превью блока. Показана последняя рабочая версия.' );
+
+				if ( showLoading ) {
+					finishPreviewLoading( 'edit', requestGeneration );
+				}
 			} );
 	}
 
-	function updatePagePreview() {
+	function updatePagePreview( options ) {
 		if ( ! pagePreviewFrame ) {
 			return;
 		}
 
+		var settings = options || {};
+		var showLoading = !! settings.showLoading;
+
 		commitCodeToSelectedBlock();
+
+		pagePreviewRequestGeneration += 1;
+
+		var requestGeneration = pagePreviewRequestGeneration;
+
+		if ( showLoading ) {
+			beginPreviewLoading( 'view', requestGeneration );
+		}
 
 		if ( ! config.previewDocumentUrl || ! config.nonce ) {
 			setPreviewHealth( 'view', i18n.previewViewUnavailable || 'Серверный просмотр страницы недоступен. Обновите страницу или проверьте REST API.' );
+
+			if ( showLoading ) {
+				finishPreviewLoading( 'view', requestGeneration );
+			}
+
 			return;
 		}
 
@@ -5043,8 +5176,17 @@
 				return response.json();
 			} )
 			.then( function( data ) {
+				if ( requestGeneration !== pagePreviewRequestGeneration ) {
+					return;
+				}
+
 				if ( data && 'string' === typeof data.document && data.document ) {
-					pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( data.document );
+					if ( showLoading ) {
+						assignPreviewFrameDocument( 'view', pagePreviewFrame, applyPreviewViewportToDocument( data.document ), requestGeneration );
+					} else {
+						pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( data.document );
+					}
+
 					setPreviewHealth( 'view', '' );
 					return;
 				}
@@ -5052,7 +5194,15 @@
 				throw new Error( 'page_preview_empty' );
 			} )
 			.catch( function() {
+				if ( requestGeneration !== pagePreviewRequestGeneration ) {
+					return;
+				}
+
 				setPreviewHealth( 'view', i18n.previewViewError || 'Не удалось обновить просмотр страницы. Показана последняя рабочая версия.' );
+
+				if ( showLoading ) {
+					finishPreviewLoading( 'view', requestGeneration );
+				}
 			} );
 	}
 
@@ -5696,7 +5846,7 @@
 
 			if ( 'edit' === tabName && ! isAnchorBlock( selectedBlock ) ) {
 				commitCodeToSelectedBlock();
-				updatePreview();
+				updatePreview( { showLoading: true } );
 
 				if ( devicePreview ) {
 					devicePreview.syncMobileFrameWidth();
@@ -5719,7 +5869,7 @@
 
 			if ( 'view' === tabName ) {
 				commitCodeToSelectedBlock();
-				updatePagePreview();
+				updatePagePreview( { showLoading: true } );
 
 				if ( devicePreview ) {
 					devicePreview.syncMobileFrameWidth();
@@ -6211,6 +6361,7 @@
 	initVisualTextEditBridge();
 	elementEditorController = initElementEditorPanel();
 	initCanvasTabs();
+	initPreviewLoadingUi();
 	initPreviewStatusBanner();
 	initSaveAndPreview();
 	initPageSettings();

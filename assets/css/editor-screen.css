@@ -1395,13 +1395,61 @@ body.art-editor-screen {
 	background: #f0f0f1;
 }
 
+.art-editor-screen__device-stage.is-preview-loading {
+	overflow: hidden;
+}
+
 .art-editor-screen__device-frame {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
+	position: relative;
 	width: 100%;
 	min-width: 0;
 	min-height: 100%;
+}
+
+.art-editor-screen__preview-loading {
+	display: flex;
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	align-items: center;
+	justify-content: center;
+	background: rgba( 0, 0, 0, 0.45 );
+	pointer-events: auto;
+}
+
+.art-editor-screen__preview-loading[hidden] {
+	display: none !important;
+}
+
+.art-editor-screen__preview-loading-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	color: #fff;
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1.4;
+	text-align: center;
+}
+
+.art-editor-screen__preview-spinner {
+	box-sizing: border-box;
+	width: 32px;
+	height: 32px;
+	border: 3px solid rgba( 255, 255, 255, 0.35 );
+	border-top-color: #fff;
+	border-radius: 50%;
+	animation: art-editor-preview-spin 0.8s linear infinite;
+}
+
+@keyframes art-editor-preview-spin {
+	to {
+		transform: rotate( 360deg );
+	}
 }
 
 .art-editor-screen__canvas--device-mobile .art-editor-screen__device-frame {
