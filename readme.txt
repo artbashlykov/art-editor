@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.27
+Stable tag: 0.2.28
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.28 =
+* Fix anchor editor: hide block preview iframe on Edit tab (no stale HTML from the previous block).
+* Clear edit iframe srcdoc when an anchor block is selected.
 
 = 0.2.27 =
 * Fix split canvas: Edit preview no longer stays visible on Code and View tabs (CSS panel visibility regression from 0.2.26).

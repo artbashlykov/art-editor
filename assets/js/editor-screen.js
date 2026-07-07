@@ -5262,8 +5262,13 @@
 
 	function syncEditPanelContent( block ) {
 		var isAnchor = isAnchorBlock( block );
+		var editPanel = document.getElementById( 'art-editor-panel-edit' );
 		var anchorSettings = document.getElementById( 'art-editor-edit-anchor-settings' );
 		var previewStage = document.getElementById( 'art-editor-edit-preview-stage' );
+
+		if ( editPanel ) {
+			editPanel.classList.toggle( 'art-editor-screen__edit-panel--anchor', !! isAnchor );
+		}
 
 		if ( anchorSettings ) {
 			anchorSettings.hidden = ! isAnchor;
@@ -5271,6 +5276,10 @@
 
 		if ( previewStage ) {
 			previewStage.hidden = !! isAnchor;
+		}
+
+		if ( isAnchor && previewFrame ) {
+			previewFrame.srcdoc = '';
 		}
 	}
 

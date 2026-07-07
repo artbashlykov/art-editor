@@ -1638,6 +1638,15 @@ body.art-editor-screen {
 	border-radius: 2px;
 }
 
+.art-editor-screen__device-stage[hidden],
+#art-editor-edit-anchor-settings[hidden] {
+	display: none !important;
+}
+
+.art-editor-screen__edit-panel--anchor #art-editor-edit-preview-stage {
+	display: none !important;
+}
+
 #art-editor-panel-edit.is-active {
 	display: flex;
 	flex-direction: column;
