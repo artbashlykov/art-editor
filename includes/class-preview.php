@@ -188,7 +188,8 @@ class Art_Editor_Preview {
 	 * @return string
 	 */
 	private static function build_wrapper_css( $scope ) {
-		return $scope . '{position:relative;isolation:isolate;display:flow-root;}';
+		return $scope . '{position:relative;isolation:isolate;display:flow-root;}' .
+			$scope . ' .art-vsl{isolation:auto;}';
 	}
 
 	/**
@@ -275,7 +276,8 @@ class Art_Editor_Preview {
 		$index    = 0;
 
 		foreach ( $blocks as $block_html ) {
-			$body .= self::scope_block_html( $block_html, $index );
+			$block_html = do_shortcode( (string) $block_html );
+			$body      .= self::scope_block_html( $block_html, $index );
 			++$index;
 		}
 
@@ -289,6 +291,7 @@ class Art_Editor_Preview {
 				'layout_mode'           => $options['layout_mode'],
 				'block_link_navigation' => ! empty( $options['block_link_navigation'] ),
 				'stylesheet_links'      => self::collect_block_stylesheet_links( $blocks ),
+				'html_blocks'           => $blocks,
 			)
 		);
 	}
@@ -306,7 +309,7 @@ class Art_Editor_Preview {
 			'block_index' => 0,
 		);
 		$options  = wp_parse_args( $options, $defaults );
-		$body     = self::scope_block_html( $html, (int) $options['block_index'] );
+		$body     = self::scope_block_html( do_shortcode( (string) $html ), (int) $options['block_index'] );
 
 		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
 			$body = '<div class="art-editor-canvas"><div class="art-editor-canvas__content">' . $body . '</div></div>';
@@ -318,6 +321,7 @@ class Art_Editor_Preview {
 				'layout_mode'           => $options['layout_mode'],
 				'block_link_navigation' => true,
 				'stylesheet_links'      => self::collect_block_stylesheet_links( array( $html ) ),
+				'html_blocks'           => array( $html ),
 			)
 		);
 	}
@@ -334,6 +338,7 @@ class Art_Editor_Preview {
 			'layout_mode'           => Art_Editor_Post_Meta::LAYOUT_CANVAS,
 			'block_link_navigation' => false,
 			'stylesheet_links'      => array(),
+			'html_blocks'           => array(),
 		);
 		$options  = wp_parse_args( $options, $defaults );
 
@@ -352,6 +357,31 @@ class Art_Editor_Preview {
 			$head_parts[] = '<link rel="stylesheet" href="' . $href . '">';
 		}
 
+		$partner_assets = apply_filters(
+			'art_editor_preview_assets',
+			array(
+				'styles'        => array(),
+				'scripts'       => array(),
+				'inline_before' => array(),
+			),
+			(array) $options['html_blocks'],
+			$options
+		);
+
+		foreach ( (array) ( $partner_assets['styles'] ?? array() ) as $partner_style ) {
+			$partner_style = esc_url( (string) $partner_style );
+			if ( '' !== $partner_style ) {
+				$head_parts[] = '<link rel="stylesheet" href="' . $partner_style . '">';
+			}
+		}
+
+		foreach ( (array) ( $partner_assets['inline_before'] ?? array() ) as $inline_script ) {
+			$inline_script = (string) $inline_script;
+			if ( '' !== trim( $inline_script ) ) {
+				$head_parts[] = '<script>' . $inline_script . '</script>';
+			}
+		}
+
 		$head_parts[] = '<style id="art-editor-preview-base">' . self::get_base_styles() . '</style>';
 
 		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
@@ -362,7 +392,15 @@ class Art_Editor_Preview {
 			$head_parts[] = self::get_link_guard_script();
 		}
 
-		return '<!doctype html><html><head>' . implode( '', $head_parts ) . '</head><body>' . $body . '</body></html>';
+		$body_scripts = '';
+		foreach ( (array) ( $partner_assets['scripts'] ?? array() ) as $partner_script ) {
+			$partner_script = esc_url( (string) $partner_script );
+			if ( '' !== $partner_script ) {
+				$body_scripts .= '<script src="' . $partner_script . '"></script>';
+			}
+		}
+
+		return '<!doctype html><html><head>' . implode( '', $head_parts ) . '</head><body>' . $body . $body_scripts . '</body></html>';
 	}
 
 	/**

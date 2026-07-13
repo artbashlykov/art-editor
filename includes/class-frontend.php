@@ -21,6 +21,7 @@ class Art_Editor_Frontend {
 		add_filter( 'elementor/frontend/print_google_fonts', array( __CLASS__, 'maybe_disable_elementor_google_fonts' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_block_stylesheets' ), 15 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_canvas_assets' ), 20 );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_partner_assets' ), 25 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_styles' ), 1000 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_styles' ), 9999 );
 		add_action( 'loop_start', array( __CLASS__, 'reset_preview_block_index' ) );
@@ -174,6 +175,28 @@ class Art_Editor_Frontend {
 
 			++$index;
 		}
+	}
+
+	/**
+	 * Let partner plugins enqueue assets on ART Editor frontend pages.
+	 */
+	public static function maybe_enqueue_partner_assets() {
+		if ( is_admin() || wp_doing_ajax() || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
+			return;
+		}
+
+		$post_id = self::get_current_post_id();
+
+		if ( $post_id <= 0 || ! Art_Editor_Post_Meta::should_apply_frontend_settings( $post_id ) ) {
+			return;
+		}
+
+		/**
+		 * Enqueue partner plugin assets for ART Editor HTML blocks.
+		 *
+		 * @param int $post_id Current post ID.
+		 */
+		do_action( 'art_editor_enqueue_partner_assets', $post_id );
 	}
 
 	/**

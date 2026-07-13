@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.34
+Stable tag: 0.2.35
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,11 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.35 =
+* Превью и фронт: `do_shortcode()` в HTML-блоках до scoping (поддержка `[art_vsl]` и других шорткодов).
+* Хуки `art_editor_preview_assets` и `art_editor_enqueue_partner_assets` для подключения CSS/JS партнёрских плагинов (ART VSL и др.).
+* CSS: `.art-vsl` внутри HTML-блока не наследует `isolation:isolate` обёртки.
 
 = 0.2.34 =
 * Editor-owned style mode: dequeue Elementor, theme, and WordPress global styles on ART Editor frontend pages so typography matches the editor preview iframe.
