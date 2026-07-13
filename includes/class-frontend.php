@@ -18,9 +18,11 @@ class Art_Editor_Frontend {
 	public static function init() {
 		add_filter( 'template_include', array( __CLASS__, 'maybe_use_canvas_template' ), 99 );
 		add_filter( 'body_class', array( __CLASS__, 'add_canvas_body_class' ) );
+		add_filter( 'elementor/frontend/print_google_fonts', array( __CLASS__, 'maybe_disable_elementor_google_fonts' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_block_stylesheets' ), 15 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_canvas_assets' ), 20 );
-		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_theme_styles' ), 1000 );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_styles' ), 1000 );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_styles' ), 9999 );
 		add_action( 'loop_start', array( __CLASS__, 'reset_preview_block_index' ) );
 		add_filter( 'render_block', array( __CLASS__, 'maybe_scope_html_block' ), 10, 2 );
 	}
@@ -193,20 +195,43 @@ class Art_Editor_Frontend {
 	}
 
 	/**
-	 * Dequeue active theme styles only for ART Editor posts in editor-owned style mode.
+	 * Whether the current frontend request should use editor-owned styles only.
+	 *
+	 * @return bool
 	 */
-	public static function maybe_dequeue_theme_styles() {
+	public static function uses_editor_owned_frontend_styles() {
 		if ( is_admin() || wp_doing_ajax() || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
-			return;
+			return false;
 		}
 
 		$post_id = self::get_current_post_id();
 
 		if ( $post_id <= 0 || ! Art_Editor_Post_Meta::should_apply_frontend_settings( $post_id ) ) {
-			return;
+			return false;
 		}
 
-		if ( Art_Editor_Post_Meta::STYLE_EDITOR !== Art_Editor_Post_Meta::get_style_mode( $post_id ) ) {
+		return Art_Editor_Post_Meta::STYLE_EDITOR === Art_Editor_Post_Meta::get_style_mode( $post_id );
+	}
+
+	/**
+	 * Disable Elementor kit Google Fonts on editor-owned ART Editor pages.
+	 *
+	 * @param bool $should_print Whether Elementor should print Google Fonts.
+	 * @return bool
+	 */
+	public static function maybe_disable_elementor_google_fonts( $should_print ) {
+		if ( self::uses_editor_owned_frontend_styles() ) {
+			return false;
+		}
+
+		return $should_print;
+	}
+
+	/**
+	 * Dequeue theme, page-builder, and global styles on editor-owned ART Editor pages.
+	 */
+	public static function maybe_dequeue_foreign_styles() {
+		if ( ! self::uses_editor_owned_frontend_styles() ) {
 			return;
 		}
 
@@ -216,29 +241,104 @@ class Art_Editor_Frontend {
 			return;
 		}
 
-		$theme_urls = array_unique(
-			array_filter(
-				array(
-					untrailingslashit( get_template_directory_uri() ),
-					untrailingslashit( get_stylesheet_directory_uri() ),
-				)
-			)
-		);
+		$theme_urls = self::get_theme_style_base_urls();
 
-		foreach ( (array) $wp_styles->queue as $handle ) {
-			if ( empty( $wp_styles->registered[ $handle ] ) || empty( $wp_styles->registered[ $handle ]->src ) ) {
+		foreach ( array_unique( (array) $wp_styles->queue ) as $handle ) {
+			if ( empty( $wp_styles->registered[ $handle ] ) ) {
 				continue;
 			}
 
-			$src = $wp_styles->registered[ $handle ]->src;
-
-			foreach ( $theme_urls as $theme_url ) {
-				if ( 0 === strpos( $src, $theme_url ) ) {
-					wp_dequeue_style( $handle );
-					break;
-				}
+			if ( self::should_dequeue_foreign_style_handle( $handle, $wp_styles->registered[ $handle ], $theme_urls ) ) {
+				wp_dequeue_style( $handle );
 			}
 		}
+	}
+
+	/**
+	 * Theme directory URLs used to detect theme-owned stylesheets.
+	 *
+	 * @return string[]
+	 */
+	private static function get_theme_style_base_urls() {
+		return array_values(
+			array_unique(
+				array_filter(
+					array(
+						untrailingslashit( get_template_directory_uri() ),
+						untrailingslashit( get_stylesheet_directory_uri() ),
+					)
+				)
+			)
+		);
+	}
+
+	/**
+	 * Whether a queued stylesheet should be removed on editor-owned pages.
+	 *
+	 * @param string $handle     Style handle.
+	 * @param object $style      Registered style object.
+	 * @param string[]  $theme_urls Theme base URLs.
+	 * @return bool
+	 */
+	public static function should_dequeue_foreign_style_handle( $handle, $style, $theme_urls ) {
+		if ( self::is_protected_style_handle( $handle ) ) {
+			return false;
+		}
+
+		$handle = (string) $handle;
+		$src    = ( is_object( $style ) && isset( $style->src ) ) ? (string) $style->src : '';
+
+		foreach ( (array) $theme_urls as $theme_url ) {
+			if ( '' !== $src && 0 === strpos( $src, $theme_url ) ) {
+				return true;
+			}
+		}
+
+		if ( 0 === strpos( $handle, 'elementor' ) || 0 === strpos( $handle, 'elementor-pro' ) ) {
+			return true;
+		}
+
+		if ( 0 === strpos( $handle, 'e-gallery' ) || 0 === strpos( $handle, 'e-swiper' ) || 0 === strpos( $handle, 'e-animations' ) ) {
+			return true;
+		}
+
+		if ( 0 === strpos( $handle, 'widget-' ) && ( '' === $src || false !== strpos( $src, 'elementor' ) ) ) {
+			return true;
+		}
+
+		if ( '' !== $src && false !== strpos( $src, '/plugins/elementor/' ) ) {
+			return true;
+		}
+
+		if ( '' !== $src && false !== strpos( $src, '/plugins/elementor-pro/' ) ) {
+			return true;
+		}
+
+		$wordpress_foreign_handles = array(
+			'global-styles',
+			'classic-theme-styles',
+			'wp-block-library',
+			'wp-block-library-theme',
+			'core-block-supports-duotone',
+		);
+
+		return in_array( $handle, $wordpress_foreign_handles, true );
+	}
+
+	/**
+	 * Style handles that must stay enqueued on editor-owned pages.
+	 *
+	 * @param string $handle Style handle.
+	 * @return bool
+	 */
+	private static function is_protected_style_handle( $handle ) {
+		$handle = (string) $handle;
+
+		if ( 0 === strpos( $handle, 'art-editor' ) ) {
+			return true;
+		}
+
+		return in_array( $handle, array( 'admin-bar', 'admin-bar-inline', 'dashicons' ), true );
 	}
 
 	/**

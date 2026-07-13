@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.33
+Stable tag: 0.2.34
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.34 =
+* Editor-owned style mode: dequeue Elementor, theme, and WordPress global styles on ART Editor frontend pages so typography matches the editor preview iframe.
 
 = 0.2.33 =
 * Frontend parity: enqueue external stylesheet links from HTML blocks (e.g. Google Fonts) on published canvas pages — matches editor preview typography.
