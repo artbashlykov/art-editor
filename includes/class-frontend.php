@@ -24,6 +24,8 @@ class Art_Editor_Frontend {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_partner_assets' ), 25 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_styles' ), 1000 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_styles' ), 9999 );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_scripts' ), 1000 );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_scripts' ), 9999 );
 		add_action( 'loop_start', array( __CLASS__, 'reset_preview_block_index' ) );
 		add_filter( 'render_block', array( __CLASS__, 'maybe_scope_html_block' ), 10, 2 );
 	}
@@ -278,6 +280,33 @@ class Art_Editor_Frontend {
 	}
 
 	/**
+	 * Dequeue theme and page-builder scripts on editor-owned ART Editor pages.
+	 */
+	public static function maybe_dequeue_foreign_scripts() {
+		if ( ! self::uses_editor_owned_frontend_styles() ) {
+			return;
+		}
+
+		global $wp_scripts;
+
+		if ( ! $wp_scripts instanceof WP_Scripts ) {
+			return;
+		}
+
+		$theme_urls = self::get_theme_style_base_urls();
+
+		foreach ( array_unique( (array) $wp_scripts->queue ) as $handle ) {
+			if ( empty( $wp_scripts->registered[ $handle ] ) ) {
+				continue;
+			}
+
+			if ( self::should_dequeue_foreign_script_handle( $handle, $wp_scripts->registered[ $handle ], $theme_urls ) ) {
+				wp_dequeue_script( $handle );
+			}
+		}
+	}
+
+	/**
 	 * Theme directory URLs used to detect theme-owned stylesheets.
 	 *
 	 * @return string[]
@@ -308,8 +337,37 @@ class Art_Editor_Frontend {
 			return false;
 		}
 
+		return self::is_foreign_builder_asset_handle( $handle, $style, $theme_urls, self::get_foreign_style_handles() );
+	}
+
+	/**
+	 * Whether a queued script should be removed on editor-owned pages.
+	 *
+	 * @param string $handle     Script handle.
+	 * @param object $script     Registered script object.
+	 * @param string[]  $theme_urls Theme base URLs.
+	 * @return bool
+	 */
+	public static function should_dequeue_foreign_script_handle( $handle, $script, $theme_urls ) {
+		if ( self::is_protected_script_handle( $handle ) ) {
+			return false;
+		}
+
+		return self::is_foreign_builder_asset_handle( $handle, $script, $theme_urls, array() );
+	}
+
+	/**
+	 * Shared rules for theme and page-builder asset handles.
+	 *
+	 * @param string   $handle                 Asset handle.
+	 * @param object   $asset                  Registered asset object.
+	 * @param string[] $theme_urls             Theme base URLs.
+	 * @param string[] $wordpress_foreign_handles Extra WordPress handles (styles only).
+	 * @return bool
+	 */
+	private static function is_foreign_builder_asset_handle( $handle, $asset, $theme_urls, $wordpress_foreign_handles ) {
 		$handle = (string) $handle;
-		$src    = ( is_object( $style ) && isset( $style->src ) ) ? (string) $style->src : '';
+		$src    = ( is_object( $asset ) && isset( $asset->src ) ) ? (string) $asset->src : '';
 
 		foreach ( (array) $theme_urls as $theme_url ) {
 			if ( '' !== $src && 0 === strpos( $src, $theme_url ) ) {
@@ -337,15 +395,22 @@ class Art_Editor_Frontend {
 			return true;
 		}
 
-		$wordpress_foreign_handles = array(
+		return in_array( $handle, (array) $wordpress_foreign_handles, true );
+	}
+
+	/**
+	 * WordPress style handles removed on editor-owned pages.
+	 *
+	 * @return string[]
+	 */
+	private static function get_foreign_style_handles() {
+		return array(
 			'global-styles',
 			'classic-theme-styles',
 			'wp-block-library',
 			'wp-block-library-theme',
 			'core-block-supports-duotone',
 		);
-
-		return in_array( $handle, $wordpress_foreign_handles, true );
 	}
 
 	/**
@@ -362,6 +427,29 @@ class Art_Editor_Frontend {
 		}
 
 		return in_array( $handle, array( 'admin-bar', 'admin-bar-inline', 'dashicons' ), true );
+	}
+
+	/**
+	 * Script handles that must stay enqueued on editor-owned pages.
+	 *
+	 * @param string $handle Script handle.
+	 * @return bool
+	 */
+	private static function is_protected_script_handle( $handle ) {
+		$handle = (string) $handle;
+
+		if ( 0 === strpos( $handle, 'art-editor' ) || 0 === strpos( $handle, 'art-vsl' ) ) {
+			return true;
+		}
+
+		$protected = array(
+			'admin-bar',
+			'jquery',
+			'jquery-core',
+			'jquery-migrate',
+		);
+
+		return in_array( $handle, $protected, true );
 	}
 
 	/**
