@@ -731,6 +731,8 @@
 			textContent: locator.textContent || '',
 		};
 
+		highlightSelectedElementInCode();
+
 		if ( elementEditorController && 'edit' === getActiveCanvasTabName() && isSelectedElementLocatorForCurrentBlock() ) {
 			elementEditorController.openPanel( editorState.selectedElementLocator );
 		}
@@ -2193,6 +2195,67 @@
 		return node < 0 ? 0 : node;
 	}
 
+	function findArtVslShortcodeRange( html ) {
+		var match;
+
+		if ( ! html ) {
+			return null;
+		}
+
+		match = html.match( /\[art_vsl[^\]]*\]/i );
+
+		if ( ! match || 'number' !== typeof match.index ) {
+			return null;
+		}
+
+		return {
+			start: match.index,
+			end: match.index + match[ 0 ].length,
+		};
+	}
+
+	function findIframeRangeInCode( html, outerHtml ) {
+		var srcMatch;
+		var src;
+		var pattern;
+		var tagMatch;
+		var start;
+
+		if ( ! html || ! outerHtml ) {
+			return null;
+		}
+
+		srcMatch = outerHtml.match( /\ssrc=["']([^"']+)["']/i );
+
+		if ( srcMatch && srcMatch[ 1 ] ) {
+			src = srcMatch[ 1 ].replace( /[.*+?^${}()|[\]\\]/g, '\\$&' );
+			pattern = new RegExp( '<iframe\\b[^>]*\\bsrc=["\']' + src + '["\'][^>]*>', 'i' );
+			tagMatch = html.match( pattern );
+
+			if ( tagMatch && 'number' === typeof tagMatch.index ) {
+				start = tagMatch.index;
+
+				return {
+					start: start,
+					end: start + tagMatch[ 0 ].length,
+				};
+			}
+		}
+
+		tagMatch = html.match( /<iframe\b[^>]*>/i );
+
+		if ( ! tagMatch || 'number' !== typeof tagMatch.index ) {
+			return null;
+		}
+
+		start = tagMatch.index;
+
+		return {
+			start: start,
+			end: start + tagMatch[ 0 ].length,
+		};
+	}
+
 	function findRangeByTextContent( html, tag, text ) {
 		var textIndex;
 		var start;
@@ -2299,6 +2362,30 @@
 						start: start,
 						end: start + outerHtml.length,
 					};
+				}
+			}
+
+			if ( locator.tag && 'IFRAME' === String( locator.tag ).toUpperCase() ) {
+				if ( /art-vsl-embed|art-vsl|wp-block-art-vsl/i.test( locator.outerHtml || '' ) ) {
+					range = findArtVslShortcodeRange( html );
+
+					if ( range ) {
+						return range;
+					}
+				}
+
+				range = findIframeRangeInCode( html, locator.outerHtml );
+
+				if ( range ) {
+					return range;
+				}
+			}
+
+			if ( locator.tag && 'VIDEO' === String( locator.tag ).toUpperCase() && /art-vsl|wp-block-art-vsl/i.test( locator.outerHtml || '' ) ) {
+				range = findArtVslShortcodeRange( html );
+
+				if ( range ) {
+					return range;
 				}
 			}
 
@@ -4868,6 +4955,46 @@
 			'var editingOriginal="";',
 			'var editingBlurHandler=null;',
 			'var ignored={HTML:1,HEAD:1,BODY:1,SCRIPT:1,STYLE:1,META:1,LINK:1,TITLE:1};',
+			'function getIframeAtPoint(x,y){',
+			'var iframes=document.querySelectorAll(".art-editor-html-block iframe");',
+			'var i,frame,rect;',
+			'for(i=iframes.length-1;i>=0;i--){',
+			'frame=iframes[i];',
+			'rect=frame.getBoundingClientRect();',
+			'if(x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom){return frame;}',
+			'}',
+			'return null;',
+			'}',
+			'function getVideoAtPoint(x,y){',
+			'var videos=document.querySelectorAll(".art-editor-html-block video");',
+			'var i,video,rect;',
+			'for(i=videos.length-1;i>=0;i--){',
+			'video=videos[i];',
+			'rect=video.getBoundingClientRect();',
+			'if(x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom){return video;}',
+			'}',
+			'return null;',
+			'}',
+			'function resolveInspectableTarget(node,x,y){',
+			'var frame=getIframeAtPoint(x,y);',
+			'if(frame){return frame;}',
+			'var video=getVideoAtPoint(x,y);',
+			'if(video){return video;}',
+			'return getInspectableElement(node);',
+			'}',
+			'function freezeEmbeddedMedia(){',
+			'document.querySelectorAll("video").forEach(function(video){',
+			'try{video.pause();video.autoplay=false;video.removeAttribute("autoplay");}catch(e){}',
+			'});',
+			'document.querySelectorAll("iframe").forEach(function(frame){',
+			'var src=frame.getAttribute("src")||"";',
+			'if(!src){return;}',
+			'try{',
+			'var url=new URL(src,window.location.href);',
+			'if(url.searchParams.get("autoplay")==="1"){url.searchParams.set("autoplay","0");frame.setAttribute("src",url.toString());}',
+			'}catch(e){}',
+			'});',
+			'}',
 			'function getInspectableElement(node){',
 			'while(node&&node!==document.body&&node!==document.documentElement){',
 			'if(!ignored[node.tagName]){return node;}',
@@ -4990,7 +5117,7 @@
 			'function highlightAt(x,y){',
 			'var target;',
 			'if(editing){return;}',
-			'target=getInspectableElement(document.elementFromPoint(x,y));',
+			'target=resolveInspectableTarget(document.elementFromPoint(x,y),x,y);',
 			'if(target===hovered){return;}',
 			'clearHover();',
 			'hovered=target;',
@@ -5016,14 +5143,14 @@
 			'if(editing){return;}',
 			'preventAnchorActivation(event);',
 			'if(event.altKey){',
-			'target=getInspectableElement(event.target);',
+			'target=resolveInspectableTarget(event.target,event.clientX,event.clientY);',
 			'target=target?getInspectableParent(target):null;',
 			'lastPickX=null;',
 			'lastPickY=null;',
 			'lastPickChain=[];',
 			'lastPickIndex=0;',
 			'}else{',
-			'chain=getInspectableAncestorChain(event.target);',
+			'chain=getInspectableAncestorChain(resolveInspectableTarget(event.target,event.clientX,event.clientY));',
 			'dx=lastPickX===null?999:Math.abs(event.clientX-lastPickX);',
 			'dy=lastPickY===null?999:Math.abs(event.clientY-lastPickY);',
 			'sameChain=dx<4&&dy<4&&lastPickChain.length===chain.length;',
@@ -5049,7 +5176,7 @@
 			'},true);',
 			'document.addEventListener("dblclick",function(event){',
 			'var target;',
-			'target=getInspectableElement(event.target);',
+			'target=resolveInspectableTarget(event.target,event.clientX,event.clientY);',
 			'if(!target){return;}',
 			'event.preventDefault();',
 			'event.stopPropagation();',
@@ -5093,6 +5220,11 @@
 			'clearHover();',
 			'}',
 			'},false);',
+			'document.body.classList.add("art-editor-edit-preview");',
+			'freezeEmbeddedMedia();',
+			'setTimeout(freezeEmbeddedMedia,300);',
+			'setTimeout(freezeEmbeddedMedia,1500);',
+			'new MutationObserver(function(){freezeEmbeddedMedia();}).observe(document.body,{childList:true,subtree:true});',
 			'})();',
 			'<\/script>',
 		].join( '' );
@@ -5102,6 +5234,8 @@
 		var html = applyPreviewViewportToDocument( documentHtml );
 		var extras = [
 			'<style id="art-editor-edit-base">',
+			'body.art-editor-edit-preview iframe,',
+			'body.art-editor-edit-preview video{pointer-events:none!important;}',
 			'body a{color:inherit;font-size:inherit;font-weight:inherit;font-family:inherit;background-color:transparent;}',
 			'</style>',
 			getEditInspectHeadMarkup(),
