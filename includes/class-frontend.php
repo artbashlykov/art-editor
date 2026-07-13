@@ -18,6 +18,7 @@ class Art_Editor_Frontend {
 	public static function init() {
 		add_filter( 'template_include', array( __CLASS__, 'maybe_use_canvas_template' ), 99 );
 		add_filter( 'body_class', array( __CLASS__, 'add_canvas_body_class' ) );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_block_stylesheets' ), 15 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_canvas_assets' ), 20 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_theme_styles' ), 1000 );
 		add_action( 'loop_start', array( __CLASS__, 'reset_preview_block_index' ) );
@@ -107,6 +108,70 @@ class Art_Editor_Frontend {
 		}
 
 		return $classes;
+	}
+
+	/**
+	 * Enqueue external stylesheet links referenced inside HTML blocks.
+	 *
+	 * Matches editor preview iframes, which inject the same links into document head.
+	 */
+	public static function maybe_enqueue_block_stylesheets() {
+		if ( is_admin() || wp_doing_ajax() || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
+			return;
+		}
+
+		$post_id = self::get_current_post_id();
+
+		if ( $post_id <= 0 || ! Art_Editor_Post_Meta::should_apply_frontend_settings( $post_id ) ) {
+			return;
+		}
+
+		$post = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post ) {
+			return;
+		}
+
+		$html_blocks = Art_Editor_Content::get_html_blocks_from_post( $post );
+
+		if ( empty( $html_blocks ) ) {
+			return;
+		}
+
+		$block_html = array();
+
+		foreach ( $html_blocks as $html_block ) {
+			if ( ! is_array( $html_block ) ) {
+				continue;
+			}
+
+			$block_html[] = isset( $html_block['content'] ) ? (string) $html_block['content'] : '';
+		}
+
+		$stylesheet_links = Art_Editor_Preview::collect_block_stylesheet_links( $block_html );
+
+		if ( empty( $stylesheet_links ) ) {
+			return;
+		}
+
+		$index = 0;
+
+		foreach ( $stylesheet_links as $stylesheet_href ) {
+			$stylesheet_href = esc_url( (string) $stylesheet_href );
+
+			if ( '' === $stylesheet_href || ! wp_http_validate_url( $stylesheet_href ) ) {
+				continue;
+			}
+
+			wp_enqueue_style(
+				'art-editor-block-css-' . $index . '-' . substr( md5( $stylesheet_href ), 0, 8 ),
+				$stylesheet_href,
+				array(),
+				null
+			);
+
+			++$index;
+		}
 	}
 
 	/**
