@@ -13,6 +13,13 @@ defined( 'ABSPATH' ) || exit;
 class Art_Editor_Frontend {
 
 	/**
+	 * Scripts stashed out of the_content while other filters run.
+	 *
+	 * @var string[]
+	 */
+	private static $protected_content_scripts = array();
+
+	/**
 	 * Register hooks.
 	 */
 	public static function init() {
@@ -28,6 +35,9 @@ class Art_Editor_Frontend {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_scripts' ), 9999 );
 		add_action( 'loop_start', array( __CLASS__, 'reset_preview_block_index' ) );
 		add_filter( 'render_block', array( __CLASS__, 'maybe_scope_html_block' ), 10, 2 );
+		// After do_blocks (9) / wptexturize (10) / do_shortcode (11): stash scripts, restore at the end.
+		add_filter( 'the_content', array( __CLASS__, 'stash_inline_scripts_from_content' ), 12 );
+		add_filter( 'the_content', array( __CLASS__, 'restore_inline_scripts_to_content' ), 99999 );
 	}
 
 	/**
@@ -463,6 +473,76 @@ class Art_Editor_Frontend {
 		}
 
 		Art_Editor_Preview::reset_frontend_block_index();
+	}
+
+	/**
+	 * Whether frontend content filters should protect inline scripts for this request.
+	 *
+	 * @return bool
+	 */
+	private static function should_protect_inline_scripts() {
+		if ( is_admin() || wp_doing_ajax() || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
+			return false;
+		}
+
+		$post_id = self::get_current_post_id();
+
+		return $post_id > 0 && Art_Editor_Post_Meta::should_apply_frontend_settings( $post_id );
+	}
+
+	/**
+	 * Pull inline scripts out of the_content after early content filters.
+	 *
+	 * WordPress may encode & as &#038; inside scripts; we normalize and stash
+	 * clean scripts, then restore them after remaining the_content filters.
+	 *
+	 * @param string $content Post content.
+	 * @return string
+	 */
+	public static function stash_inline_scripts_from_content( $content ) {
+		self::$protected_content_scripts = array();
+
+		if ( ! self::should_protect_inline_scripts() ) {
+			return $content;
+		}
+
+		if ( false === stripos( (string) $content, '<script' ) ) {
+			return $content;
+		}
+
+		list( $content, $scripts ) = Art_Editor_Preview::extract_inline_scripts( (string) $content, true );
+
+		self::$protected_content_scripts = $scripts;
+
+		return $content;
+	}
+
+	/**
+	 * Put protected scripts back after all the_content filters.
+	 *
+	 * @param string $content Post content.
+	 * @return string
+	 */
+	public static function restore_inline_scripts_to_content( $content ) {
+		if ( empty( self::$protected_content_scripts ) ) {
+			// Safety net: decode ampersand entities even if stash was skipped.
+			if ( self::should_protect_inline_scripts() && false !== stripos( (string) $content, '<script' ) ) {
+				$content = preg_replace_callback(
+					'/<script\b[^>]*>[\s\S]*?<\/script>/i',
+					static function ( $matches ) {
+						return Art_Editor_Preview::normalize_script_ampersands( $matches[0] );
+					},
+					(string) $content
+				);
+			}
+
+			return is_string( $content ) ? $content : (string) $content;
+		}
+
+		$content = Art_Editor_Preview::restore_inline_scripts( (string) $content, self::$protected_content_scripts );
+		self::$protected_content_scripts = array();
+
+		return $content;
 	}
 
 	/**

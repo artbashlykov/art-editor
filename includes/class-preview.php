@@ -158,10 +158,11 @@ class Art_Editor_Preview {
 	 * DOMDocument/libxml treats HTML-looking fragments inside scripts
 	 * (e.g. '</td>') as real tags and can encode & as entities — breaking JS.
 	 *
-	 * @param string $html Block HTML.
+	 * @param string $html             Block HTML.
+	 * @param bool   $use_placeholders When true, replace scripts with HTML comment tokens.
 	 * @return array{0:string,1:string[]} HTML without scripts, list of raw script tags.
 	 */
-	public static function extract_inline_scripts( $html ) {
+	public static function extract_inline_scripts( $html, $use_placeholders = false ) {
 		$html    = (string) $html;
 		$scripts = array();
 
@@ -171,8 +172,14 @@ class Art_Editor_Preview {
 
 		$replaced = preg_replace_callback(
 			'/<script\b[^>]*>[\s\S]*?<\/script>/i',
-			static function ( $matches ) use ( &$scripts ) {
-				$scripts[] = $matches[0];
+			static function ( $matches ) use ( &$scripts, $use_placeholders ) {
+				$index     = count( $scripts );
+				$scripts[] = Art_Editor_Preview::normalize_script_ampersands( $matches[0] );
+
+				if ( $use_placeholders ) {
+					return '<!--art-editor-protected-script:' . $index . '-->';
+				}
+
 				return '';
 			},
 			$html
@@ -183,6 +190,51 @@ class Art_Editor_Preview {
 		}
 
 		return array( $replaced, $scripts );
+	}
+
+	/**
+	 * Restore HTML entity ampersands that break JavaScript operators.
+	 *
+	 * WordPress content filters can turn && into &#038;&#038; inside scripts.
+	 *
+	 * @param string $script Raw script tag markup.
+	 * @return string
+	 */
+	public static function normalize_script_ampersands( $script ) {
+		$script = (string) $script;
+
+		if ( '' === $script ) {
+			return '';
+		}
+
+		return str_replace(
+			array( '&#038;', '&#38;', '&amp;' ),
+			'&',
+			$script
+		);
+	}
+
+	/**
+	 * Restore scripts previously replaced with comment placeholders.
+	 *
+	 * @param string   $html    HTML with placeholders.
+	 * @param string[] $scripts Raw script tags.
+	 * @return string
+	 */
+	public static function restore_inline_scripts( $html, $scripts ) {
+		$html    = (string) $html;
+		$scripts = is_array( $scripts ) ? $scripts : array();
+
+		if ( empty( $scripts ) ) {
+			return $html;
+		}
+
+		foreach ( $scripts as $index => $script_tag ) {
+			$placeholder = '<!--art-editor-protected-script:' . (int) $index . '-->';
+			$html        = str_replace( $placeholder, self::normalize_script_ampersands( $script_tag ), $html );
+		}
+
+		return $html;
 	}
 
 	/**
@@ -217,7 +269,7 @@ class Art_Editor_Preview {
 		$markup .= $body;
 
 		foreach ( (array) $parts['scripts'] as $script_tag ) {
-			$markup .= $script_tag;
+			$markup .= self::normalize_script_ampersands( $script_tag );
 		}
 
 		$markup .= '</div>';
