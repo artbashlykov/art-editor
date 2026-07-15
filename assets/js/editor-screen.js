@@ -2648,7 +2648,11 @@
 		renderStructure();
 		syncCodeFromSelection();
 
-		if ( editorState.selectedId && ! isAnchorBlock( getBlockById( editorState.selectedId ) ) && typeof activateCanvasTab === 'function' ) {
+		if ( ! editorState.blocks.length ) {
+			// Empty structure: open Code so the user can paste HTML immediately.
+			switchToCodeTab();
+			setCodeEditorEnabled( true );
+		} else if ( editorState.selectedId && ! isAnchorBlock( getBlockById( editorState.selectedId ) ) && typeof activateCanvasTab === 'function' ) {
 			activateCanvasTab( 'edit' );
 		}
 
@@ -2984,7 +2988,7 @@
 			workspace.setAttribute( 'aria-busy', locked ? 'true' : 'false' );
 		}
 
-		setCodeEditorEnabled( ! locked && editorState.blocks.length > 0 );
+		setCodeEditorEnabled( ! locked && ! isAnchorBlock( getBlockById( editorState.selectedId ) ) );
 		setElementsDisabledForSave( interactiveElements, locked );
 
 		previewFrames.forEach( function( frame ) {
@@ -5752,9 +5756,42 @@
 	}
 
 	function switchToCodeTab() {
-		if ( typeof activateCanvasTab === 'function' ) {
-			activateCanvasTab( 'code' );
+		var activation;
+
+		if ( typeof activateCanvasTab !== 'function' ) {
+			return;
 		}
+
+		if ( 'code' === getActiveCanvasTabName() ) {
+			applyCanvasTabState( 'code' );
+			refreshCodeEditor();
+			focusCodeEditor();
+			return;
+		}
+
+		activation = activateCanvasTab( 'code' );
+
+		if ( activation && typeof activation.then === 'function' ) {
+			activation.then( function() {
+				focusCodeEditor();
+			} );
+			return;
+		}
+
+		focusCodeEditor();
+	}
+
+	function focusCodeEditor() {
+		window.setTimeout( function() {
+			if ( codeEditorInstance && codeEditorInstance.codemirror ) {
+				codeEditorInstance.codemirror.focus();
+				return;
+			}
+
+			if ( codeInput ) {
+				codeInput.focus();
+			}
+		}, 0 );
 	}
 
 	function createAnchorBlock() {
@@ -6177,28 +6214,27 @@
 			var selectedBlock = getBlockById( editorState.selectedId );
 
 			if ( isSaving() || ! tabName || tabName === currentTab ) {
-				return;
+				return Promise.resolve();
 			}
 
 			if ( isAnchorBlock( selectedBlock ) && ( 'code' === tabName || 'view' === tabName ) ) {
-				return;
+				return Promise.resolve();
 			}
 
 			if ( 'edit' === currentTab ) {
 				setCanvasTabsDisabled( true );
 
-				commitPendingVisualEdit()
+				return commitPendingVisualEdit()
 					.then( function() {
 						performTabActivation( tabName );
 					} )
 					.finally( function() {
 						setCanvasTabsDisabled( false );
 					} );
-
-				return;
 			}
 
 			performTabActivation( tabName );
+			return Promise.resolve();
 		}
 
 		tabButtons.forEach( function( button ) {
