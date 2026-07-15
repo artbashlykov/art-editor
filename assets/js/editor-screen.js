@@ -548,18 +548,28 @@
 	function setCodeValue( value, options ) {
 		var nextValue = value || '';
 		var settings = options || {};
+		var cm;
 
 		if ( codeEditorInstance && codeEditorInstance.codemirror ) {
-			if ( codeEditorInstance.codemirror.getValue() !== nextValue ) {
+			cm = codeEditorInstance.codemirror;
+
+			if ( cm.getValue() !== nextValue ) {
 				if ( settings.silent ) {
 					suppressCodeChangeEvents = true;
 				}
 
-				codeEditorInstance.codemirror.setValue( nextValue );
+				cm.setValue( nextValue );
 
 				if ( settings.silent ) {
+					if ( typeof cm.clearHistory === 'function' ) {
+						cm.clearHistory();
+					}
+
 					suppressCodeChangeEvents = false;
 				}
+			} else if ( settings.silent && typeof cm.clearHistory === 'function' ) {
+				// Keep CodeMirror native undo from resurrecting cleared content.
+				cm.clearHistory();
 			}
 
 			window.setTimeout( function() {
@@ -3328,29 +3338,79 @@
 		var isMeta = event.ctrlKey || event.metaKey;
 
 		if ( isSaving() || ! isMeta || editorState.renamingBlockId ) {
-			return;
+			return false;
+		}
+
+		// CodeMirror history keys are bound via extraKeys to avoid double undo.
+		if ( event.target && event.target.closest && event.target.closest( '.CodeMirror' ) ) {
+			return false;
 		}
 
 		if ( ! isHistoryShortcutTarget( event.target ) ) {
-			return;
+			return false;
 		}
 
 		if ( 'z' === event.key && ! event.shiftKey ) {
 			event.preventDefault();
+			event.stopPropagation();
 			undoChange();
-			return;
+			return true;
 		}
 
 		if ( 'z' === event.key && event.shiftKey ) {
 			event.preventDefault();
+			event.stopPropagation();
 			redoChange();
-			return;
+			return true;
 		}
 
 		if ( 'y' === event.key ) {
 			event.preventDefault();
+			event.stopPropagation();
 			redoChange();
+			return true;
 		}
+
+		return false;
+	}
+
+	function bindCodeMirrorHistoryKeys() {
+		var cm;
+		var extraKeys;
+
+		if ( ! codeEditorInstance || ! codeEditorInstance.codemirror ) {
+			return;
+		}
+
+		cm = codeEditorInstance.codemirror;
+		extraKeys = cm.getOption( 'extraKeys' );
+
+		if ( ! extraKeys || typeof extraKeys !== 'object' || Array.isArray( extraKeys ) ) {
+			extraKeys = {};
+		} else {
+			extraKeys = Object.assign( {}, extraKeys );
+		}
+
+		extraKeys[ 'Ctrl-Z' ] = function() {
+			undoChange();
+		};
+		extraKeys[ 'Cmd-Z' ] = function() {
+			undoChange();
+		};
+		extraKeys[ 'Shift-Ctrl-Z' ] = function() {
+			redoChange();
+		};
+		extraKeys[ 'Shift-Cmd-Z' ] = function() {
+			redoChange();
+		};
+		extraKeys[ 'Ctrl-Y' ] = function() {
+			redoChange();
+		};
+		extraKeys[ 'Cmd-Y' ] = function() {
+			redoChange();
+		};
+
+		cm.setOption( 'extraKeys', extraKeys );
 	}
 
 	function initHistoryControls() {
@@ -3366,9 +3426,7 @@
 		document.addEventListener( 'keydown', handleElementDeleteShortcut );
 		document.addEventListener( 'keydown', handleElementPanelEscape );
 
-		if ( codeEditorInstance && codeEditorInstance.codemirror ) {
-			codeEditorInstance.codemirror.on( 'keydown', handleHistoryShortcut );
-		}
+		bindCodeMirrorHistoryKeys();
 	}
 
 	function setPreviewHealth( target, message ) {
@@ -5596,10 +5654,10 @@
 		}
 
 		if ( block ) {
-			setCodeValue( block.content || '' );
+			setCodeValue( block.content || '', { silent: true } );
 			setCodeEditorEnabled( true );
 		} else {
-			setCodeValue( '' );
+			setCodeValue( '', { silent: true } );
 			setCodeEditorEnabled( true );
 		}
 
