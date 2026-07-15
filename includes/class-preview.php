@@ -65,6 +65,8 @@ class Art_Editor_Preview {
 		);
 
 		if ( $loaded ) {
+			self::strip_wordpress_chrome_from_document( $document );
+
 			$link_nodes = $document->getElementsByTagName( 'link' );
 
 			for ( $index = $link_nodes->length - 1; $index >= 0; $index-- ) {
@@ -78,6 +80,11 @@ class Art_Editor_Preview {
 				$href = trim( (string) $link_node->getAttribute( 'href' ) );
 
 				if ( 'stylesheet' !== $rel || '' === $href ) {
+					continue;
+				}
+
+				if ( self::is_wordpress_chrome_stylesheet( $href ) ) {
+					$link_node->parentNode->removeChild( $link_node );
 					continue;
 				}
 
@@ -331,7 +338,56 @@ class Art_Editor_Preview {
 			$links = array_merge( $links, $parts['links'] );
 		}
 
-		return array_values( array_unique( array_filter( $links ) ) );
+		$links = array_values(
+			array_filter(
+				array_unique( array_filter( $links ) ),
+				static function ( $href ) {
+					return ! self::is_wordpress_chrome_stylesheet( $href );
+				}
+			)
+		);
+
+		return $links;
+	}
+
+	/**
+	 * Remove WordPress admin bar markup from a parsed HTML document.
+	 *
+	 * Pasted full-page HTML can include #wpadminbar; it must not appear in
+	 * editor preview or inside scoped block output.
+	 *
+	 * @param DOMDocument $document Parsed document.
+	 */
+	private static function strip_wordpress_chrome_from_document( $document ) {
+		if ( ! $document instanceof DOMDocument ) {
+			return;
+		}
+
+		$admin_bar = $document->getElementById( 'wpadminbar' );
+
+		if ( $admin_bar instanceof DOMNode && $admin_bar->parentNode ) {
+			$admin_bar->parentNode->removeChild( $admin_bar );
+		}
+	}
+
+	/**
+	 * Whether a stylesheet URL belongs to WordPress admin chrome.
+	 *
+	 * @param string $href Stylesheet URL.
+	 * @return bool
+	 */
+	private static function is_wordpress_chrome_stylesheet( $href ) {
+		$href = strtolower( (string) $href );
+
+		if ( '' === $href ) {
+			return false;
+		}
+
+		if ( false !== strpos( $href, 'admin-bar' ) ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -532,6 +588,8 @@ class Art_Editor_Preview {
 		return 'html,body{margin:0;padding:0;box-sizing:border-box;}' .
 			'*,*::before,*::after{box-sizing:inherit;}' .
 			'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1e1e1e;}' .
+			'#wpadminbar{display:none!important;}' .
+			'html{margin-top:0!important;}' .
 			'a:not([style*="text-decoration"]):not(:has([style*="text-decoration"])){text-decoration:none;}' .
 			'@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth;}}' .
 			'img,video,iframe,svg{max-width:100%;}';

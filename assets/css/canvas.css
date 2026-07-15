@@ -49,6 +49,10 @@ body.art-editor-template-canvas {
 	text-decoration: none;
 }
 
+.art-editor-html-block #wpadminbar {
+	display: none !important;
+}
+
 .art-editor-canvas__content img,
 .art-editor-canvas__content video,
 .art-editor-canvas__content iframe,

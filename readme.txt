@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.41
+Stable tag: 0.2.42
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.42 =
+* Превью «Редактирование» / «Просмотр»: из HTML-блоков вырезается WordPress admin bar (`#wpadminbar` и стили admin-bar), чтобы он не появлялся в iframe редактора.
 
 = 0.2.41 =
 * Исправлена отмена («шаг назад») после удаления всех HTML-блоков: синхронизация кода больше не пишет лишний снимок в историю, а Ctrl+Z в редакторе кода не срабатывает дважды.
