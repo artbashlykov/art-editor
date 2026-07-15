@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.37
+Stable tag: 0.2.38
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.38 =
+* Сохранение inline `<script>` в HTML-блоках: скрипты вынимаются до DOMDocument scoping, чтобы не ломались `&&` и HTML-строки вроде `</td>` (калькуляторы / виджеты на фронте).
 
 = 0.2.37 =
 * Режим «Стили редактора»: снимаются скрипты Elementor и темы (исправляет `elementorFrontendConfig is not defined` в консоли). ART VSL и jQuery остаются.

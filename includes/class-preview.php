@@ -31,19 +31,23 @@ class Art_Editor_Preview {
 	 *
 	 * @param string $html Block HTML.
 	 * @param int    $depth Recursion guard for nested document shells.
-	 * @return array{styles:string[],body:string,links:string[]}
+	 * @return array{styles:string[],body:string,links:string[],scripts:string[]}
 	 */
 	public static function parse_block_parts( $html, $depth = 0 ) {
-		$html   = self::normalize_block_html( $html );
+		$html = self::normalize_block_html( $html );
+
+		list( $html, $scripts ) = self::extract_inline_scripts( $html );
+
 		$styles = array();
 		$links  = array();
 		$body   = $html;
 
 		if ( '' === trim( $html ) || ! class_exists( 'DOMDocument' ) ) {
 			return array(
-				'styles' => $styles,
-				'body'   => $body,
-				'links'  => $links,
+				'styles'  => $styles,
+				'body'    => $body,
+				'links'   => $links,
+				'scripts' => $scripts,
 			);
 		}
 
@@ -115,16 +119,18 @@ class Art_Editor_Preview {
 			$nested = self::parse_block_parts( $body, $depth + 1 );
 
 			return array(
-				'styles' => array_merge( $styles, $nested['styles'] ),
-				'body'   => $nested['body'],
-				'links'  => array_values( array_unique( array_merge( $links, $nested['links'] ) ) ),
+				'styles'  => array_merge( $styles, $nested['styles'] ),
+				'body'    => $nested['body'],
+				'links'   => array_values( array_unique( array_merge( $links, $nested['links'] ) ) ),
+				'scripts' => array_merge( $scripts, $nested['scripts'] ),
 			);
 		}
 
 		return array(
-			'styles' => $styles,
-			'body'   => $body,
-			'links'  => $links,
+			'styles'  => $styles,
+			'body'    => $body,
+			'links'   => $links,
+			'scripts' => $scripts,
 		);
 	}
 
@@ -144,6 +150,39 @@ class Art_Editor_Preview {
 		$html = preg_replace( '/^\xEF\xBB\xBF/', '', $html );
 
 		return trim( $html );
+	}
+
+	/**
+	 * Extract raw <script> tags before DOMDocument so JS is not mangled.
+	 *
+	 * DOMDocument/libxml treats HTML-looking fragments inside scripts
+	 * (e.g. '</td>') as real tags and can encode & as entities — breaking JS.
+	 *
+	 * @param string $html Block HTML.
+	 * @return array{0:string,1:string[]} HTML without scripts, list of raw script tags.
+	 */
+	public static function extract_inline_scripts( $html ) {
+		$html    = (string) $html;
+		$scripts = array();
+
+		if ( '' === $html || false === stripos( $html, '<script' ) ) {
+			return array( $html, $scripts );
+		}
+
+		$replaced = preg_replace_callback(
+			'/<script\b[^>]*>[\s\S]*?<\/script>/i',
+			static function ( $matches ) use ( &$scripts ) {
+				$scripts[] = $matches[0];
+				return '';
+			},
+			$html
+		);
+
+		if ( ! is_string( $replaced ) ) {
+			return array( $html, array() );
+		}
+
+		return array( $replaced, $scripts );
 	}
 
 	/**
@@ -176,6 +215,11 @@ class Art_Editor_Preview {
 		}
 
 		$markup .= $body;
+
+		foreach ( (array) $parts['scripts'] as $script_tag ) {
+			$markup .= $script_tag;
+		}
+
 		$markup .= '</div>';
 
 		return $markup;
