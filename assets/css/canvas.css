@@ -4,14 +4,18 @@ body.art-editor-template-canvas {
 	padding: 0;
 }
 
+/*
+ * WordPress admin-bar.css sets html { margin-top: 32px/46px !important }.
+ * Only flatten when the bar is hidden — otherwise content slides under it.
+ */
 @media screen {
-	html:has(body.art-editor-template-canvas) {
+	html:has(body.art-editor-template-canvas:not(.admin-bar)) {
 		margin-top: 0 !important;
 	}
 }
 
 @media screen and (max-width: 782px) {
-	html:has(body.art-editor-template-canvas) {
+	html:has(body.art-editor-template-canvas:not(.admin-bar)) {
 		margin-top: 0 !important;
 	}
 }
