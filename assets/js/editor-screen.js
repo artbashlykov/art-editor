@@ -59,9 +59,12 @@
 	var previewRestoreGeneration = 0;
 	var previewRequestGeneration = 0;
 	var pagePreviewRequestGeneration = 0;
+	var stylePreviewRefreshTimer = null;
 	var suppressNextEditPreviewRefresh = false;
 	var suppressNextViewPreviewRefresh = false;
 	var suppressCodeChangeEvents = false;
+	var STYLE_INPUT_DEBOUNCE_MS = 120;
+	var STYLE_PREVIEW_REFRESH_MS = 450;
 
 	var previewLoadingUi = {
 		edit: {
@@ -714,16 +717,20 @@
 
 	function handleElementSelection( locator ) {
 		var block;
-
-		if ( elementEditorController && elementEditorController.cancelPendingLinkApply ) {
-			elementEditorController.cancelPendingLinkApply();
-		}
-
-		if ( elementEditorController && elementEditorController.cancelPendingTextStyleApply ) {
-			elementEditorController.cancelPendingTextStyleApply();
-		}
+		var nextPath;
+		var previousLocator;
+		var isSameSelection;
+		var keepPendingEdits;
 
 		if ( ! locator || ! Array.isArray( locator.path ) || ! locator.path.length ) {
+			if ( elementEditorController && elementEditorController.cancelPendingLinkApply ) {
+				elementEditorController.cancelPendingLinkApply();
+			}
+
+			if ( elementEditorController && elementEditorController.cancelPendingTextStyleApply ) {
+				elementEditorController.cancelPendingTextStyleApply();
+			}
+
 			clearSelectedElementLocator( { skipIframe: true } );
 			return;
 		}
@@ -733,15 +740,41 @@
 		}
 
 		block = getBlockById( editorState.selectedId );
+		nextPath = normalizePreviewElementPathToBlockContent( locator.path, block ? block.content || '' : '' );
+		previousLocator = editorState.selectedElementLocator;
+		isSameSelection = !! (
+			previousLocator &&
+			previousLocator.blockId === editorState.selectedId &&
+			elementPathsEqual( previousLocator.path, nextPath )
+		);
+		keepPendingEdits = isSameSelection && elementEditorController &&
+			typeof elementEditorController.isPanelTypingFocus === 'function' &&
+			elementEditorController.isPanelTypingFocus();
+
+		if ( ! isSameSelection ) {
+			if ( elementEditorController && elementEditorController.cancelPendingLinkApply ) {
+				elementEditorController.cancelPendingLinkApply();
+			}
+
+			if ( elementEditorController && elementEditorController.cancelPendingTextStyleApply ) {
+				elementEditorController.cancelPendingTextStyleApply();
+			}
+		}
+
 		editorState.selectedElementLocator = {
 			blockId: editorState.selectedId,
-			path: normalizePreviewElementPathToBlockContent( locator.path, block ? block.content || '' : '' ),
+			path: nextPath,
 			tag: locator.tag || '',
 			outerHtml: locator.outerHtml || '',
 			textContent: locator.textContent || '',
 		};
 
 		highlightSelectedElementInCode();
+
+		// Preview restore re-selects the same node — do not wipe in-progress inputs.
+		if ( keepPendingEdits ) {
+			return;
+		}
 
 		if ( elementEditorController && 'edit' === getActiveCanvasTabName() && isSelectedElementLocatorForCurrentBlock() ) {
 			elementEditorController.openPanel( editorState.selectedElementLocator );
@@ -1734,8 +1767,8 @@
 				updateElementSummary( nextLocator );
 			}
 
-			updatePreview();
-			updatePagePreview();
+			postOptimisticElementStyles( buildOptimisticCssStyles( styleValues, effectiveChangedProperties ) );
+			scheduleStylePreviewRefresh();
 			syncElementControls( editorState.selectedElementLocator );
 
 			if ( editorState.selectedElementLocator ) {
@@ -1745,12 +1778,24 @@
 			scheduleUnsavedIndicatorUpdate();
 		}
 
+		function getDebouncedTextStyleChangeFlags() {
+			return {
+				fontSize: true,
+				lineHeight: true,
+				lineHeightUnit: true,
+				paddingTop: true,
+				paddingBottom: true,
+				marginTop: true,
+				marginBottom: true,
+			};
+		}
+
 		function scheduleTextStyleApply() {
 			window.clearTimeout( textStyleApplyTimer );
 			textStyleApplyTimer = window.setTimeout( function() {
 				textStyleApplyTimer = null;
-				applyTextStyleFromControls( { fontSize: true, lineHeight: true, lineHeightUnit: true, paddingTop: true, paddingBottom: true, marginTop: true, marginBottom: true } );
-			}, 300 );
+				applyTextStyleFromControls( getDebouncedTextStyleChangeFlags() );
+			}, STYLE_INPUT_DEBOUNCE_MS );
 		}
 
 		function cancelPendingTextStyleApply() {
@@ -1782,6 +1827,24 @@
 				},
 				null,
 				{ skipHistory: !! settings.skipHistory }
+			);
+			flushStylePreviewRefresh();
+		}
+
+		function isPanelTypingFocus() {
+			var activeEl = document.activeElement;
+
+			if ( ! activeEl || ! elementPanel ) {
+				return false;
+			}
+
+			if ( ! elementPanel.contains( activeEl ) ) {
+				return false;
+			}
+
+			return !! (
+				activeEl.matches &&
+				activeEl.matches( 'input, textarea, select, button' )
 			);
 		}
 
@@ -1972,7 +2035,7 @@
 			fontSizeInput.addEventListener( 'input', scheduleTextStyleApply );
 			fontSizeInput.addEventListener( 'change', function() {
 				cancelPendingTextStyleApply();
-				applyTextStyleFromControls( { fontSize: true } );
+				applyTextStyleFromControls( getDebouncedTextStyleChangeFlags() );
 			} );
 		}
 
@@ -1980,14 +2043,14 @@
 			lineHeightInput.addEventListener( 'input', scheduleTextStyleApply );
 			lineHeightInput.addEventListener( 'change', function() {
 				cancelPendingTextStyleApply();
-				applyTextStyleFromControls( { lineHeight: true, lineHeightUnit: true } );
+				applyTextStyleFromControls( getDebouncedTextStyleChangeFlags() );
 			} );
 		}
 
 		if ( lineHeightUnitInput ) {
 			lineHeightUnitInput.addEventListener( 'change', function() {
 				cancelPendingTextStyleApply();
-				applyTextStyleFromControls( { lineHeight: true, lineHeightUnit: true } );
+				applyTextStyleFromControls( getDebouncedTextStyleChangeFlags() );
 			} );
 		}
 
@@ -2103,7 +2166,7 @@
 			paddingTopInput.addEventListener( 'input', scheduleTextStyleApply );
 			paddingTopInput.addEventListener( 'change', function() {
 				cancelPendingTextStyleApply();
-				applyTextStyleFromControls( { paddingTop: true } );
+				applyTextStyleFromControls( getDebouncedTextStyleChangeFlags() );
 			} );
 		}
 
@@ -2111,7 +2174,7 @@
 			paddingBottomInput.addEventListener( 'input', scheduleTextStyleApply );
 			paddingBottomInput.addEventListener( 'change', function() {
 				cancelPendingTextStyleApply();
-				applyTextStyleFromControls( { paddingBottom: true } );
+				applyTextStyleFromControls( getDebouncedTextStyleChangeFlags() );
 			} );
 		}
 
@@ -2127,7 +2190,7 @@
 			marginTopInput.addEventListener( 'input', scheduleTextStyleApply );
 			marginTopInput.addEventListener( 'change', function() {
 				cancelPendingTextStyleApply();
-				applyTextStyleFromControls( { marginTop: true } );
+				applyTextStyleFromControls( getDebouncedTextStyleChangeFlags() );
 			} );
 		}
 
@@ -2135,7 +2198,7 @@
 			marginBottomInput.addEventListener( 'input', scheduleTextStyleApply );
 			marginBottomInput.addEventListener( 'change', function() {
 				cancelPendingTextStyleApply();
-				applyTextStyleFromControls( { marginBottom: true } );
+				applyTextStyleFromControls( getDebouncedTextStyleChangeFlags() );
 			} );
 		}
 
@@ -2155,6 +2218,7 @@
 			cancelPendingTextStyleApply: cancelPendingTextStyleApply,
 			flushPendingElementEdits: flushPendingElementEdits,
 			syncElementControls: syncElementControls,
+			isPanelTypingFocus: isPanelTypingFocus,
 		};
 	}
 
@@ -3501,6 +3565,30 @@
 				index: step.index,
 			};
 		} );
+	}
+
+	function elementPathsEqual( left, right ) {
+		var index;
+
+		if ( left === right ) {
+			return true;
+		}
+
+		if ( ! left || ! right || left.length !== right.length ) {
+			return false;
+		}
+
+		for ( index = 0; index < left.length; index++ ) {
+			if ( ! left[ index ] || ! right[ index ] ) {
+				return false;
+			}
+
+			if ( left[ index ].tag !== right[ index ].tag || left[ index ].index !== right[ index ].index ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	function countBlockBodyStylePrefixLength( blockHtml ) {
@@ -5409,6 +5497,23 @@
 			'var restored=findElementByPath(data.path||[]);',
 			'if(restored){setActive(restored);}',
 			'clearHover();',
+			'return;',
+			'}',
+			'if("applyElementStyles"===data.type){',
+			'var styleTarget=active;',
+			'var styleKey,styleVal,importantSpacing;',
+			'if((!styleTarget||!document.contains(styleTarget))&&data.path){styleTarget=findElementByPath(data.path||[]);}',
+			'if(!styleTarget||!data.styles){return;}',
+			'importantSpacing={ "margin-top":1,"margin-bottom":1,"padding-top":1,"padding-bottom":1 };',
+			'for(styleKey in data.styles){',
+			'if(!Object.prototype.hasOwnProperty.call(data.styles,styleKey)){continue;}',
+			'styleVal=data.styles[styleKey];',
+			'if(styleVal===null||styleVal===""){styleTarget.style.removeProperty(styleKey);}',
+			'else if(importantSpacing[styleKey]){styleTarget.style.setProperty(styleKey,String(styleVal),"important");}',
+			'else{styleTarget.style.setProperty(styleKey,String(styleVal));}',
+			'}',
+			'if(!styleTarget.getAttribute("style")){styleTarget.removeAttribute("style");}',
+			'return;',
 			'}',
 			'},false);',
 			'document.body.classList.add("art-editor-edit-preview");',
@@ -5437,6 +5542,136 @@
 		}
 
 		return html;
+	}
+
+	function cancelStylePreviewRefresh() {
+		window.clearTimeout( stylePreviewRefreshTimer );
+		stylePreviewRefreshTimer = null;
+	}
+
+	function flushStylePreviewRefresh() {
+		if ( ! stylePreviewRefreshTimer ) {
+			return;
+		}
+
+		cancelStylePreviewRefresh();
+		updatePreview();
+	}
+
+	/**
+	 * Coalesce full edit-preview rebuilds while the user types styles.
+	 * Instant feedback comes from applyElementStyles postMessage.
+	 */
+	function scheduleStylePreviewRefresh() {
+		cancelStylePreviewRefresh();
+		stylePreviewRefreshTimer = window.setTimeout( function() {
+			stylePreviewRefreshTimer = null;
+			updatePreview();
+		}, STYLE_PREVIEW_REFRESH_MS );
+	}
+
+	function buildOptimisticCssStyles( styleValues, changedProperties ) {
+		var styles = {};
+		var fontSize;
+		var lineHeight;
+		var color;
+		var fontWeight;
+		var fontStyle;
+		var textDecoration;
+		var backgroundColor;
+		var paddingTop;
+		var paddingBottom;
+		var marginTop;
+		var marginBottom;
+
+		if ( ! styleValues || ! changedProperties ) {
+			return styles;
+		}
+
+		if ( changedProperties.fontSize ) {
+			fontSize = normalizeFontSizeInput( styleValues.fontSize );
+			styles[ 'font-size' ] = fontSize ? fontSize + 'px' : '';
+		}
+
+		if ( changedProperties.lineHeight || changedProperties.lineHeightUnit ) {
+			lineHeight = buildLineHeightCSSValue( styleValues.lineHeight, styleValues.lineHeightUnit );
+			styles[ 'line-height' ] = lineHeight || '';
+		}
+
+		if ( changedProperties.color ) {
+			color = cssColorToHex( styleValues.color );
+			styles.color = color || '';
+		}
+
+		if ( changedProperties.fontWeight ) {
+			fontWeight = normalizeFontWeightInput( styleValues.fontWeight );
+			styles[ 'font-weight' ] = fontWeight || '';
+		}
+
+		if ( changedProperties.fontStyle ) {
+			fontStyle = formatFontStyleForInput( styleValues.fontStyle );
+			styles[ 'font-style' ] = fontStyle || '';
+		}
+
+		if ( changedProperties.textDecorationUnderline || changedProperties.textDecorationLineThrough ) {
+			textDecoration = buildTextDecorationFromFlags(
+				!! styleValues.textDecorationUnderline,
+				!! styleValues.textDecorationLineThrough
+			);
+			styles[ 'text-decoration-line' ] = textDecoration || '';
+		}
+
+		if ( changedProperties.backgroundColor ) {
+			backgroundColor = cssColorToHex( styleValues.backgroundColor );
+			styles[ 'background-color' ] = backgroundColor || '';
+		}
+
+		if ( changedProperties.paddingTop ) {
+			paddingTop = normalizeFontSizeInput( styleValues.paddingTop );
+			styles[ 'padding-top' ] = paddingTop ? paddingTop + 'px' : '';
+		}
+
+		if ( changedProperties.paddingBottom ) {
+			paddingBottom = normalizeFontSizeInput( styleValues.paddingBottom );
+			styles[ 'padding-bottom' ] = paddingBottom ? paddingBottom + 'px' : '';
+		}
+
+		if ( changedProperties.marginTop ) {
+			marginTop = normalizeMarginInput( styleValues.marginTop );
+			styles[ 'margin-top' ] = marginTop ? marginTop + 'px' : '';
+		}
+
+		if ( changedProperties.marginBottom ) {
+			marginBottom = normalizeMarginInput( styleValues.marginBottom );
+			styles[ 'margin-bottom' ] = marginBottom ? marginBottom + 'px' : '';
+		}
+
+		return styles;
+	}
+
+	function postOptimisticElementStyles( cssStyles ) {
+		var pageSettings;
+		var path = null;
+
+		if ( ! previewFrame || ! previewFrame.contentWindow || ! cssStyles || ! Object.keys( cssStyles ).length ) {
+			return;
+		}
+
+		if ( isSelectedElementLocatorForCurrentBlock() && editorState.selectedElementLocator.path ) {
+			pageSettings = getPageSettingsFromDom();
+			path = expandBlockContentPathForPreviewIframe(
+				editorState.selectedElementLocator.path,
+				getCodeValue(),
+				pageSettings.layoutMode
+			);
+		}
+
+		previewFrame.contentWindow.postMessage( {
+			source: 'art-editor-parent',
+			type: 'applyElementStyles',
+			path: path,
+			styles: cssStyles,
+		}, '*' );
 	}
 
 	function updatePreview( options ) {
