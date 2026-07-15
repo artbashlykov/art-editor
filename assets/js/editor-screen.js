@@ -2352,7 +2352,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			element = findElementByPath( doc.body, locator.path );
 
 			if ( element ) {
@@ -3513,7 +3513,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( blockHtml, 'text/html' );
+			doc = parseBlockHtmlDocument( blockHtml );
 
 			if ( ! doc.body ) {
 				return 0;
@@ -3535,6 +3535,87 @@
 		}
 	}
 
+	/**
+	 * Move nested <style>/<link rel=stylesheet> to the start of body.
+	 *
+	 * Preview scoping extracts nested styles, so element paths skip them.
+	 * Without hoisting, path edits fail when source HTML keeps <style> inside
+	 * parents (e.g. <section><style>…</style><div>…</div></section>).
+	 *
+	 * @param {Document} doc Parsed HTML document.
+	 */
+	function hoistNestedBlockStyleElements( doc ) {
+		var nodes;
+		var collected = [];
+		var fragment;
+		var index;
+		var node;
+		var rel;
+
+		if ( ! doc || ! doc.body ) {
+			return;
+		}
+
+		nodes = doc.body.querySelectorAll( 'style, link' );
+
+		for ( index = 0; index < nodes.length; index++ ) {
+			node = nodes[ index ];
+
+			if ( 'STYLE' === node.tagName ) {
+				collected.push( node );
+				continue;
+			}
+
+			rel = String( node.getAttribute( 'rel' ) || '' ).toLowerCase();
+
+			if ( 'LINK' === node.tagName && -1 !== rel.indexOf( 'stylesheet' ) ) {
+				collected.push( node );
+			}
+		}
+
+		if ( ! collected.length ) {
+			return;
+		}
+
+		fragment = doc.createDocumentFragment();
+
+		for ( index = 0; index < collected.length; index++ ) {
+			node = collected[ index ];
+
+			if ( node.parentNode ) {
+				node.parentNode.removeChild( node );
+			}
+
+			fragment.appendChild( node );
+		}
+
+		doc.body.insertBefore( fragment, doc.body.firstChild );
+	}
+
+	/**
+	 * Parse block HTML and hoist nested styles for path parity with preview.
+	 *
+	 * @param {string} html Block HTML.
+	 * @return {Document|null}
+	 */
+	function parseBlockHtmlDocument( html ) {
+		var doc;
+
+		if ( ! window.DOMParser ) {
+			return null;
+		}
+
+		doc = new window.DOMParser().parseFromString( String( html || '' ), 'text/html' );
+
+		if ( ! doc || ! doc.body ) {
+			return doc;
+		}
+
+		hoistNestedBlockStyleElements( doc );
+
+		return doc;
+	}
+
 	function findElementPathInBlockHtml( blockHtml, path ) {
 		var doc;
 
@@ -3543,7 +3624,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( blockHtml, 'text/html' );
+			doc = parseBlockHtmlDocument( blockHtml );
 
 			return findElementByPath( doc.body, path );
 		} catch ( error ) {
@@ -3790,7 +3871,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			return !! ( target && findLinkAnchorForElement( target, doc.body ) );
@@ -3852,7 +3933,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			if ( ! target ) {
@@ -3892,7 +3973,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			if ( ! target ) {
@@ -4327,7 +4408,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			if ( ! target ) {
@@ -4455,7 +4536,7 @@
 		marginBottom = normalizeMarginInput( textStyles.marginBottom );
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			if ( ! target ) {
@@ -4613,7 +4694,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			if ( ! target || 'IMG' !== target.tagName ) {
@@ -4664,7 +4745,7 @@
 		href = normalizeLinkHref( href, { live: !! settings.live } );
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			if ( ! target ) {
@@ -4726,7 +4807,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			if ( ! target || ! target.parentElement ) {
@@ -4782,18 +4863,40 @@
 
 	function serializeBlockContentFromDocument( doc ) {
 		var styles = [];
-		var styleNodes;
+		var nodes;
 		var bodyHtml = '';
-		var styleIndex;
+		var index;
+		var node;
+		var rel;
 
 		if ( ! doc ) {
 			return '';
 		}
 
-		styleNodes = doc.querySelectorAll( 'head style, body style' );
+		nodes = doc.querySelectorAll( 'style, link' );
 
-		for ( styleIndex = 0; styleIndex < styleNodes.length; styleIndex++ ) {
-			styles.push( styleNodes[ styleIndex ].outerHTML );
+		for ( index = 0; index < nodes.length; index++ ) {
+			node = nodes[ index ];
+
+			if ( 'STYLE' === node.tagName ) {
+				styles.push( node.outerHTML );
+
+				if ( node.parentNode ) {
+					node.parentNode.removeChild( node );
+				}
+
+				continue;
+			}
+
+			rel = String( node.getAttribute( 'rel' ) || '' ).toLowerCase();
+
+			if ( 'LINK' === node.tagName && -1 !== rel.indexOf( 'stylesheet' ) ) {
+				styles.push( node.outerHTML );
+
+				if ( node.parentNode ) {
+					node.parentNode.removeChild( node );
+				}
+			}
 		}
 
 		if ( doc.body ) {
@@ -4816,7 +4919,7 @@
 		}
 
 		try {
-			doc = new window.DOMParser().parseFromString( html, 'text/html' );
+			doc = parseBlockHtmlDocument( html );
 			target = findElementByPath( doc.body, path );
 
 			if ( ! target ) {
