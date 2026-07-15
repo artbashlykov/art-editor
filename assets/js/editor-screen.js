@@ -1467,7 +1467,9 @@
 
 			imageAlt = getAttachmentAltText( attachment );
 			locator = editorState.selectedElementLocator;
-			result = applyElementImageSrcEdit( block.content || '', locator.path, imageUrl, imageAlt );
+			result = applyElementImageSrcEdit( block.content || '', locator.path, imageUrl, imageAlt, {
+				srcset: buildAttachmentSrcset( attachment ),
+			} );
 
 			if ( ! result || result.html === block.content ) {
 				return;
@@ -4803,6 +4805,75 @@
 		return '';
 	}
 
+	/**
+	 * Build a srcset string from a WordPress media attachment JSON payload.
+	 *
+	 * @param {Object} attachment Media attachment from wp.media.
+	 * @return {string}
+	 */
+	function buildAttachmentSrcset( attachment ) {
+		var sizes;
+		var key;
+		var size;
+		var entries = [];
+		var seen = {};
+		var url;
+		var width;
+
+		if ( ! attachment ) {
+			return '';
+		}
+
+		sizes = attachment.sizes || {};
+
+		for ( key in sizes ) {
+			if ( ! Object.prototype.hasOwnProperty.call( sizes, key ) ) {
+				continue;
+			}
+
+			size = sizes[ key ];
+
+			if ( ! size || ! size.url || ! size.width ) {
+				continue;
+			}
+
+			url = String( size.url );
+			width = parseInt( size.width, 10 );
+
+			if ( ! url || ! width || seen[ url ] ) {
+				continue;
+			}
+
+			seen[ url ] = true;
+			entries.push( {
+				url: url,
+				width: width,
+			} );
+		}
+
+		url = getAttachmentImageUrl( attachment );
+		width = attachment.width ? parseInt( attachment.width, 10 ) : 0;
+
+		if ( url && width && ! seen[ url ] ) {
+			entries.push( {
+				url: url,
+				width: width,
+			} );
+		}
+
+		if ( entries.length < 2 ) {
+			return '';
+		}
+
+		entries.sort( function( left, right ) {
+			return left.width - right.width;
+		} );
+
+		return entries.map( function( entry ) {
+			return entry.url + ' ' + entry.width + 'w';
+		} ).join( ', ' );
+	}
+
 	function getAttachmentAltText( attachment ) {
 		if ( ! attachment ) {
 			return '';
@@ -4819,9 +4890,11 @@
 		return '';
 	}
 
-	function applyElementImageSrcEdit( html, path, src, alt ) {
+	function applyElementImageSrcEdit( html, path, src, alt, options ) {
 		var doc;
 		var target;
+		var settings = options || {};
+		var srcset = typeof settings.srcset === 'string' ? settings.srcset.trim() : '';
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length || ! src ) {
 			return null;
@@ -4839,6 +4912,15 @@
 
 			if ( alt ) {
 				target.setAttribute( 'alt', alt );
+			}
+
+			// Keep showing the chosen library image: leftover srcset (e.g. Pexels)
+			// would otherwise win over the new src in the browser.
+			if ( srcset ) {
+				target.setAttribute( 'srcset', srcset );
+			} else {
+				target.removeAttribute( 'srcset' );
+				target.removeAttribute( 'sizes' );
 			}
 
 			return resolveEditedBlockHtmlAndSelectionPath( doc, target );
