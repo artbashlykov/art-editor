@@ -3536,11 +3536,12 @@
 	}
 
 	/**
-	 * Move nested <style>/<link rel=stylesheet> to the start of body.
+	 * Move <style>/<link rel=stylesheet> to the start of body.
 	 *
-	 * Preview scoping extracts nested styles, so element paths skip them.
-	 * Without hoisting, path edits fail when source HTML keeps <style> inside
-	 * parents (e.g. <section><style>…</style><div>…</div></section>).
+	 * Preview scoping extracts styles, so element paths skip them. Nested
+	 * styles inside parents must be hoisted. Leading styles from serialize
+	 * land in <head> on reparse (HTML parser rules) — move those into body
+	 * too, or path indices diverge and selection restore closes the panel.
 	 *
 	 * @param {Document} doc Parsed HTML document.
 	 */
@@ -3556,7 +3557,8 @@
 			return;
 		}
 
-		nodes = doc.body.querySelectorAll( 'style, link' );
+		// Whole document: nested in body AND styles DOMParser placed in <head>.
+		nodes = doc.querySelectorAll( 'style, link' );
 
 		for ( index = 0; index < nodes.length; index++ ) {
 			node = nodes[ index ];
@@ -4480,7 +4482,6 @@
 	function applyElementTextStyleEdit( html, path, textStyles, changedProperties ) {
 		var doc;
 		var target;
-		var selectionPath;
 		var fontSize;
 		var lineHeight;
 		var color;
@@ -4637,15 +4638,61 @@
 				target.removeAttribute( 'style' );
 			}
 
-			selectionPath = getElementPathFromNode( target, doc.body );
-
-			return {
-				html: serializeBlockContentFromDocument( doc ),
-				selectionPath: selectionPath,
-			};
+			return resolveEditedBlockHtmlAndSelectionPath( doc, target );
 		} catch ( error ) {
 			return null;
 		}
+	}
+
+	/**
+	 * Serialize edited DOM and resolve selection path against the canonical
+	 * reparsed document (styles may move head↔body on round-trip).
+	 *
+	 * @param {Document} doc Edited document (styles still in tree).
+	 * @param {Element} target Edited element still attached to doc.
+	 * @return {{html: string, selectionPath: Array}|null}
+	 */
+	function resolveEditedBlockHtmlAndSelectionPath( doc, target ) {
+		var html;
+		var canonical;
+		var resolved;
+		var marker = 'data-art-editor-sel';
+		var selectionPath;
+
+		if ( ! doc || ! target ) {
+			return null;
+		}
+
+		target.setAttribute( marker, '1' );
+		html = serializeBlockContentFromDocument( doc );
+		canonical = parseBlockHtmlDocument( html );
+
+		if ( ! canonical || ! canonical.body ) {
+			return {
+				html: String( html || '' ).replace( /\s*data-art-editor-sel=(["'])1\1/g, '' ),
+				selectionPath: getElementPathFromNode( target, doc.body ),
+			};
+		}
+
+		resolved = canonical.body.querySelector( '[' + marker + '="1"]' );
+
+		if ( resolved ) {
+			resolved.removeAttribute( marker );
+			selectionPath = getElementPathFromNode( resolved, canonical.body );
+			html = serializeBlockContentFromDocument( canonical );
+
+			return {
+				html: html,
+				selectionPath: selectionPath,
+			};
+		}
+
+		selectionPath = getElementPathFromNode( target, doc.body );
+
+		return {
+			html: String( html || '' ).replace( /\s*data-art-editor-sel=(["'])1\1/g, '' ),
+			selectionPath: selectionPath,
+		};
 	}
 
 	function getAttachmentImageUrl( attachment ) {
@@ -4687,7 +4734,6 @@
 	function applyElementImageSrcEdit( html, path, src, alt ) {
 		var doc;
 		var target;
-		var selectionPath;
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length || ! src ) {
 			return null;
@@ -4707,12 +4753,7 @@
 				target.setAttribute( 'alt', alt );
 			}
 
-			selectionPath = getElementPathFromNode( target, doc.body );
-
-			return {
-				html: serializeBlockContentFromDocument( doc ),
-				selectionPath: selectionPath,
-			};
+			return resolveEditedBlockHtmlAndSelectionPath( doc, target );
 		} catch ( error ) {
 			return null;
 		}
@@ -4735,7 +4776,6 @@
 		var target;
 		var anchor;
 		var newAnchor;
-		var selectionPath;
 		var settings = options || {};
 
 		if ( ! html || ! window.DOMParser || ! path || ! path.length ) {
@@ -4757,12 +4797,7 @@
 			if ( ! href ) {
 				if ( anchor ) {
 					applyElementLinkAttributes( anchor, '', openInNew );
-					selectionPath = getElementPathFromNode( target, doc.body );
-
-					return {
-						html: serializeBlockContentFromDocument( doc ),
-						selectionPath: selectionPath,
-					};
+					return resolveEditedBlockHtmlAndSelectionPath( doc, target );
 				}
 
 				return null;
@@ -4770,12 +4805,7 @@
 
 			if ( anchor ) {
 				applyElementLinkAttributes( anchor, href, openInNew );
-				selectionPath = getElementPathFromNode( target, doc.body );
-
-				return {
-					html: serializeBlockContentFromDocument( doc ),
-					selectionPath: selectionPath,
-				};
+				return resolveEditedBlockHtmlAndSelectionPath( doc, target );
 			}
 
 			newAnchor = doc.createElement( 'a' );
@@ -4787,12 +4817,7 @@
 
 			target.parentElement.insertBefore( newAnchor, target );
 			newAnchor.appendChild( target );
-			selectionPath = getElementPathFromNode( target, doc.body );
-
-			return {
-				html: serializeBlockContentFromDocument( doc ),
-				selectionPath: selectionPath,
-			};
+			return resolveEditedBlockHtmlAndSelectionPath( doc, target );
 		} catch ( error ) {
 			return null;
 		}
@@ -5381,7 +5406,8 @@
 			'}',
 			'if("selectElementByPath"===data.type){',
 			'if(editing){finishEditing(true);return;}',
-			'setActive(findElementByPath(data.path||[]));',
+			'var restored=findElementByPath(data.path||[]);',
+			'if(restored){setActive(restored);}',
 			'clearHover();',
 			'}',
 			'},false);',
