@@ -4522,7 +4522,7 @@
 
 			if ( shouldUpdatePaddingTop ) {
 				if ( paddingTop ) {
-					target.style.setProperty( 'padding-top', paddingTop + 'px' );
+					target.style.setProperty( 'padding-top', paddingTop + 'px', 'important' );
 				} else {
 					target.style.removeProperty( 'padding-top' );
 				}
@@ -4530,7 +4530,7 @@
 
 			if ( shouldUpdatePaddingBottom ) {
 				if ( paddingBottom ) {
-					target.style.setProperty( 'padding-bottom', paddingBottom + 'px' );
+					target.style.setProperty( 'padding-bottom', paddingBottom + 'px', 'important' );
 				} else {
 					target.style.removeProperty( 'padding-bottom' );
 				}
@@ -4538,7 +4538,7 @@
 
 			if ( shouldUpdateMarginTop ) {
 				if ( marginTop ) {
-					target.style.setProperty( 'margin-top', marginTop + 'px' );
+					target.style.setProperty( 'margin-top', marginTop + 'px', 'important' );
 				} else {
 					target.style.removeProperty( 'margin-top' );
 				}
@@ -4546,7 +4546,7 @@
 
 			if ( shouldUpdateMarginBottom ) {
 				if ( marginBottom ) {
-					target.style.setProperty( 'margin-bottom', marginBottom + 'px' );
+					target.style.setProperty( 'margin-bottom', marginBottom + 'px', 'important' );
 				} else {
 					target.style.removeProperty( 'margin-bottom' );
 				}

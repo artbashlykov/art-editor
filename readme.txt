@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.42
+Stable tag: 0.2.43
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.43 =
+* Внешние и внутренние отступы в панели элемента пишутся с `!important`, чтобы не перебивались CSS-сбросами вроде `div { margin: 0 !important; }`.
 
 = 0.2.42 =
 * Превью «Редактирование» / «Просмотр»: из HTML-блоков вырезается WordPress admin bar (`#wpadminbar` и стили admin-bar), чтобы он не появлялся в iframe редактора.
