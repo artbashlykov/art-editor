@@ -56,6 +56,8 @@
 	var activateCanvasTab = null;
 	var pendingElementSelectionPath = null;
 	var pendingElementSelectionGeneration = 0;
+	var pendingEditPreviewScroll = null;
+	var pendingPagePreviewScroll = null;
 	var previewRestoreGeneration = 0;
 	var previewRequestGeneration = 0;
 	var pagePreviewRequestGeneration = 0;
@@ -194,6 +196,12 @@
 
 		if ( ! frame || generation !== previewLoadingWait[ target ] ) {
 			if ( frame ) {
+				if ( 'edit' === target ) {
+					rememberEditPreviewScroll( generation );
+				} else if ( 'view' === target ) {
+					rememberPagePreviewScroll( generation );
+				}
+
 				frame.srcdoc = html;
 			}
 
@@ -202,6 +210,13 @@
 
 		loadHandler = function() {
 			cleanup();
+
+			if ( 'edit' === target ) {
+				restoreEditPreviewScrollIfNeeded( generation );
+			} else if ( 'view' === target ) {
+				restorePagePreviewScrollIfNeeded( generation );
+			}
+
 			finishPreviewLoading( target, generation );
 		};
 
@@ -210,6 +225,13 @@
 			cleanup();
 			finishPreviewLoading( target, generation );
 		}, 20000 );
+
+		if ( 'edit' === target ) {
+			rememberEditPreviewScroll( generation );
+		} else if ( 'view' === target ) {
+			rememberPagePreviewScroll( generation );
+		}
+
 		frame.srcdoc = html;
 	}
 
@@ -694,6 +716,157 @@
 		previewRestoreGeneration += 1;
 		pendingElementSelectionPath = null;
 		pendingElementSelectionGeneration = 0;
+	}
+
+	/**
+	 * Read current scroll offsets from a preview iframe.
+	 *
+	 * @param {HTMLIFrameElement|null} frame Preview iframe.
+	 * @return {{x: number, y: number}|null}
+	 */
+	function capturePreviewFrameScroll( frame ) {
+		var win;
+		var doc;
+		var x;
+		var y;
+
+		if ( ! frame ) {
+			return null;
+		}
+
+		try {
+			win = frame.contentWindow;
+			doc = frame.contentDocument;
+
+			if ( ! win || ! doc ) {
+				return null;
+			}
+
+			x = win.scrollX || win.pageXOffset || 0;
+			y = win.scrollY || win.pageYOffset || 0;
+
+			if ( ! x && doc.documentElement ) {
+				x = doc.documentElement.scrollLeft || ( doc.body ? doc.body.scrollLeft : 0 ) || 0;
+			}
+
+			if ( ! y && doc.documentElement ) {
+				y = doc.documentElement.scrollTop || ( doc.body ? doc.body.scrollTop : 0 ) || 0;
+			}
+
+			return {
+				x: x,
+				y: y,
+			};
+		} catch ( error ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Restore scroll offsets inside a preview iframe after reload.
+	 *
+	 * @param {HTMLIFrameElement|null} frame Preview iframe.
+	 * @param {{x: number, y: number}|null} scroll Saved offsets.
+	 */
+	function restorePreviewFrameScroll( frame, scroll ) {
+		var win;
+		var apply;
+
+		if ( ! frame || ! scroll ) {
+			return;
+		}
+
+		apply = function() {
+			try {
+				win = frame.contentWindow;
+
+				if ( ! win ) {
+					return;
+				}
+
+				win.scrollTo( scroll.x || 0, scroll.y || 0 );
+			} catch ( error ) {
+				// Cross-origin or unloaded frame — ignore.
+			}
+		};
+
+		apply();
+
+		if ( typeof window.requestAnimationFrame === 'function' ) {
+			window.requestAnimationFrame( function() {
+				apply();
+				window.requestAnimationFrame( apply );
+			} );
+		} else {
+			window.setTimeout( apply, 0 );
+			window.setTimeout( apply, 50 );
+		}
+	}
+
+	/**
+	 * Remember scroll before replacing edit-preview srcdoc.
+	 *
+	 * @param {number} requestGeneration Preview request id.
+	 */
+	function rememberEditPreviewScroll( requestGeneration ) {
+		var scroll = capturePreviewFrameScroll( previewFrame );
+
+		pendingEditPreviewScroll = scroll
+			? {
+				x: scroll.x,
+				y: scroll.y,
+				generation: requestGeneration,
+			}
+			: null;
+	}
+
+	/**
+	 * Remember scroll before replacing page-preview srcdoc.
+	 *
+	 * @param {number} requestGeneration Preview request id.
+	 */
+	function rememberPagePreviewScroll( requestGeneration ) {
+		var scroll = capturePreviewFrameScroll( pagePreviewFrame );
+
+		pendingPagePreviewScroll = scroll
+			? {
+				x: scroll.x,
+				y: scroll.y,
+				generation: requestGeneration,
+			}
+			: null;
+	}
+
+	/**
+	 * Restore edit-preview scroll after iframe load when generation still matches.
+	 *
+	 * @param {number} requestGeneration Preview request id.
+	 */
+	function restoreEditPreviewScrollIfNeeded( requestGeneration ) {
+		var scroll = pendingEditPreviewScroll;
+
+		if ( ! scroll || scroll.generation !== requestGeneration ) {
+			return;
+		}
+
+		pendingEditPreviewScroll = null;
+		restorePreviewFrameScroll( previewFrame, scroll );
+	}
+
+	/**
+	 * Restore page-preview scroll after iframe load when generation still matches.
+	 *
+	 * @param {number} requestGeneration Preview request id.
+	 */
+	function restorePagePreviewScrollIfNeeded( requestGeneration ) {
+		var scroll = pendingPagePreviewScroll;
+
+		if ( ! scroll || scroll.generation !== requestGeneration ) {
+			return;
+		}
+
+		pendingPagePreviewScroll = null;
+		restorePreviewFrameScroll( pagePreviewFrame, scroll );
 	}
 
 	function clearSelectedElementLocator( options ) {
@@ -5212,6 +5385,8 @@
 			var pageSettings;
 			var restorePath;
 
+			restoreEditPreviewScrollIfNeeded( previewRequestGeneration );
+
 			if ( ! pendingElementSelectionPath || ! previewFrame.contentWindow ) {
 				return;
 			}
@@ -5239,6 +5414,12 @@
 			pendingElementSelectionPath = null;
 			pendingElementSelectionGeneration = 0;
 		} );
+
+		if ( pagePreviewFrame ) {
+			pagePreviewFrame.addEventListener( 'load', function() {
+				restorePagePreviewScrollIfNeeded( pagePreviewRequestGeneration );
+			} );
+		}
 
 		window.addEventListener( 'message', function( event ) {
 			var data;
@@ -5822,6 +6003,7 @@
 					if ( showLoading ) {
 						assignPreviewFrameDocument( 'edit', previewFrame, injectEditInspectIntoDocument( data.document ), requestGeneration );
 					} else {
+						rememberEditPreviewScroll( requestGeneration );
 						previewFrame.srcdoc = injectEditInspectIntoDocument( data.document );
 					}
 
@@ -5909,6 +6091,7 @@
 					if ( showLoading ) {
 						assignPreviewFrameDocument( 'view', pagePreviewFrame, applyPreviewViewportToDocument( data.document ), requestGeneration );
 					} else {
+						rememberPagePreviewScroll( requestGeneration );
 						pagePreviewFrame.srcdoc = applyPreviewViewportToDocument( data.document );
 					}
 
