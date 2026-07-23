@@ -3226,7 +3226,6 @@
 			document.getElementById( 'art-editor-preview-button' ),
 			document.getElementById( 'art-editor-create-html' ),
 		].concat(
-			Array.prototype.slice.call( document.querySelectorAll( '.art-editor-screen__history-button' ) ),
 			Array.prototype.slice.call( document.querySelectorAll( '.art-editor-screen__canvas-tab' ) ),
 			Array.prototype.slice.call( document.querySelectorAll( '.art-editor-screen__device-button' ) )
 		);
@@ -3239,6 +3238,19 @@
 
 		setCodeEditorEnabled( ! locked && ! isAnchorBlock( getBlockById( editorState.selectedId ) ) );
 		setElementsDisabledForSave( interactiveElements, locked );
+
+		// History buttons must follow the undo stack, not the pre-save disabled snapshot.
+		if ( locked ) {
+			if ( undoButton ) {
+				undoButton.disabled = true;
+			}
+
+			if ( redoButton ) {
+				redoButton.disabled = true;
+			}
+		} else {
+			updateHistoryButtons();
+		}
 
 		previewFrames.forEach( function( frame ) {
 			frame.style.pointerEvents = locked ? 'none' : '';
@@ -3378,6 +3390,7 @@
 			return;
 		}
 
+		cancelPendingEditorMutations();
 		historyState.recording = false;
 		editorState.selectedId = snapshot.selectedId;
 		editorState.blocks = snapshot.blocks.map( function( block ) {
@@ -3412,6 +3425,22 @@
 		scheduleUnsavedIndicatorUpdate();
 	}
 
+	function cancelPendingEditorMutations() {
+		cancelStylePreviewRefresh();
+
+		if ( ! elementEditorController ) {
+			return;
+		}
+
+		if ( elementEditorController.cancelPendingTextStyleApply ) {
+			elementEditorController.cancelPendingTextStyleApply();
+		}
+
+		if ( elementEditorController.cancelPendingLinkApply ) {
+			elementEditorController.cancelPendingLinkApply();
+		}
+	}
+
 	function undoChange() {
 		var previous;
 
@@ -3419,6 +3448,7 @@
 			return;
 		}
 
+		cancelPendingEditorMutations();
 		flushStyleHistoryCheckpoint();
 		commitCodeToSelectedBlock();
 		historyState.future.push( createHistorySnapshot() );
@@ -3434,6 +3464,7 @@
 			return;
 		}
 
+		cancelPendingEditorMutations();
 		flushStyleHistoryCheckpoint();
 		commitCodeToSelectedBlock();
 		historyState.past.push( createHistorySnapshot() );
@@ -3654,10 +3685,17 @@
 
 	function initHistoryControls() {
 		if ( undoButton ) {
+			// Prevent input blur/change from re-applying styles before undo runs.
+			undoButton.addEventListener( 'mousedown', function( event ) {
+				event.preventDefault();
+			} );
 			undoButton.addEventListener( 'click', undoChange );
 		}
 
 		if ( redoButton ) {
+			redoButton.addEventListener( 'mousedown', function( event ) {
+				event.preventDefault();
+			} );
 			redoButton.addEventListener( 'click', redoChange );
 		}
 
