@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.53
+Stable tag: 0.2.54
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.54 =
+* Undo/Redo перенесены в верхнюю шапку (слева от превью) и всегда на виду при работе с элементом.
 
 = 0.2.53 =
 * Вставка текста в блоки на канвасе всегда без форматирования (plain text): стили из Telegram и других приложений больше не попадают в HTML.

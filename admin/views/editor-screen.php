@@ -123,6 +123,34 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 			</span>
 		</div>
 		<div class="art-editor-screen__header-right">
+			<div class="art-editor-screen__history-buttons">
+				<button
+					type="button"
+					class="art-editor-screen__history-button"
+					id="art-editor-undo-button"
+					aria-label="<?php echo esc_attr__( 'Отменить', 'art-editor' ); ?>"
+					title="<?php echo esc_attr__( 'Отменить', 'art-editor' ); ?>"
+					disabled
+				>
+					<svg class="art-editor-screen__history-button-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+						<path d="M9 7H5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+						<path d="M5 11c1.2-3 4.2-5 8-5 4.4 0 8 3.6 8 8s-3.6 8-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+					</svg>
+				</button>
+				<button
+					type="button"
+					class="art-editor-screen__history-button"
+					id="art-editor-redo-button"
+					aria-label="<?php echo esc_attr__( 'Повторить', 'art-editor' ); ?>"
+					title="<?php echo esc_attr__( 'Повторить', 'art-editor' ); ?>"
+					disabled
+				>
+					<svg class="art-editor-screen__history-button-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+						<path d="M15 7h4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+						<path d="M19 11c-1.2-3-4.2-5-8-5-4.4 0-8 3.6-8 8s3.6 8 8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+					</svg>
+				</button>
+			</div>
 			<button
 				type="button"
 				class="art-editor-screen__icon-button"
@@ -158,34 +186,6 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 				<div class="art-editor-screen__sidebar-section art-editor-screen__sidebar-section--structure">
 					<div class="art-editor-screen__sidebar-heading">
 						<?php echo esc_html__( 'Структура', 'art-editor' ); ?>
-					</div>
-					<div class="art-editor-screen__history-buttons">
-						<button
-							type="button"
-							class="art-editor-screen__history-button"
-							id="art-editor-undo-button"
-							aria-label="<?php echo esc_attr__( 'Отменить', 'art-editor' ); ?>"
-							title="<?php echo esc_attr__( 'Отменить', 'art-editor' ); ?>"
-							disabled
-						>
-							<svg class="art-editor-screen__history-button-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-								<path d="M9 7H5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-								<path d="M5 11c1.2-3 4.2-5 8-5 4.4 0 8 3.6 8 8s-3.6 8-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-							</svg>
-						</button>
-						<button
-							type="button"
-							class="art-editor-screen__history-button"
-							id="art-editor-redo-button"
-							aria-label="<?php echo esc_attr__( 'Повторить', 'art-editor' ); ?>"
-							title="<?php echo esc_attr__( 'Повторить', 'art-editor' ); ?>"
-							disabled
-						>
-							<svg class="art-editor-screen__history-button-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-								<path d="M15 7h4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-								<path d="M19 11c-1.2-3-4.2-5-8-5-4.4 0-8 3.6-8 8s3.6 8 8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-							</svg>
-						</button>
 					</div>
 				</div>
 				<div class="art-editor-screen__structure" id="art-editor-structure">

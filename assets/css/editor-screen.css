@@ -868,32 +868,38 @@ body.art-editor-screen {
 	display: inline-flex;
 	flex-shrink: 0;
 	align-items: center;
-	gap: 4px;
+	gap: 2px;
+	margin-right: 4px;
+	padding-right: 12px;
+	border-right: 1px solid #3c3c3c;
 }
 
 .art-editor-screen__history-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
+	width: 32px;
+	min-width: 32px;
+	height: 32px;
 	padding: 0;
-	border: 1px solid #c3c4c7;
+	border: 0;
 	border-radius: 3px;
-	background: #fff;
-	color: #50575e;
+	background: transparent;
+	color: #a7aaad;
 	cursor: pointer;
+	box-sizing: border-box;
+	-webkit-appearance: none;
+	appearance: none;
 }
 
 .art-editor-screen__history-button:hover:not( :disabled ),
 .art-editor-screen__history-button:focus:not( :disabled ) {
-	border-color: #8c8f94;
-	background: #f6f7f7;
-	color: #1d2327;
+	background: #2f2f2f;
+	color: #fff;
 }
 
 .art-editor-screen__history-button:disabled {
-	opacity: 0.45;
+	opacity: 0.35;
 	cursor: default;
 }
 
