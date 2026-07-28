@@ -73,6 +73,37 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 	?>
 </head>
 <body class="art-editor-screen">
+	<div
+		id="art-editor-post-lock-dialog"
+		class="art-editor-screen__post-lock-dialog"
+		hidden
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="art-editor-post-lock-message"
+	>
+		<div class="art-editor-screen__post-lock-dialog-backdrop"></div>
+		<div class="art-editor-screen__post-lock-dialog-panel">
+			<div class="art-editor-screen__post-lock-avatar" id="art-editor-post-lock-avatar" hidden></div>
+			<p class="art-editor-screen__post-lock-message" id="art-editor-post-lock-message" tabindex="0"></p>
+			<div class="art-editor-screen__post-lock-actions">
+				<a
+					class="art-editor-screen__post-lock-button art-editor-screen__post-lock-button--secondary"
+					id="art-editor-post-lock-go-back"
+					href="<?php echo esc_url( Art_Editor_Editor_Screen::get_lock_go_back_url( $post ) ); ?>"
+				>
+					<?php echo esc_html__( 'Назад', 'art-editor' ); ?>
+				</a>
+				<a
+					class="art-editor-screen__post-lock-button art-editor-screen__post-lock-button--primary"
+					id="art-editor-post-lock-takeover"
+					href="<?php echo esc_url( Art_Editor_Editor_Screen::get_takeover_url( $post->ID ) ); ?>"
+					hidden
+				>
+					<?php echo esc_html__( 'Войти и перехватить', 'art-editor' ); ?>
+				</a>
+			</div>
+		</div>
+	</div>
 	<header class="art-editor-screen__header">
 		<div class="art-editor-screen__header-left">
 			<a
@@ -909,12 +940,14 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 	<?php
 	$art_editor_editor_scripts = array(
 		'jquery',
+		'heartbeat',
 		'art-editor-screen',
 	);
 
 	if ( wp_script_is( 'code-editor', 'enqueued' ) ) {
 		$art_editor_editor_scripts = array(
 			'jquery',
+			'heartbeat',
 			'underscore',
 			'wp-codemirror',
 			'code-editor',

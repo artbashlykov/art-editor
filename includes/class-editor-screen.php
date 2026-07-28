@@ -13,10 +13,69 @@ defined( 'ABSPATH' ) || exit;
 class Art_Editor_Editor_Screen {
 
 	/**
+	 * Current post lock payload for the editor screen config.
+	 *
+	 * @var array|null
+	 */
+	private static $post_lock = null;
+
+	/**
 	 * Register hooks.
 	 */
 	public static function init() {
 		add_action( 'admin_action_art_editor', array( __CLASS__, 'render' ) );
+	}
+
+	/**
+	 * Ensure post-lock helpers from wp-admin are available.
+	 */
+	private static function ensure_post_lock_functions() {
+		if ( ! function_exists( 'wp_check_post_lock' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/post.php';
+		}
+	}
+
+	/**
+	 * Build the ART Editor URL for a post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string
+	 */
+	public static function get_editor_url( $post_id ) {
+		return Art_Editor_Block_Editor::get_edit_url( $post_id );
+	}
+
+	/**
+	 * URL to take over an existing post lock.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string
+	 */
+	public static function get_takeover_url( $post_id ) {
+		return wp_nonce_url(
+			add_query_arg( 'get-post-lock', '1', self::get_editor_url( $post_id ) ),
+			'lock-post_' . (int) $post_id
+		);
+	}
+
+	/**
+	 * Back URL when leaving a locked editor dialog.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return string
+	 */
+	public static function get_lock_go_back_url( $post ) {
+		$sendback = wp_get_referer();
+
+		if ( ! $sendback || false !== strpos( $sendback, 'post.php' ) || false !== strpos( $sendback, 'post-new.php' ) ) {
+			$sendback = admin_url( 'edit.php' );
+
+			if ( $post instanceof WP_Post && 'post' !== $post->post_type ) {
+				$sendback = add_query_arg( 'post_type', $post->post_type, $sendback );
+			}
+		}
+
+		return $sendback;
 	}
 
 	/**
@@ -39,6 +98,37 @@ class Art_Editor_Editor_Screen {
 			wp_die( esc_html__( 'Этот тип записи не поддерживается.', 'art-editor' ) );
 		}
 
+		self::ensure_post_lock_functions();
+
+		if ( ! empty( $_GET['get-post-lock'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			check_admin_referer( 'lock-post_' . $post_id );
+			wp_set_post_lock( $post_id );
+			wp_safe_redirect( self::get_editor_url( $post_id ) );
+			exit;
+		}
+
+		$lock_user_id = wp_check_post_lock( $post_id );
+
+		if ( $lock_user_id ) {
+			$lock_user = get_userdata( $lock_user_id );
+			$user_details = array(
+				'name' => $lock_user ? $lock_user->display_name : '',
+			);
+
+			if ( $lock_user && get_option( 'show_avatars' ) ) {
+				$user_details['avatar']   = get_avatar_url( $lock_user->ID, array( 'size' => 64 ) );
+				$user_details['avatar2x'] = get_avatar_url( $lock_user->ID, array( 'size' => 128 ) );
+			}
+
+			self::$post_lock = array(
+				'isLocked' => true,
+				'user'     => $user_details,
+			);
+
+			self::load_editor_page( $post );
+			exit;
+		}
+
 		Art_Editor_Post_Meta::mark_as_art_editor( $post_id );
 
 		$import_result = Art_Editor_Content::import_gutenberg_blocks_into_art_editor( $post_id );
@@ -52,6 +142,13 @@ class Art_Editor_Editor_Screen {
 		if ( ! $post instanceof WP_Post ) {
 			wp_die( esc_html__( 'Запись не найдена.', 'art-editor' ) );
 		}
+
+		$active_post_lock = wp_set_post_lock( $post_id );
+
+		self::$post_lock = array(
+			'isLocked'       => false,
+			'activePostLock' => $active_post_lock ? implode( ':', $active_post_lock ) : '',
+		);
 
 		self::load_editor_page( $post );
 		exit;
@@ -79,7 +176,9 @@ class Art_Editor_Editor_Screen {
 			)
 		);
 
-		$script_deps = array( 'jquery' );
+		wp_enqueue_script( 'heartbeat' );
+
+		$script_deps = array( 'jquery', 'heartbeat' );
 
 		if ( $code_editor_settings ) {
 			$script_deps[] = 'code-editor';
@@ -93,6 +192,12 @@ class Art_Editor_Editor_Screen {
 
 		$script_deps[] = 'media-editor';
 		$script_deps[] = 'media-views';
+
+		wp_add_inline_script(
+			'jquery',
+			'window.ajaxurl = window.ajaxurl || ' . wp_json_encode( admin_url( 'admin-ajax.php', 'relative' ) ) . ';',
+			'before'
+		);
 
 		wp_enqueue_style(
 			'art-editor-brand',
@@ -160,6 +265,7 @@ class Art_Editor_Editor_Screen {
 		}
 
 		$permalink_data = self::get_permalink_settings_data( $post );
+		$post_lock      = is_array( self::$post_lock ) ? self::$post_lock : array( 'isLocked' => false );
 
 		return array(
 			'postId'           => (int) $post->ID,
@@ -182,6 +288,14 @@ class Art_Editor_Editor_Screen {
 			'siteIconHead'     => self::get_site_icon_head_markup(),
 			'nonce'            => wp_create_nonce( 'wp_rest' ),
 			'statusLabels'     => $status_labels,
+			'postLock'         => $post_lock,
+			'postLockUtils'    => array(
+				'nonce'       => wp_create_nonce( 'lock-post_' . (int) $post->ID ),
+				'unlockNonce' => wp_create_nonce( 'update-post_' . (int) $post->ID ),
+				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+				'goBackUrl'   => esc_url_raw( self::get_lock_go_back_url( $post ) ),
+				'takeoverUrl' => esc_url_raw( self::get_takeover_url( $post->ID ) ),
+			),
 			'i18n'             => array(
 				'save'              => __( 'Сохранить', 'art-editor' ),
 				'saving'            => __( 'Сохранение…', 'art-editor' ),
@@ -256,6 +370,13 @@ class Art_Editor_Editor_Screen {
 				'elementEditorImageButton' => __( 'Использовать изображение', 'art-editor' ),
 				'elementEditorImageUnavailable' => __( 'Медиабиблиотека WordPress недоступна.', 'art-editor' ),
 				'elementEditorDeleteElement' => __( 'Удалить элемент', 'art-editor' ),
+				'postLockGoBack' => __( 'Назад', 'art-editor' ),
+				'postLockTakeOver' => __( 'Войти и перехватить', 'art-editor' ),
+				/* translators: %s: User display name. */
+				'postLockEditing' => __( '%s сейчас редактирует эту страницу. Перехватить редактирование?', 'art-editor' ),
+				/* translators: %s: User display name. */
+				'postLockTakenOver' => __( '%s перехватил редактирование и сейчас работает с этой страницей.', 'art-editor' ),
+				'postLockSaveBlocked' => __( 'Страницу сейчас редактирует другой пользователь. Сохранение недоступно.', 'art-editor' ),
 			),
 		);
 	}

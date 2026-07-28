@@ -17,6 +17,111 @@ body.art-editor-screen .media-modal-backdrop {
 	z-index: 100190;
 }
 
+.art-editor-screen__post-lock-dialog {
+	position: fixed;
+	inset: 0;
+	z-index: 100300;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+}
+
+.art-editor-screen__post-lock-dialog[hidden] {
+	display: none;
+}
+
+.art-editor-screen__post-lock-dialog-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba( 0, 0, 0, 0.55 );
+}
+
+.art-editor-screen__post-lock-dialog-panel {
+	position: relative;
+	z-index: 1;
+	width: min( 100%, 420px );
+	padding: 24px;
+	border-radius: 6px;
+	background: #fff;
+	box-shadow: 0 8px 30px rgba( 0, 0, 0, 0.25 );
+	text-align: center;
+}
+
+.art-editor-screen__post-lock-avatar {
+	display: flex;
+	justify-content: center;
+	margin: 0 0 16px;
+}
+
+.art-editor-screen__post-lock-avatar img {
+	display: block;
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+}
+
+.art-editor-screen__post-lock-message {
+	margin: 0 0 20px;
+	color: #1d2327;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.art-editor-screen__post-lock-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+.art-editor-screen__post-lock-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 36px;
+	padding: 0 14px;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	background: #fff;
+	color: #1d2327;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+	box-sizing: border-box;
+}
+
+.art-editor-screen__post-lock-button:hover,
+.art-editor-screen__post-lock-button:focus {
+	border-color: #8c8f94;
+	color: #1d2327;
+}
+
+.art-editor-screen__post-lock-button--primary {
+	border-color: var( --art-editor-color-primary );
+	background: var( --art-editor-color-primary );
+	color: var( --art-editor-color-primary-text );
+}
+
+.art-editor-screen__post-lock-button--primary:hover,
+.art-editor-screen__post-lock-button--primary:focus {
+	border-color: var( --art-editor-color-primary );
+	background: var( --art-editor-color-primary );
+	color: var( --art-editor-color-primary-text );
+	filter: brightness( 0.95 );
+}
+
+.art-editor-screen__post-lock-button[hidden] {
+	display: none;
+}
+
+body.art-editor-screen--post-locked .art-editor-screen__workspace {
+	pointer-events: none;
+}
+
 .art-editor-screen__header {
 	position: sticky;
 	top: 0;

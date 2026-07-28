@@ -32,6 +32,12 @@
 	var undoButton = document.getElementById( 'art-editor-undo-button' );
 	var redoButton = document.getElementById( 'art-editor-redo-button' );
 
+	var postLockState = {
+		heldByOther: false,
+		ownsLock: false,
+		activePostLock: '',
+	};
+
 	var codeInput = document.getElementById( 'art-editor-code-input' );
 	var previewFrame = document.getElementById( 'art-editor-preview-frame' );
 	var pagePreviewFrame = document.getElementById( 'art-editor-page-preview-frame' );
@@ -3199,7 +3205,7 @@
 		}
 
 		if ( saveButton ) {
-			saveButton.classList.toggle( 'art-editor-screen__save-button--idle', ! dirty && ! isSaving() );
+			saveButton.classList.toggle( 'art-editor-screen__save-button--idle', ! dirty && ! isSaveInFlight() );
 		}
 	}
 
@@ -3216,8 +3222,20 @@
 			createSettingsSaveSnapshot() !== persistenceState.savedSettingsSnapshot;
 	}
 
-	function isSaving() {
+	function isSaveInFlight() {
 		return persistenceState.saveInFlight > 0;
+	}
+
+	function isPostLockBlocking() {
+		return !! postLockState.heldByOther;
+	}
+
+	function isEditingBlocked() {
+		return isSaveInFlight() || isPostLockBlocking();
+	}
+
+	function isSaving() {
+		return isEditingBlocked();
 	}
 
 	function setElementsDisabledForSave( elements, disabled ) {
@@ -3243,7 +3261,7 @@
 	}
 
 	function updateEditorSaveLock() {
-		var locked = isSaving();
+		var locked = isEditingBlocked();
 		var workspace = document.querySelector( '.art-editor-screen__workspace' );
 		var previewFrames = document.querySelectorAll( '.art-editor-screen__preview-frame' );
 		var elementDeleteButton;
@@ -3251,12 +3269,15 @@
 			document.getElementById( 'art-editor-settings-toggle' ),
 			document.getElementById( 'art-editor-preview-button' ),
 			document.getElementById( 'art-editor-create-html' ),
+			document.getElementById( 'art-editor-save-button' ),
+			document.getElementById( 'art-editor-publish-button' ),
 		].concat(
 			Array.prototype.slice.call( document.querySelectorAll( '.art-editor-screen__canvas-tab' ) ),
 			Array.prototype.slice.call( document.querySelectorAll( '.art-editor-screen__device-button' ) )
 		);
 
-		document.body.classList.toggle( 'art-editor-screen--saving', locked );
+		document.body.classList.toggle( 'art-editor-screen--saving', isSaveInFlight() );
+		document.body.classList.toggle( 'art-editor-screen--post-locked', isPostLockBlocking() );
 
 		if ( workspace ) {
 			workspace.setAttribute( 'aria-busy', locked ? 'true' : 'false' );
@@ -3294,7 +3315,11 @@
 	}
 
 	function shouldWarnBeforeLeave() {
-		return isDirty() || isSaving();
+		if ( isPostLockBlocking() ) {
+			return false;
+		}
+
+		return isDirty() || isSaveInFlight();
 	}
 
 	function beginSaving() {
@@ -7502,6 +7527,200 @@
 		syncSettingsInputs();
 	}
 
+	function formatPostLockMessage( template, name ) {
+		var safeName = name || '';
+		var pattern = String( template || '' );
+
+		if ( pattern.indexOf( '%s' ) === -1 ) {
+			return pattern;
+		}
+
+		return pattern.replace( '%s', safeName );
+	}
+
+	function showPostLockDialog( options ) {
+		var settings = options || {};
+		var dialog = document.getElementById( 'art-editor-post-lock-dialog' );
+		var messageNode = document.getElementById( 'art-editor-post-lock-message' );
+		var avatarNode = document.getElementById( 'art-editor-post-lock-avatar' );
+		var goBackLink = document.getElementById( 'art-editor-post-lock-go-back' );
+		var takeoverLink = document.getElementById( 'art-editor-post-lock-takeover' );
+		var utils = config.postLockUtils || {};
+		var user = settings.user || {};
+		var avatarSrc = user.avatar || '';
+		var avatarSrc2x = user.avatar2x || '';
+		var img;
+
+		if ( ! dialog || ! messageNode ) {
+			return;
+		}
+
+		messageNode.textContent = formatPostLockMessage(
+			settings.messageTemplate,
+			user.name || ''
+		);
+
+		if ( goBackLink && utils.goBackUrl ) {
+			goBackLink.href = utils.goBackUrl;
+		}
+
+		if ( takeoverLink ) {
+			if ( settings.showTakeover && utils.takeoverUrl ) {
+				takeoverLink.hidden = false;
+				takeoverLink.href = utils.takeoverUrl;
+			} else {
+				takeoverLink.hidden = true;
+			}
+		}
+
+		if ( avatarNode ) {
+			avatarNode.innerHTML = '';
+
+			if ( avatarSrc ) {
+				img = document.createElement( 'img' );
+				img.src = avatarSrc;
+				img.alt = '';
+				img.width = 64;
+				img.height = 64;
+
+				if ( avatarSrc2x ) {
+					img.srcset = avatarSrc2x + ' 2x';
+				}
+
+				avatarNode.appendChild( img );
+				avatarNode.hidden = false;
+			} else {
+				avatarNode.hidden = true;
+			}
+		}
+
+		dialog.hidden = false;
+
+		window.setTimeout( function() {
+			messageNode.focus();
+		}, 0 );
+	}
+
+	function freezeEditorForPostLock( lockError ) {
+		postLockState.heldByOther = true;
+		postLockState.ownsLock = false;
+		postLockState.activePostLock = '';
+		updateEditorSaveLock();
+		showPostLockDialog( {
+			user: {
+				name: lockError && lockError.name ? lockError.name : '',
+				avatar: lockError && lockError.avatar_src ? lockError.avatar_src : '',
+				avatar2x: lockError && lockError.avatar_src_2x ? lockError.avatar_src_2x : '',
+			},
+			messageTemplate: i18n.postLockTakenOver || '%s перехватил редактирование и сейчас работает с этой страницей.',
+			showTakeover: false,
+		} );
+	}
+
+	function releasePostLockBeacon() {
+		var utils = config.postLockUtils || {};
+		var ajaxUrl = utils.ajaxUrl || ( typeof window.ajaxurl === 'string' ? window.ajaxurl : '' );
+		var formData;
+
+		if ( ! postLockState.ownsLock || ! postLockState.activePostLock || ! ajaxUrl || ! utils.unlockNonce ) {
+			return;
+		}
+
+		formData = new window.FormData();
+		formData.append( 'action', 'wp-remove-post-lock' );
+		formData.append( '_wpnonce', utils.unlockNonce );
+		formData.append( 'post_ID', String( config.postId || '' ) );
+		formData.append( 'active_post_lock', postLockState.activePostLock );
+
+		if ( window.navigator && typeof window.navigator.sendBeacon === 'function' ) {
+			window.navigator.sendBeacon( ajaxUrl, formData );
+			return;
+		}
+
+		if ( window.jQuery ) {
+			window.jQuery.post( {
+				async: false,
+				url: ajaxUrl,
+				data: {
+					action: 'wp-remove-post-lock',
+					_wpnonce: utils.unlockNonce,
+					post_ID: config.postId,
+					active_post_lock: postLockState.activePostLock,
+				},
+			} );
+		}
+	}
+
+	function initPostLock() {
+		var postLock = config.postLock || {};
+		var utils = config.postLockUtils || {};
+		var $ = window.jQuery;
+
+		if ( postLock.isLocked ) {
+			postLockState.heldByOther = true;
+			postLockState.ownsLock = false;
+			postLockState.activePostLock = '';
+			updateEditorSaveLock();
+			showPostLockDialog( {
+				user: postLock.user || {},
+				messageTemplate: i18n.postLockEditing || '%s сейчас редактирует эту страницу. Перехватить редактирование?',
+				showTakeover: true,
+			} );
+			return;
+		}
+
+		postLockState.ownsLock = true;
+		postLockState.heldByOther = false;
+		postLockState.activePostLock = postLock.activePostLock || '';
+
+		window.addEventListener( 'pagehide', releasePostLockBeacon );
+
+		if ( ! $ || ! config.postId ) {
+			return;
+		}
+
+		$( document ).on( 'heartbeat-send.art-editor-post-lock', function( event, data ) {
+			var send;
+
+			if ( ! postLockState.ownsLock || isPostLockBlocking() ) {
+				return;
+			}
+
+			send = {
+				post_id: config.postId,
+			};
+
+			if ( postLockState.activePostLock ) {
+				send.lock = postLockState.activePostLock;
+			}
+
+			data['wp-refresh-post-lock'] = send;
+		} );
+
+		$( document ).on( 'heartbeat-tick.art-editor-post-lock', function( event, data ) {
+			var received;
+
+			if ( ! data || ! data['wp-refresh-post-lock'] ) {
+				return;
+			}
+
+			received = data['wp-refresh-post-lock'];
+
+			if ( received.lock_error ) {
+				freezeEditorForPostLock( received.lock_error );
+				return;
+			}
+
+			if ( received.new_lock ) {
+				postLockState.activePostLock = received.new_lock;
+			}
+		} );
+
+		if ( utils.ajaxUrl && ! window.ajaxurl ) {
+			window.ajaxurl = utils.ajaxUrl;
+		}
+	}
+
 	initCodeEditor();
 	initStructure();
 	initHistoryControls();
@@ -7513,6 +7732,7 @@
 	initSaveAndPreview();
 	initPageSettings();
 	updateSavedBaseline();
+	initPostLock();
 	initUnsavedChangesGuard();
 	updateUnsavedIndicator();
 } )();

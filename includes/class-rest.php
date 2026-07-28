@@ -122,6 +122,46 @@ class Art_Editor_Rest {
 	}
 
 	/**
+	 * Ensure post-lock helpers are loaded for REST requests.
+	 */
+	private static function ensure_post_lock_functions() {
+		if ( ! function_exists( 'wp_check_post_lock' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/post.php';
+		}
+	}
+
+	/**
+	 * Reject saves when another user currently holds the post lock.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return true|WP_Error
+	 */
+	private static function assert_current_user_holds_post_lock( $post_id ) {
+		self::ensure_post_lock_functions();
+
+		$lock_user_id = wp_check_post_lock( $post_id );
+
+		if ( ! $lock_user_id ) {
+			return true;
+		}
+
+		$user = get_userdata( $lock_user_id );
+		$name = $user ? $user->display_name : '';
+
+		return new WP_Error(
+			'art_editor_post_locked',
+			$name
+				? sprintf(
+					/* translators: %s: User display name. */
+					__( 'Страницу сейчас редактирует %s. Сохранение недоступно.', 'art-editor' ),
+					$name
+				)
+				: __( 'Страницу сейчас редактирует другой пользователь. Сохранение недоступно.', 'art-editor' ),
+			array( 'status' => 423 )
+		);
+	}
+
+	/**
 	 * Save HTML blocks for a post.
 	 *
 	 * @param WP_REST_Request $request Request object.
@@ -129,6 +169,12 @@ class Art_Editor_Rest {
 	 */
 	public static function save_html_blocks( $request ) {
 		$post_id = (int) $request->get_param( 'id' );
+		$lock    = self::assert_current_user_holds_post_lock( $post_id );
+
+		if ( is_wp_error( $lock ) ) {
+			return $lock;
+		}
+
 		$payload = $request->get_json_params();
 		$blocks  = isset( $payload['blocks'] ) ? $payload['blocks'] : array();
 		$status  = isset( $payload['status'] ) ? sanitize_key( $payload['status'] ) : '';
@@ -168,7 +214,13 @@ class Art_Editor_Rest {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public static function save_page_settings( $request ) {
-		$post_id     = (int) $request->get_param( 'id' );
+		$post_id = (int) $request->get_param( 'id' );
+		$lock    = self::assert_current_user_holds_post_lock( $post_id );
+
+		if ( is_wp_error( $lock ) ) {
+			return $lock;
+		}
+
 		$payload     = $request->get_json_params();
 		$layout_mode = isset( $payload['layoutMode'] ) ? $payload['layoutMode'] : Art_Editor_Post_Meta::LAYOUT_THEME;
 		$style_mode  = isset( $payload['styleMode'] ) ? $payload['styleMode'] : Art_Editor_Post_Meta::STYLE_THEME;
