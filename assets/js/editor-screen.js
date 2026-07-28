@@ -2728,9 +2728,9 @@
 					return;
 				}
 
+				scheduleCodeHistory();
 				applyCodeChangeToBlock();
 				clearSelectedElementLocator();
-				scheduleCodeHistory();
 				scheduleUnsavedIndicatorUpdate();
 				updatePreview();
 				updatePagePreview();
@@ -2741,9 +2741,9 @@
 
 		if ( codeInput ) {
 			codeInput.addEventListener( 'input', function() {
+				scheduleCodeHistory();
 				applyCodeChangeToBlock();
 				clearSelectedElementLocator();
-				scheduleCodeHistory();
 				scheduleUnsavedIndicatorUpdate();
 				updatePreview();
 				updatePagePreview();
@@ -3336,8 +3336,12 @@
 		} );
 	}
 
-	function createHistorySnapshot() {
-		commitCodeToSelectedBlock();
+	function createHistorySnapshot( options ) {
+		var settings = options || {};
+
+		if ( ! settings.skipCommit ) {
+			commitCodeToSelectedBlock();
+		}
 
 		return {
 			selectedId: editorState.selectedId,
@@ -3349,6 +3353,12 @@
 		window.clearTimeout( styleHistoryState.changeTimer );
 		styleHistoryState.changeTimer = null;
 		styleHistoryState.changePending = false;
+	}
+
+	function flushCodeHistoryCheckpoint() {
+		window.clearTimeout( historyState.codeChangeTimer );
+		historyState.codeChangeTimer = null;
+		historyState.codeChangePending = false;
 	}
 
 	function ensureStyleHistoryCheckpoint() {
@@ -3381,21 +3391,24 @@
 	function resetHistory() {
 		historyState.past = [];
 		historyState.future = [];
-		historyState.codeChangePending = false;
-		window.clearTimeout( historyState.codeChangeTimer );
-		historyState.codeChangeTimer = null;
+		flushCodeHistoryCheckpoint();
 		flushStyleHistoryCheckpoint();
 		updateHistoryButtons();
 	}
 
-	function pushHistory() {
+	function pushHistory( options ) {
+		var settings = options || {};
 		var snapshot;
 
 		if ( ! historyState.recording ) {
 			return;
 		}
 
-		snapshot = createHistorySnapshot();
+		if ( ! settings.fromCode ) {
+			flushCodeHistoryCheckpoint();
+		}
+
+		snapshot = createHistorySnapshot( settings );
 
 		if ( historyState.past.length ) {
 			if ( historySnapshotsEqual( historyState.past[ historyState.past.length - 1 ], snapshot ) ) {
@@ -3409,8 +3422,13 @@
 	}
 
 	function scheduleCodeHistory() {
+		// Snapshot the pre-change block state. Caller must invoke this before
+		// applyCodeChangeToBlock(), otherwise undo would restore the new value.
 		if ( ! historyState.codeChangePending ) {
-			pushHistory();
+			pushHistory( {
+				skipCommit: true,
+				fromCode: true,
+			} );
 			historyState.codeChangePending = true;
 		}
 
@@ -3427,6 +3445,8 @@
 		}
 
 		cancelPendingEditorMutations();
+		flushCodeHistoryCheckpoint();
+		flushStyleHistoryCheckpoint();
 		historyState.recording = false;
 		editorState.selectedId = snapshot.selectedId;
 		editorState.blocks = snapshot.blocks.map( function( block ) {
@@ -3486,8 +3506,9 @@
 
 		cancelPendingEditorMutations();
 		flushStyleHistoryCheckpoint();
+		flushCodeHistoryCheckpoint();
 		commitCodeToSelectedBlock();
-		historyState.future.push( createHistorySnapshot() );
+		historyState.future.push( createHistorySnapshot( { skipCommit: true } ) );
 		previous = historyState.past.pop();
 		applyHistorySnapshot( previous );
 		updateHistoryButtons();
@@ -3502,8 +3523,9 @@
 
 		cancelPendingEditorMutations();
 		flushStyleHistoryCheckpoint();
+		flushCodeHistoryCheckpoint();
 		commitCodeToSelectedBlock();
-		historyState.past.push( createHistorySnapshot() );
+		historyState.past.push( createHistorySnapshot( { skipCommit: true } ) );
 		next = historyState.future.pop();
 		applyHistorySnapshot( next );
 		updateHistoryButtons();
@@ -5406,7 +5428,7 @@
 		if ( null !== nextHtml ) {
 			pushHistory();
 			block.content = nextHtml;
-			setCodeValue( nextHtml );
+			setCodeValue( nextHtml, { silent: true } );
 			clearSelectedElementLocator();
 			updatePreview();
 			updatePagePreview();
