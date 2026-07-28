@@ -962,6 +962,7 @@
 		var settingsToggle = document.getElementById( 'art-editor-settings-toggle' );
 		var elementSummary = document.getElementById( 'art-editor-element-summary' );
 		var elementParentButton = document.getElementById( 'art-editor-element-parent' );
+		var elementDeleteButton = document.getElementById( 'art-editor-element-delete' );
 		var styleControls = document.getElementById( 'art-editor-element-style-controls' );
 		var fontSizeRow = document.getElementById( 'art-editor-element-font-size-row' );
 		var lineHeightRow = document.getElementById( 'art-editor-element-line-height-row' );
@@ -1422,6 +1423,23 @@
 			return !! ( locator && locator.path && locator.path.length && ! isImageElementLocator( locator ) );
 		}
 
+		function updateElementDeleteButton( locator ) {
+			if ( ! elementDeleteButton ) {
+				return;
+			}
+
+			elementDeleteButton.disabled = isSaving() || ! ( locator && locator.path && locator.path.length );
+		}
+
+		function handleElementDeleteClick() {
+			if ( isSaving() || ! isSelectedElementLocatorForCurrentBlock() ) {
+				return;
+			}
+
+			flushPendingElementEdits( { skipHistory: true } );
+			deleteSelectedElement();
+		}
+
 		function syncElementControls( locator ) {
 			var block;
 			var linkState;
@@ -1462,6 +1480,8 @@
 
 			setBlockSpacingSectionVisible( canSetBlockSpacing );
 			setExternalMarginSectionVisible( canSetMargin );
+
+			updateElementDeleteButton( locator );
 
 			if ( styleControls ) {
 				styleControls.hidden = ! isInlineTextStyleable && ! canSetBackground && ! canSetBlockSpacing;
@@ -1556,6 +1576,7 @@
 				updateLastSyncedTextStyleState( null );
 				updateTextStyleResetButtons( null );
 				closeLinkOptions();
+				updateElementDeleteButton( null );
 				return;
 			}
 
@@ -2169,6 +2190,10 @@
 
 		if ( elementParentButton ) {
 			elementParentButton.addEventListener( 'click', selectParentElement );
+		}
+
+		if ( elementDeleteButton ) {
+			elementDeleteButton.addEventListener( 'click', handleElementDeleteClick );
 		}
 
 		if ( linkSettingsToggle ) {
@@ -3248,8 +3273,18 @@
 			if ( redoButton ) {
 				redoButton.disabled = true;
 			}
+
+			elementDeleteButton = document.getElementById( 'art-editor-element-delete' );
+
+			if ( elementDeleteButton ) {
+				elementDeleteButton.disabled = true;
+			}
 		} else {
 			updateHistoryButtons();
+
+			if ( elementEditorController && elementEditorController.syncElementControls ) {
+				elementEditorController.syncElementControls( editorState.selectedElementLocator || null );
+			}
 		}
 
 		previewFrames.forEach( function( frame ) {
@@ -5239,9 +5274,15 @@
 			return false;
 		}
 
+		if ( isSaving() ) {
+			return false;
+		}
+
 		if ( 'edit' !== getActiveCanvasTabName() ) {
 			return false;
 		}
+
+		cancelPendingEditorMutations();
 
 		block = getBlockById( editorState.selectedId );
 

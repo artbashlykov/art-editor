@@ -255,6 +255,7 @@ class Art_Editor_Editor_Screen {
 				'elementEditorImageTitle' => __( 'Выберите изображение', 'art-editor' ),
 				'elementEditorImageButton' => __( 'Использовать изображение', 'art-editor' ),
 				'elementEditorImageUnavailable' => __( 'Медиабиблиотека WordPress недоступна.', 'art-editor' ),
+				'elementEditorDeleteElement' => __( 'Удалить элемент', 'art-editor' ),
 			),
 		);
 	}
