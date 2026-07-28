@@ -296,6 +296,11 @@ body.art-editor-screen {
 .art-editor-screen__sidebar--left {
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
+}
+
+.art-editor-screen__sidebar-element-editor {
+	overflow: hidden;
 }
 
 .art-editor-screen__sidebar-view {
@@ -454,29 +459,31 @@ body.art-editor-screen {
 
 .art-editor-screen__element-editor-footer {
 	flex-shrink: 0;
-	padding: 0 12px 12px;
-}
-
-.art-editor-screen__element-editor-footer-divider {
-	width: 100%;
-	height: 0;
-	margin: 0 0 12px;
-	border: 0;
+	padding: 12px;
 	border-top: 1px solid #dcdcde;
+	background: #fff;
 }
 
 .art-editor-screen__element-editor-delete {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	gap: 6px;
 	width: 100%;
+	height: 36px;
 	min-height: 36px;
-	padding: 8px 12px;
+	padding: 0 12px;
 	border: 1px solid #d63638;
 	border-radius: 4px;
 	background: #fff;
 	color: #d63638;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1;
 	cursor: pointer;
+	box-sizing: border-box;
+	-webkit-appearance: none;
+	appearance: none;
 	transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -492,8 +499,15 @@ body.art-editor-screen {
 	cursor: not-allowed;
 }
 
+.art-editor-screen__element-editor-delete-label {
+	line-height: 1;
+}
+
 .art-editor-screen__element-editor-delete-svg {
 	display: block;
+	flex-shrink: 0;
+	width: 16px;
+	height: 16px;
 }
 
 .art-editor-screen__element-editor-style-row > .art-editor-screen__element-editor-field-label {

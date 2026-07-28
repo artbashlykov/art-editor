@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.51
+Stable tag: 0.2.52
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,12 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.52 =
+* Редактор элемента: кнопка «Удалить элемент» закреплена внизу панели и корректно отображается в Yandex Browser на macOS.
+
+= 0.2.51 =
+* Редактор элемента: внизу панели — разделитель и кнопка «Удалить элемент» (с undo/redo) для любого выбранного элемента.
 
 = 0.2.50 =
 * Undo/Redo снова работают: кнопки больше не «залипают» после сохранения, а отложенные правки стилей не накатываются поверх отмены.

@@ -720,7 +720,6 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					</div>
 				</div>
 				<div class="art-editor-screen__element-editor-footer" id="art-editor-element-footer">
-					<hr class="art-editor-screen__element-editor-footer-divider" />
 					<button
 						type="button"
 						class="art-editor-screen__element-editor-delete"
@@ -734,6 +733,7 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 							<path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
 							<path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
 						</svg>
+						<span class="art-editor-screen__element-editor-delete-label"><?php echo esc_html__( 'Удалить элемент', 'art-editor' ); ?></span>
 					</button>
 				</div>
 			</div>

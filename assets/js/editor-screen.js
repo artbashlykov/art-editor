@@ -3246,6 +3246,7 @@
 		var locked = isSaving();
 		var workspace = document.querySelector( '.art-editor-screen__workspace' );
 		var previewFrames = document.querySelectorAll( '.art-editor-screen__preview-frame' );
+		var elementDeleteButton;
 		var interactiveElements = [
 			document.getElementById( 'art-editor-settings-toggle' ),
 			document.getElementById( 'art-editor-preview-button' ),
