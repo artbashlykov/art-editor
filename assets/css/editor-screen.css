@@ -1803,8 +1803,9 @@ body.art-editor-screen {
 }
 
 .art-editor-screen__code-panel .CodeMirror .art-editor-code-element-mark {
-	background-color: rgba( 34, 113, 177, 0.2 );
+	background-color: rgba( 97, 175, 239, 0.35 ) !important;
 	border-radius: 2px;
+	box-shadow: inset 0 0 0 1px rgba( 97, 175, 239, 0.55 );
 }
 
 .art-editor-screen__device-stage[hidden],

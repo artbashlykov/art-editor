@@ -2604,6 +2604,115 @@
 		};
 	}
 
+	function getSameTagMatchIndex( doc, path ) {
+		var target;
+		var tag;
+		var matches = [];
+		var walker;
+		var node;
+		var index;
+
+		target = findElementByPath( doc.body, path );
+
+		if ( ! target ) {
+			return 0;
+		}
+
+		tag = target.tagName;
+		walker = doc.createTreeWalker( doc.body, NodeFilter.SHOW_ELEMENT );
+
+		while ( walker.nextNode() ) {
+			node = walker.currentNode;
+
+			if ( node.tagName === tag ) {
+				matches.push( node );
+			}
+		}
+
+		index = matches.indexOf( target );
+
+		return index < 0 ? 0 : index;
+	}
+
+	function findNthElementOuterRange( html, tagName, nth ) {
+		var tag = String( tagName || '' ).toLowerCase();
+		var voidTags = {
+			area: 1,
+			base: 1,
+			br: 1,
+			col: 1,
+			embed: 1,
+			hr: 1,
+			img: 1,
+			input: 1,
+			link: 1,
+			meta: 1,
+			param: 1,
+			source: 1,
+			track: 1,
+			wbr: 1,
+		};
+		var openRe;
+		var match;
+		var count = 0;
+		var start = -1;
+		var openTag = '';
+		var depth;
+		var tokenRe;
+		var token;
+
+		if ( ! html || ! tag ) {
+			return null;
+		}
+
+		openRe = new RegExp( '<' + tag + '\\b[^>]*>', 'gi' );
+
+		while ( null !== ( match = openRe.exec( html ) ) ) {
+			if ( count === nth ) {
+				start = match.index;
+				openTag = match[ 0 ];
+				break;
+			}
+
+			count += 1;
+		}
+
+		if ( start < 0 || ! openTag ) {
+			return null;
+		}
+
+		if ( voidTags[ tag ] || /\/\s*>$/.test( openTag ) ) {
+			return {
+				start: start,
+				end: start + openTag.length,
+			};
+		}
+
+		depth = 1;
+		tokenRe = new RegExp( '<\\/?' + tag + '\\b[^>]*>', 'gi' );
+		tokenRe.lastIndex = start + openTag.length;
+
+		while ( null !== ( token = tokenRe.exec( html ) ) ) {
+			if ( /^<\//.test( token[ 0 ] ) ) {
+				depth -= 1;
+
+				if ( 0 === depth ) {
+					return {
+						start: start,
+						end: token.index + token[ 0 ].length,
+					};
+				}
+			} else if ( ! /\/\s*>$/.test( token[ 0 ] ) ) {
+				depth += 1;
+			}
+		}
+
+		return {
+			start: start,
+			end: start + openTag.length,
+		};
+	}
+
 	function findElementRangeInCode( html, locator ) {
 		var doc;
 		var element;
@@ -2633,6 +2742,7 @@
 				if ( ! indices.length && locator.outerHtml ) {
 					outerHtml = locator.outerHtml;
 					indices = findAllSubstringIndices( html, outerHtml );
+					matchIndex = 0;
 				}
 
 				if ( indices.length ) {
@@ -2642,6 +2752,17 @@
 						start: start,
 						end: start + outerHtml.length,
 					};
+				}
+
+				// outerHTML often differs from source (attribute order). Fall back to N-th tag.
+				range = findNthElementOuterRange(
+					html,
+					element.tagName,
+					getSameTagMatchIndex( doc, locator.path )
+				);
+
+				if ( range ) {
+					return range;
 				}
 			}
 
@@ -2669,9 +2790,7 @@
 				}
 			}
 
-			range = findRangeByTextContent( html, locator.tag, locator.textContent );
-
-			return range;
+			return findRangeByTextContent( html, locator.tag, locator.textContent );
 		} catch ( error ) {
 			return null;
 		}
@@ -2683,6 +2802,7 @@
 		var range;
 		var fromPos;
 		var toPos;
+		var block;
 
 		clearCodeElementHighlight();
 
@@ -2691,7 +2811,15 @@
 		}
 
 		cm = codeEditorInstance.codemirror;
+		block = getBlockById( editorState.selectedId );
 		html = cm.getValue();
+
+		// Keep CodeMirror in sync with the selected block before measuring ranges.
+		if ( block && String( block.content || '' ) !== String( html || '' ) ) {
+			setCodeValue( block.content || '', { silent: true } );
+			html = cm.getValue();
+		}
+
 		range = findElementRangeInCode( html, editorState.selectedElementLocator );
 
 		if ( ! range ) {
@@ -2703,6 +2831,8 @@
 
 		codeElementHighlightMark = cm.markText( fromPos, toPos, {
 			className: 'art-editor-code-element-mark',
+			inclusiveLeft: false,
+			inclusiveRight: false,
 		} );
 
 		cm.setCursor( fromPos );
@@ -7052,9 +7182,14 @@
 			syncPreviewStatusBanner();
 
 			if ( 'code' === tabName && ! isAnchorBlock( selectedBlock ) ) {
+				if ( selectedBlock ) {
+					setCodeValue( selectedBlock.content || '', { silent: true } );
+				}
+
 				refreshCodeEditor();
 				window.setTimeout( function() {
 					highlightSelectedElementInCode();
+					refreshCodeEditor();
 				}, 0 );
 			}
 
