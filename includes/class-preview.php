@@ -36,19 +36,14 @@ class Art_Editor_Preview {
 	public static function parse_block_parts( $html, $depth = 0 ) {
 		$html = self::normalize_block_html( $html );
 
-		list( $html, $scripts ) = self::extract_inline_scripts( $html );
+		list( $html, $scripts ) = self::extract_inline_scripts( $html, true );
 
 		$styles = array();
 		$links  = array();
 		$body   = $html;
 
 		if ( '' === trim( $html ) || ! class_exists( 'DOMDocument' ) ) {
-			return array(
-				'styles'  => $styles,
-				'body'    => $body,
-				'links'   => $links,
-				'scripts' => $scripts,
-			);
+			return self::finish_block_parts( $styles, $body, $links, $scripts );
 		}
 
 		$trimmed     = ltrim( $html );
@@ -125,13 +120,31 @@ class Art_Editor_Preview {
 		if ( $depth < 1 && '' !== $body && preg_match( '/<html\b/i', $body ) ) {
 			$nested = self::parse_block_parts( $body, $depth + 1 );
 
-			return array(
-				'styles'  => array_merge( $styles, $nested['styles'] ),
-				'body'    => $nested['body'],
-				'links'   => array_values( array_unique( array_merge( $links, $nested['links'] ) ) ),
-				'scripts' => array_merge( $scripts, $nested['scripts'] ),
+			return self::finish_block_parts(
+				array_merge( $styles, $nested['styles'] ),
+				$nested['body'],
+				array_values( array_unique( array_merge( $links, $nested['links'] ) ) ),
+				array_merge( $scripts, $nested['scripts'] )
 			);
 		}
+
+		return self::finish_block_parts( $styles, $body, $links, $scripts );
+	}
+
+	/**
+	 * Restore scripts whose placeholders survived parsing; keep the rest as leftovers.
+	 *
+	 * Leftovers are typically scripts that lived in <head> of a pasted full document
+	 * and would otherwise be lost when only body children are kept.
+	 *
+	 * @param string[] $styles  Extracted styles.
+	 * @param string   $body    Body HTML, possibly with placeholders.
+	 * @param string[] $links   Stylesheet URLs.
+	 * @param string[] $scripts Raw script tags aligned with placeholder indexes.
+	 * @return array{styles:string[],body:string,links:string[],scripts:string[]}
+	 */
+	private static function finish_block_parts( $styles, $body, $links, $scripts ) {
+		list( $body, $scripts ) = self::restore_inline_scripts_in_document( (string) $body, $scripts );
 
 		return array(
 			'styles'  => $styles,
@@ -139,6 +152,54 @@ class Art_Editor_Preview {
 			'links'   => $links,
 			'scripts' => $scripts,
 		);
+	}
+
+	/**
+	 * Comment token used while scripts are parked outside DOMDocument.
+	 *
+	 * @param int $index Script index.
+	 * @return string
+	 */
+	public static function inline_script_placeholder( $index ) {
+		return '<!--art-editor-protected-script:' . (int) $index . '-->';
+	}
+
+	/**
+	 * Put extracted scripts back where their placeholders still exist.
+	 *
+	 * @param string   $html    HTML with placeholders.
+	 * @param string[] $scripts Raw script tags.
+	 * @return array{0:string,1:string[]} HTML with in-place scripts, leftover script tags.
+	 */
+	public static function restore_inline_scripts_in_document( $html, $scripts ) {
+		$html    = (string) $html;
+		$scripts = is_array( $scripts ) ? $scripts : array();
+		$leftover = array();
+
+		if ( empty( $scripts ) ) {
+			return array( $html, array() );
+		}
+
+		foreach ( $scripts as $index => $script_tag ) {
+			$normalized  = self::normalize_script_ampersands( $script_tag );
+			$placeholder = self::inline_script_placeholder( $index );
+
+			if ( false !== strpos( $html, $placeholder ) ) {
+				$html = str_replace( $placeholder, $normalized, $html );
+				continue;
+			}
+
+			// libxml may add a space inside the comment.
+			$pattern = '/<!--\s*art-editor-protected-script:' . (int) $index . '\s*-->/';
+			if ( preg_match( $pattern, $html, $match ) ) {
+				$html = str_replace( $match[0], $normalized, $html );
+				continue;
+			}
+
+			$leftover[] = $normalized;
+		}
+
+		return array( $html, $leftover );
 	}
 
 	/**
@@ -184,7 +245,7 @@ class Art_Editor_Preview {
 				$scripts[] = Art_Editor_Preview::normalize_script_ampersands( $matches[0] );
 
 				if ( $use_placeholders ) {
-					return '<!--art-editor-protected-script:' . $index . '-->';
+					return Art_Editor_Preview::inline_script_placeholder( $index );
 				}
 
 				return '';
@@ -237,7 +298,7 @@ class Art_Editor_Preview {
 		}
 
 		foreach ( $scripts as $index => $script_tag ) {
-			$placeholder = '<!--art-editor-protected-script:' . (int) $index . '-->';
+			$placeholder = self::inline_script_placeholder( $index );
 			$html        = str_replace( $placeholder, self::normalize_script_ampersands( $script_tag ), $html );
 		}
 
