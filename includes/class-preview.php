@@ -498,13 +498,17 @@ class Art_Editor_Preview {
 			$body = '<div class="art-editor-canvas"><div class="art-editor-canvas__content">' . $body . '</div></div>';
 		}
 
+		$block_links = ! empty( $options['block_link_navigation'] );
+
 		return self::wrap_document_body(
 			$body,
 			array(
-				'layout_mode'           => $options['layout_mode'],
-				'block_link_navigation' => ! empty( $options['block_link_navigation'] ),
-				'stylesheet_links'      => self::collect_block_stylesheet_links( $blocks ),
-				'html_blocks'           => $blocks,
+				'layout_mode'              => $options['layout_mode'],
+				'block_link_navigation'    => $block_links,
+				// Full-page "Просмотр": keep external links blocked, allow #anchors.
+				'allow_in_page_hash_links' => $block_links,
+				'stylesheet_links'         => self::collect_block_stylesheet_links( $blocks ),
+				'html_blocks'              => $blocks,
 			)
 		);
 	}
@@ -531,10 +535,12 @@ class Art_Editor_Preview {
 		return self::wrap_document_body(
 			$body,
 			array(
-				'layout_mode'           => $options['layout_mode'],
-				'block_link_navigation' => true,
-				'stylesheet_links'      => self::collect_block_stylesheet_links( array( $html ) ),
-				'html_blocks'           => array( $html ),
+				'layout_mode'              => $options['layout_mode'],
+				'block_link_navigation'    => true,
+				// Edit tab: block all <a> navigation so inspect/select stays reliable.
+				'allow_in_page_hash_links' => false,
+				'stylesheet_links'         => self::collect_block_stylesheet_links( array( $html ) ),
+				'html_blocks'              => array( $html ),
 			)
 		);
 	}
@@ -548,10 +554,11 @@ class Art_Editor_Preview {
 	 */
 	private static function wrap_document_body( $body, $options = array() ) {
 		$defaults = array(
-			'layout_mode'           => Art_Editor_Post_Meta::LAYOUT_CANVAS,
-			'block_link_navigation' => false,
-			'stylesheet_links'      => array(),
-			'html_blocks'           => array(),
+			'layout_mode'              => Art_Editor_Post_Meta::LAYOUT_CANVAS,
+			'block_link_navigation'    => false,
+			'allow_in_page_hash_links' => false,
+			'stylesheet_links'         => array(),
+			'html_blocks'              => array(),
 		);
 		$options  = wp_parse_args( $options, $defaults );
 
@@ -602,7 +609,7 @@ class Art_Editor_Preview {
 		}
 
 		if ( ! empty( $options['block_link_navigation'] ) ) {
-			$head_parts[] = self::get_link_guard_script();
+			$head_parts[] = self::get_link_guard_script( ! empty( $options['allow_in_page_hash_links'] ) );
 		}
 
 		$body_scripts = '';
@@ -678,11 +685,19 @@ class Art_Editor_Preview {
 	}
 
 	/**
-	 * Prevent anchor navigation inside preview iframes.
+	 * Prevent leaving preview iframes via <a> clicks.
 	 *
+	 * When $allow_in_page_hash_links is true, same-document hashes (#section)
+	 * still scroll inside the iframe — needed for the editor "Просмотр" tab.
+	 *
+	 * @param bool $allow_in_page_hash_links Whether #hash links may scroll.
 	 * @return string
 	 */
-	private static function get_link_guard_script() {
+	private static function get_link_guard_script( $allow_in_page_hash_links = false ) {
+		if ( $allow_in_page_hash_links ) {
+			return '<script id="art-editor-preview-link-guard">(function(){"use strict";function findAnchor(node){while(node&&node!==document.body){if(node.tagName==="A"){return node;}node=node.parentElement;}return null;}function isInPageHash(href){href=(href||"").trim();return""!==href&&"#"===href.charAt(0);}function scrollToHash(href){var id,target;href=(href||"").trim();if("#"===href){window.scrollTo(0,0);return;}id=href.slice(1);if(!id){window.scrollTo(0,0);return;}try{id=decodeURIComponent(id);}catch(e){}target=document.getElementById(id);if(target&&target.scrollIntoView){target.scrollIntoView({block:"start",behavior:"smooth"});}else if(target){target.scrollIntoView(true);}}function onMouseDown(event){var anchor=findAnchor(event.target);if(!anchor){return;}if(isInPageHash(anchor.getAttribute("href")||"")){return;}event.preventDefault();event.stopPropagation();}function onClick(event){var anchor=findAnchor(event.target);var href;if(!anchor){return;}href=anchor.getAttribute("href")||"";if(isInPageHash(href)){event.preventDefault();event.stopPropagation();scrollToHash(href);return;}event.preventDefault();event.stopPropagation();}document.addEventListener("mousedown",onMouseDown,true);document.addEventListener("click",onClick,true);})();</script>';
+		}
+
 		return '<script id="art-editor-preview-link-guard">(function(){"use strict";function preventAnchorNavigation(event){var node=event.target;while(node&&node!==document.body){if(node.tagName==="A"){event.preventDefault();event.stopPropagation();return;}node=node.parentElement;}}document.addEventListener("mousedown",preventAnchorNavigation,true);document.addEventListener("click",preventAnchorNavigation,true);})();</script>';
 	}
 
