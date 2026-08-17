@@ -612,6 +612,8 @@ class Art_Editor_Preview {
 			$head_parts[] = self::get_link_guard_script( ! empty( $options['allow_in_page_hash_links'] ) );
 		}
 
+		$head_parts[] = self::get_form_guard_script();
+
 		$body_scripts = '';
 		foreach ( (array) ( $partner_assets['scripts'] ?? array() ) as $partner_script ) {
 			$partner_script = esc_url( (string) $partner_script );
@@ -699,6 +701,18 @@ class Art_Editor_Preview {
 		}
 
 		return '<script id="art-editor-preview-link-guard">(function(){"use strict";function preventAnchorNavigation(event){var node=event.target;while(node&&node!==document.body){if(node.tagName==="A"){event.preventDefault();event.stopPropagation();return;}node=node.parentElement;}}document.addEventListener("mousedown",preventAnchorNavigation,true);document.addEventListener("click",preventAnchorNavigation,true);})();</script>';
+	}
+
+	/**
+	 * Prevent form submits from navigating preview iframes to the editor URL.
+	 *
+	 * srcdoc iframes resolve action="#" / empty action against the parent admin
+	 * page, which reloads ART Editor inside the canvas.
+	 *
+	 * @return string
+	 */
+	private static function get_form_guard_script() {
+		return '<script id="art-editor-preview-form-guard">(function(){"use strict";document.addEventListener("submit",function(event){event.preventDefault();},true);})();</script>';
 	}
 
 	/**

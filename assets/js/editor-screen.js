@@ -121,10 +121,33 @@
 		var viewportMeta = '<meta name="viewport" content="' + getPreviewViewportMetaContent() + '">';
 
 		if ( /\<meta\s+name=["']viewport["']/i.test( html ) ) {
-			return html.replace(
+			html = html.replace(
 				/\<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
 				viewportMeta
 			);
+		}
+
+		return ensurePreviewFormGuard( html );
+	}
+
+	function getPreviewFormGuardMarkup() {
+		return [
+			'<script id="art-editor-preview-form-guard">',
+			'(function(){',
+			'"use strict";',
+			'document.addEventListener("submit",function(event){event.preventDefault();},true);',
+			'})();',
+			'<\/script>',
+		].join( '' );
+	}
+
+	function ensurePreviewFormGuard( html ) {
+		if ( -1 !== html.indexOf( 'id="art-editor-preview-form-guard"' ) ) {
+			return html;
+		}
+
+		if ( -1 !== html.indexOf( '</head>' ) ) {
+			return html.replace( '</head>', getPreviewFormGuardMarkup() + '</head>' );
 		}
 
 		return html;

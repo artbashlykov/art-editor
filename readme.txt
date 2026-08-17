@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.59
+Stable tag: 0.2.60
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.60 =
+* Превью (Редактирование и Просмотр): отправка формы больше не открывает редактор внутри iframe. Живой сайт не меняется.
 
 = 0.2.59 =
 * Вкладка «Просмотр»: якорные ссылки (#section) снова прокручивают страницу. Внешние ссылки по-прежнему не уводят iframe. Режим «Редактирование» не менялся.
