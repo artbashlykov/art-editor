@@ -13,17 +13,25 @@ defined( 'ABSPATH' ) || exit;
 class Art_Editor_Preview {
 
 	/**
-	 * Current HTML block index while rendering frontend output.
+	 * Current HTML block index while rendering frontend output (visible scoped blocks).
 	 *
 	 * @var int
 	 */
 	private static $frontend_block_index = 0;
 
 	/**
-	 * Reset the frontend HTML block counter.
+	 * Ordinal of all core/html blocks on the page, including hidden ones.
+	 *
+	 * @var int
+	 */
+	private static $frontend_html_ordinal = 0;
+
+	/**
+	 * Reset the frontend HTML block counters.
 	 */
 	public static function reset_frontend_block_index() {
-		self::$frontend_block_index = 0;
+		self::$frontend_block_index  = 0;
+		self::$frontend_html_ordinal = 0;
 	}
 
 	/**
@@ -637,12 +645,16 @@ class Art_Editor_Preview {
 			return $block_content;
 		}
 
+		$post_id = (int) get_the_ID();
+		$ordinal = self::$frontend_html_ordinal;
+		++self::$frontend_html_ordinal;
+
+		$flags = $post_id > 0 ? Art_Editor_Content::get_hidden_flags( $post_id ) : array();
+
 		// Hidden blocks stay in post_content for the editor, but never render on the site.
-		if ( Art_Editor_Content::is_block_hidden( $block ) ) {
+		if ( Art_Editor_Content::is_block_hidden( $block ) || ! empty( $flags[ $ordinal ] ) ) {
 			return '';
 		}
-
-		$post_id = (int) get_the_ID();
 
 		if ( $post_id <= 0 || ! Art_Editor_Post_Meta::should_apply_frontend_settings( $post_id ) ) {
 			return $block_content;

@@ -196,13 +196,14 @@ class Art_Editor_Rest {
 			return $result;
 		}
 
+		clean_post_cache( $post_id );
 		$post = get_post( $post_id );
 
 		return rest_ensure_response(
 			array(
 				'postId'     => $post_id,
 				'status'     => $post ? $post->post_status : $status,
-				'htmlBlocks' => Art_Editor_Content::get_html_blocks_from_post( $post ),
+				'htmlBlocks' => $post ? Art_Editor_Content::get_html_blocks_from_post( $post ) : array(),
 			)
 		);
 	}

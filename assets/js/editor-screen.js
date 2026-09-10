@@ -344,7 +344,7 @@
 
 	function normalizeLoadedBlock( block, index ) {
 		block.type = block.type || 'html';
-		block.hidden = !! block.hidden;
+		block.hidden = isBlockHiddenFlag( block.hidden );
 
 		if ( 'anchor' === block.type ) {
 			block.anchorId = normalizeAnchorId( block.anchorId || parseAnchorIdFromContent( block.content || '' ) );
@@ -361,11 +361,23 @@
 		return block;
 	}
 
+	function isBlockHiddenFlag( value ) {
+		if ( true === value || 1 === value || '1' === value ) {
+			return true;
+		}
+
+		if ( 'true' === value || 'yes' === value ) {
+			return true;
+		}
+
+		return false;
+	}
+
 	function mapBlockForSave( block ) {
 		var payload = {
 			content: block.content || '',
 			title: block.titleLocked ? ( block.title || '' ) : '',
-			hidden: !! block.hidden,
+			hidden: isBlockHiddenFlag( block.hidden ),
 		};
 
 		if ( isAnchorBlock( block ) ) {
@@ -383,7 +395,7 @@
 			titleLocked: !! block.titleLocked,
 			content: block.content || '',
 			type: block.type || 'html',
-			hidden: !! block.hidden,
+			hidden: isBlockHiddenFlag( block.hidden ),
 		};
 
 		if ( isAnchorBlock( block ) ) {
@@ -3111,7 +3123,7 @@
 
 		pushHistory();
 		commitCodeToSelectedBlock();
-		block.hidden = ! block.hidden;
+		block.hidden = ! isBlockHiddenFlag( block.hidden );
 		renderStructure();
 		updatePagePreview();
 		scheduleUnsavedIndicatorUpdate();
@@ -3687,6 +3699,7 @@
 				titleLocked: !! block.titleLocked,
 				content: block.content || '',
 				type: block.type || 'html',
+				hidden: isBlockHiddenFlag( block.hidden ),
 			};
 
 			if ( isAnchorBlock( nextBlock ) ) {

@@ -14,6 +14,8 @@ class Art_Editor_Content {
 
 	const META_EMBEDDED_BLOCKS = '_art_editor_embedded_blocks';
 
+	const META_HIDDEN_FLAGS = '_art_editor_hidden_flags';
+
 	const GUTENBERG_IMPORT_START = '<!-- art-editor:gutenberg-start -->';
 
 	const GUTENBERG_IMPORT_END = '<!-- art-editor:gutenberg-end -->';
@@ -28,6 +30,7 @@ class Art_Editor_Content {
 		$parsed = parse_blocks( $post->post_content );
 		$items  = array();
 		$index  = 0;
+		$flags  = self::get_hidden_flags( (int) $post->ID );
 
 		foreach ( $parsed as $block ) {
 			if ( empty( $block['blockName'] ) || 'core/html' !== $block['blockName'] ) {
@@ -39,6 +42,7 @@ class Art_Editor_Content {
 			$custom_title = self::get_custom_block_title( $block );
 			$block_type   = self::get_block_type_from_block( $block );
 			$anchor_id    = self::get_anchor_id_from_block( $block, $content );
+			$is_hidden    = self::is_block_hidden( $block ) || ! empty( $flags[ $index ] );
 
 			$item = array(
 				'id'          => ( 'anchor' === $block_type ? 'anchor-' : 'html-' ) . $index,
@@ -46,7 +50,7 @@ class Art_Editor_Content {
 				'title'       => '' !== $custom_title ? $custom_title : self::get_block_title( $content, $index, $block_type, $anchor_id ),
 				'titleLocked' => '' !== $custom_title || 'anchor' === $block_type,
 				'content'     => $content,
-				'hidden'      => self::is_block_hidden( $block ),
+				'hidden'      => $is_hidden,
 			);
 
 			if ( 'anchor' === $block_type ) {
@@ -100,7 +104,98 @@ class Art_Editor_Content {
 	 * @return bool
 	 */
 	public static function is_block_hidden( $block ) {
-		return ! empty( $block['attrs']['artEditorHidden'] );
+		if ( empty( $block['attrs'] ) || ! is_array( $block['attrs'] ) || ! array_key_exists( 'artEditorHidden', $block['attrs'] ) ) {
+			return false;
+		}
+
+		$value = $block['attrs']['artEditorHidden'];
+
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return (int) $value > 0;
+		}
+
+		$value = strtolower( trim( (string) $value ) );
+
+		return '' !== $value && '0' !== $value && 'false' !== $value && 'no' !== $value;
+	}
+
+	/**
+	 * Read per-block hidden flags stored in post meta.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array<int, bool>
+	 */
+	public static function get_hidden_flags( $post_id ) {
+		$post_id = (int) $post_id;
+
+		if ( $post_id <= 0 ) {
+			return array();
+		}
+
+		$raw = get_post_meta( $post_id, self::META_HIDDEN_FLAGS, true );
+
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+
+		$flags = array();
+
+		foreach ( array_values( $raw ) as $index => $value ) {
+			$flags[ $index ] = self::is_truthy_flag( $value );
+		}
+
+		return $flags;
+	}
+
+	/**
+	 * Persist per-block hidden flags in post meta (survives content parsers that drop attrs).
+	 *
+	 * @param int   $post_id Post ID.
+	 * @param array $blocks  Sanitized block payload.
+	 */
+	public static function update_hidden_flags( $post_id, $blocks ) {
+		$post_id = (int) $post_id;
+
+		if ( $post_id <= 0 || ! is_array( $blocks ) ) {
+			return;
+		}
+
+		$flags = array();
+
+		foreach ( array_values( $blocks ) as $block ) {
+			if ( ! is_array( $block ) ) {
+				$flags[] = false;
+				continue;
+			}
+
+			$flags[] = ! empty( $block['hidden'] );
+		}
+
+		update_post_meta( $post_id, self::META_HIDDEN_FLAGS, $flags );
+	}
+
+	/**
+	 * Normalize mixed flag values from meta/JSON.
+	 *
+	 * @param mixed $value Raw flag.
+	 * @return bool
+	 */
+	private static function is_truthy_flag( $value ) {
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return (int) $value > 0;
+		}
+
+		$value = strtolower( trim( (string) $value ) );
+
+		return '' !== $value && '0' !== $value && 'false' !== $value && 'no' !== $value;
 	}
 
 	/**
@@ -190,6 +285,9 @@ class Art_Editor_Content {
 			return $result;
 		}
 
+		self::update_hidden_flags( $post_id, $sanitized_blocks );
+		clean_post_cache( $post_id );
+
 		return true;
 	}
 
@@ -232,7 +330,7 @@ class Art_Editor_Content {
 				'content' => $content,
 				'title'   => $title,
 				'type'    => $type,
-				'hidden'  => ! empty( $block['hidden'] ),
+				'hidden'  => self::is_truthy_flag( isset( $block['hidden'] ) ? $block['hidden'] : false ),
 			);
 
 			if ( 'anchor' === $type ) {
@@ -316,7 +414,7 @@ class Art_Editor_Content {
 		}
 
 		if ( $hidden ) {
-			$attrs['artEditorHidden'] = true;
+			$attrs['artEditorHidden'] = 1;
 		}
 
 		if ( 'anchor' === $type ) {
@@ -490,6 +588,9 @@ class Art_Editor_Content {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
+
+		self::update_hidden_flags( $post_id, $html_items );
+		clean_post_cache( $post_id );
 
 		return true;
 	}
