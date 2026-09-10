@@ -1188,8 +1188,11 @@ body.art-editor-screen {
 
 .art-editor-screen__structure-item {
 	position: relative;
+	display: flex;
+	align-items: stretch;
 	margin: 0;
 	overflow: hidden;
+	border-left: 3px solid transparent;
 	cursor: grab;
 }
 
@@ -1202,6 +1205,10 @@ body.art-editor-screen {
 	transform: translateX( 100% );
 }
 
+.art-editor-screen__structure-item.is-hidden {
+	color: #8c8f94;
+}
+
 .art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-button {
 	color: #8c8f94;
 }
@@ -1210,6 +1217,7 @@ body.art-editor-screen {
 	opacity: 0.65;
 }
 
+.art-editor-screen__structure-item.is-hidden.is-active .art-editor-screen__structure-button,
 .art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-button.is-active {
 	background: #f0f0f1;
 	color: #646970;
@@ -1219,13 +1227,49 @@ body.art-editor-screen {
 	box-shadow: inset 0 2px 0 var( --art-editor-color-primary );
 }
 
+.art-editor-screen__structure-visibility {
+	flex: 0 0 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: #8c8f94;
+	cursor: pointer;
+	transition: color 0.15s ease, background-color 0.15s ease;
+	z-index: 1;
+}
+
+.art-editor-screen__structure-visibility:hover,
+.art-editor-screen__structure-visibility:focus {
+	background: transparent;
+	color: #1d2327;
+}
+
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility {
+	color: #646970;
+}
+
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility:hover,
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility:focus {
+	color: #1d2327;
+}
+
+.art-editor-screen__structure-visibility svg {
+	display: block;
+}
+
 .art-editor-screen__structure-button {
 	display: flex;
 	align-items: center;
-	width: 100%;
-	padding: 10px 12px;
+	flex: 1 1 auto;
+	min-width: 0;
+	width: auto;
+	padding: 10px 12px 10px 4px;
 	border: 0;
-	border-left: 3px solid transparent;
+	border-left: 0;
 	background: transparent;
 	color: #1d2327;
 	font-size: 13px;
@@ -1238,9 +1282,8 @@ body.art-editor-screen {
 }
 
 .art-editor-screen__structure-item:hover .art-editor-screen__structure-button,
-.art-editor-screen__structure-item:focus-within .art-editor-screen__structure-button,
-.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-button {
-	padding-right: 80px;
+.art-editor-screen__structure-item:focus-within .art-editor-screen__structure-button {
+	padding-right: 44px;
 }
 
 .art-editor-screen__structure-button-label {
@@ -1267,11 +1310,19 @@ body.art-editor-screen {
 	color: #1d2327;
 }
 
-.art-editor-screen__structure-button.is-active {
+.art-editor-screen__structure-item.is-active,
+.art-editor-screen__structure-item:has( .art-editor-screen__structure-button.is-active ) {
 	border-left-color: var( --art-editor-color-primary );
+}
+
+.art-editor-screen__structure-button.is-active {
 	background: #fcf5ef;
 	color: #1d2327;
 	font-weight: 600;
+}
+
+.art-editor-screen__structure-item.is-active .art-editor-screen__structure-visibility {
+	background: #fcf5ef;
 }
 
 .art-editor-screen__structure-actions {
@@ -1287,41 +1338,8 @@ body.art-editor-screen {
 }
 
 .art-editor-screen__structure-item:hover .art-editor-screen__structure-actions,
-.art-editor-screen__structure-item:focus-within .art-editor-screen__structure-actions,
-.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-actions {
+.art-editor-screen__structure-item:focus-within .art-editor-screen__structure-actions {
 	transform: translateX( 0 );
-}
-
-.art-editor-screen__structure-visibility {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 36px;
-	padding: 0;
-	border: 0;
-	background: #646970;
-	color: #fff;
-	cursor: pointer;
-	transition: background-color 0.15s ease;
-}
-
-.art-editor-screen__structure-visibility:hover,
-.art-editor-screen__structure-visibility:focus {
-	background: #50575e;
-	color: #fff;
-}
-
-.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility {
-	background: #8c8f94;
-}
-
-.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility:hover,
-.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility:focus {
-	background: #646970;
-}
-
-.art-editor-screen__structure-visibility svg {
-	display: block;
 }
 
 .art-editor-screen__structure-delete {

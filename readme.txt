@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.61
+Stable tag: 0.2.62
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.2.62 =
+* Иконка «глаз» в структуре слева и всегда на виду; корзина по-прежнему выезжает справа при наведении.
 
 = 0.2.61 =
 * В структуре рядом с корзиной — иконка «глаз»: скрытый HTML-блок остаётся в редакторе (серым), но не попадает в «Просмотр» и на сайт.

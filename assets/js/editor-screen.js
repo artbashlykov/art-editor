@@ -6736,6 +6736,18 @@
 				item.classList.add( 'art-editor-screen__structure-item--anchor' );
 			}
 
+			if ( block.id === editorState.selectedId ) {
+				item.classList.add( 'is-active' );
+			}
+
+			visibilityButton = document.createElement( 'button' );
+			visibilityButton.type = 'button';
+			visibilityButton.className = 'art-editor-screen__structure-visibility';
+			visibilityButton.setAttribute( 'aria-label', visibilityLabel );
+			visibilityButton.setAttribute( 'aria-pressed', isHidden ? 'true' : 'false' );
+			visibilityButton.title = visibilityLabel;
+			visibilityButton.innerHTML = getStructureVisibilityIcon( isHidden );
+
 			button = document.createElement( 'button' );
 			button.type = 'button';
 			button.className = 'art-editor-screen__structure-button';
@@ -6754,14 +6766,6 @@
 			actions = document.createElement( 'div' );
 			actions.className = 'art-editor-screen__structure-actions';
 
-			visibilityButton = document.createElement( 'button' );
-			visibilityButton.type = 'button';
-			visibilityButton.className = 'art-editor-screen__structure-visibility';
-			visibilityButton.setAttribute( 'aria-label', visibilityLabel );
-			visibilityButton.setAttribute( 'aria-pressed', isHidden ? 'true' : 'false' );
-			visibilityButton.title = visibilityLabel;
-			visibilityButton.innerHTML = getStructureVisibilityIcon( isHidden );
-
 			deleteButton = document.createElement( 'button' );
 			deleteButton.type = 'button';
 			deleteButton.className = 'art-editor-screen__structure-delete';
@@ -6771,8 +6775,8 @@
 
 			bindStructureItem( item, button, label, visibilityButton, deleteButton, block );
 
-			actions.appendChild( visibilityButton );
 			actions.appendChild( deleteButton );
+			item.appendChild( visibilityButton );
 			item.appendChild( button );
 			item.appendChild( actions );
 			structureList.appendChild( item );
