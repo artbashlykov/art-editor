@@ -284,12 +284,20 @@ class Art_Editor_Rest {
 					continue;
 				}
 
+				if ( ! empty( $block['hidden'] ) ) {
+					continue;
+				}
+
 				$blocks[] = isset( $block['content'] ) ? (string) $block['content'] : '';
 			}
 		} else {
 			$html_blocks = Art_Editor_Content::get_html_blocks_from_post( $post );
 
 			foreach ( $html_blocks as $html_block ) {
+				if ( ! empty( $html_block['hidden'] ) ) {
+					continue;
+				}
+
 				$blocks[] = isset( $html_block['content'] ) ? (string) $html_block['content'] : '';
 			}
 		}

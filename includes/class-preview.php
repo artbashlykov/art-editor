@@ -637,6 +637,11 @@ class Art_Editor_Preview {
 			return $block_content;
 		}
 
+		// Hidden blocks stay in post_content for the editor, but never render on the site.
+		if ( Art_Editor_Content::is_block_hidden( $block ) ) {
+			return '';
+		}
+
 		$post_id = (int) get_the_ID();
 
 		if ( $post_id <= 0 || ! Art_Editor_Post_Meta::should_apply_frontend_settings( $post_id ) ) {

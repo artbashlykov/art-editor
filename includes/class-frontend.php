@@ -160,6 +160,10 @@ class Art_Editor_Frontend {
 				continue;
 			}
 
+			if ( ! empty( $html_block['hidden'] ) ) {
+				continue;
+			}
+
 			$block_html[] = isset( $html_block['content'] ) ? (string) $html_block['content'] : '';
 		}
 

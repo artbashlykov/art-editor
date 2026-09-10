@@ -1198,8 +1198,21 @@ body.art-editor-screen {
 	cursor: grabbing;
 }
 
-.art-editor-screen__structure-item.is-dragging .art-editor-screen__structure-delete {
+.art-editor-screen__structure-item.is-dragging .art-editor-screen__structure-actions {
 	transform: translateX( 100% );
+}
+
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-button {
+	color: #8c8f94;
+}
+
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-button-label {
+	opacity: 0.65;
+}
+
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-button.is-active {
+	background: #f0f0f1;
+	color: #646970;
 }
 
 .art-editor-screen__structure-item.is-drag-over .art-editor-screen__structure-button {
@@ -1221,12 +1234,13 @@ body.art-editor-screen {
 	text-align: left;
 	cursor: pointer;
 	overflow: hidden;
-	transition: padding-right 0.2s ease, background-color 0.15s ease;
+	transition: padding-right 0.2s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
 .art-editor-screen__structure-item:hover .art-editor-screen__structure-button,
-.art-editor-screen__structure-item:focus-within .art-editor-screen__structure-button {
-	padding-right: 44px;
+.art-editor-screen__structure-item:focus-within .art-editor-screen__structure-button,
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-button {
+	padding-right: 80px;
 }
 
 .art-editor-screen__structure-button-label {
@@ -1260,11 +1274,57 @@ body.art-editor-screen {
 	font-weight: 600;
 }
 
-.art-editor-screen__structure-delete {
+.art-editor-screen__structure-actions {
 	position: absolute;
 	top: 0;
 	right: 0;
 	bottom: 0;
+	display: flex;
+	align-items: stretch;
+	transform: translateX( 100% );
+	transition: transform 0.2s ease;
+	z-index: 2;
+}
+
+.art-editor-screen__structure-item:hover .art-editor-screen__structure-actions,
+.art-editor-screen__structure-item:focus-within .art-editor-screen__structure-actions,
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-actions {
+	transform: translateX( 0 );
+}
+
+.art-editor-screen__structure-visibility {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	padding: 0;
+	border: 0;
+	background: #646970;
+	color: #fff;
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.art-editor-screen__structure-visibility:hover,
+.art-editor-screen__structure-visibility:focus {
+	background: #50575e;
+	color: #fff;
+}
+
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility {
+	background: #8c8f94;
+}
+
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility:hover,
+.art-editor-screen__structure-item.is-hidden .art-editor-screen__structure-visibility:focus {
+	background: #646970;
+}
+
+.art-editor-screen__structure-visibility svg {
+	display: block;
+}
+
+.art-editor-screen__structure-delete {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1274,14 +1334,7 @@ body.art-editor-screen {
 	background: #d63638;
 	color: #fff;
 	cursor: pointer;
-	transform: translateX( 100% );
-	transition: transform 0.2s ease, background-color 0.15s ease;
-	z-index: 2;
-}
-
-.art-editor-screen__structure-item:hover .art-editor-screen__structure-delete,
-.art-editor-screen__structure-item:focus-within .art-editor-screen__structure-delete {
-	transform: translateX( 0 );
+	transition: background-color 0.15s ease;
 }
 
 .art-editor-screen__structure-delete:hover,

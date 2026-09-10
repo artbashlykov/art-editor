@@ -46,6 +46,7 @@ class Art_Editor_Content {
 				'title'       => '' !== $custom_title ? $custom_title : self::get_block_title( $content, $index, $block_type, $anchor_id ),
 				'titleLocked' => '' !== $custom_title || 'anchor' === $block_type,
 				'content'     => $content,
+				'hidden'      => self::is_block_hidden( $block ),
 			);
 
 			if ( 'anchor' === $block_type ) {
@@ -90,6 +91,16 @@ class Art_Editor_Content {
 		}
 
 		return trim( $block['attrs']['artEditorTitle'] );
+	}
+
+	/**
+	 * Whether a parsed core/html block is hidden from preview and frontend.
+	 *
+	 * @param array $block Parsed block.
+	 * @return bool
+	 */
+	public static function is_block_hidden( $block ) {
+		return ! empty( $block['attrs']['artEditorHidden'] );
 	}
 
 	/**
@@ -221,6 +232,7 @@ class Art_Editor_Content {
 				'content' => $content,
 				'title'   => $title,
 				'type'    => $type,
+				'hidden'  => ! empty( $block['hidden'] ),
 			);
 
 			if ( 'anchor' === $type ) {
@@ -253,7 +265,8 @@ class Art_Editor_Content {
 						$blocks[ $index ]['content'],
 						$blocks[ $index ]['title'],
 						$blocks[ $index ]['type'],
-						isset( $blocks[ $index ]['anchorId'] ) ? $blocks[ $index ]['anchorId'] : ''
+						isset( $blocks[ $index ]['anchorId'] ) ? $blocks[ $index ]['anchorId'] : '',
+						! empty( $blocks[ $index ]['hidden'] )
 					);
 					++$index;
 				}
@@ -272,7 +285,8 @@ class Art_Editor_Content {
 				$blocks[ $index ]['content'],
 				$blocks[ $index ]['title'],
 				$blocks[ $index ]['type'],
-				isset( $blocks[ $index ]['anchorId'] ) ? $blocks[ $index ]['anchorId'] : ''
+				isset( $blocks[ $index ]['anchorId'] ) ? $blocks[ $index ]['anchorId'] : '',
+				! empty( $blocks[ $index ]['hidden'] )
 			);
 			++$index;
 		}
@@ -285,9 +299,12 @@ class Art_Editor_Content {
 	 *
 	 * @param string $content HTML content.
 	 * @param string $title   Optional custom sidebar title.
+	 * @param string $type    Block type (html|anchor).
+	 * @param string $anchor_id Anchor id for anchor blocks.
+	 * @param bool   $hidden  Whether the block is hidden from preview/frontend.
 	 * @return array
 	 */
-	public static function make_html_block( $content, $title = '', $type = 'html', $anchor_id = '' ) {
+	public static function make_html_block( $content, $title = '', $type = 'html', $anchor_id = '', $hidden = false ) {
 		$content   = (string) $content;
 		$title     = trim( (string) $title );
 		$type      = sanitize_key( (string) $type );
@@ -296,6 +313,10 @@ class Art_Editor_Content {
 
 		if ( '' !== $title ) {
 			$attrs['artEditorTitle'] = $title;
+		}
+
+		if ( $hidden ) {
+			$attrs['artEditorHidden'] = true;
 		}
 
 		if ( 'anchor' === $type ) {
@@ -501,7 +522,8 @@ class Art_Editor_Content {
 				(string) $item['content'],
 				(string) $item['title'],
 				(string) $item['type'],
-				isset( $item['anchorId'] ) ? (string) $item['anchorId'] : ''
+				isset( $item['anchorId'] ) ? (string) $item['anchorId'] : '',
+				! empty( $item['hidden'] )
 			);
 		}
 
@@ -615,7 +637,8 @@ class Art_Editor_Content {
 				isset( $item['content'] ) ? (string) $item['content'] : '',
 				isset( $item['title'] ) ? (string) $item['title'] : '',
 				isset( $item['type'] ) ? (string) $item['type'] : 'html',
-				isset( $item['anchorId'] ) ? (string) $item['anchorId'] : ''
+				isset( $item['anchorId'] ) ? (string) $item['anchorId'] : '',
+				! empty( $item['hidden'] )
 			);
 		}
 

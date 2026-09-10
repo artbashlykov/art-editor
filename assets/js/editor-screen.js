@@ -344,6 +344,7 @@
 
 	function normalizeLoadedBlock( block, index ) {
 		block.type = block.type || 'html';
+		block.hidden = !! block.hidden;
 
 		if ( 'anchor' === block.type ) {
 			block.anchorId = normalizeAnchorId( block.anchorId || parseAnchorIdFromContent( block.content || '' ) );
@@ -364,6 +365,7 @@
 		var payload = {
 			content: block.content || '',
 			title: block.titleLocked ? ( block.title || '' ) : '',
+			hidden: !! block.hidden,
 		};
 
 		if ( isAnchorBlock( block ) ) {
@@ -381,6 +383,7 @@
 			titleLocked: !! block.titleLocked,
 			content: block.content || '',
 			type: block.type || 'html',
+			hidden: !! block.hidden,
 		};
 
 		if ( isAnchorBlock( block ) ) {
@@ -690,6 +693,7 @@
 			title: getBlockTitle( code, index ),
 			titleLocked: false,
 			content: code || '',
+			hidden: false,
 		};
 
 		editorState.blocks.push( block );
@@ -3092,7 +3096,36 @@
 		scheduleUnsavedIndicatorUpdate();
 	}
 
-	function bindStructureItem( item, button, label, deleteButton, block ) {
+	function toggleBlockVisibility( blockId ) {
+		var block;
+
+		if ( isSaving() ) {
+			return;
+		}
+
+		block = getBlockById( blockId );
+
+		if ( ! block ) {
+			return;
+		}
+
+		pushHistory();
+		commitCodeToSelectedBlock();
+		block.hidden = ! block.hidden;
+		renderStructure();
+		updatePagePreview();
+		scheduleUnsavedIndicatorUpdate();
+	}
+
+	function getStructureVisibilityIcon( isHidden ) {
+		if ( isHidden ) {
+			return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M10.6 10.7a2 2 0 0 0 2.7 2.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M9.9 5.2A10.4 10.4 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.2 2.3-2.4 3.5M6.1 6.1C4.2 7.5 2.8 9.4 2 12c1 2.5 5 7 10 7 1.3 0 2.5-.3 3.6-.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+		}
+
+		return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"></circle></svg>';
+	}
+
+	function bindStructureItem( item, button, label, visibilityButton, deleteButton, block ) {
 		item.draggable = true;
 
 		item.addEventListener( 'dragstart', function( event ) {
@@ -3192,6 +3225,26 @@
 			if ( editorState.renamingBlockId === block.id ) {
 				event.stopPropagation();
 			}
+		} );
+
+		visibilityButton.addEventListener( 'click', function( event ) {
+			event.preventDefault();
+			event.stopPropagation();
+			structureDragState.suppressClick = true;
+			toggleBlockVisibility( block.id );
+
+			window.setTimeout( function() {
+				structureDragState.suppressClick = false;
+			}, 0 );
+		} );
+
+		visibilityButton.addEventListener( 'mousedown', function( event ) {
+			event.stopPropagation();
+		} );
+
+		visibilityButton.addEventListener( 'dragstart', function( event ) {
+			event.preventDefault();
+			event.stopPropagation();
 		} );
 
 		deleteButton.addEventListener( 'click', function( event ) {
@@ -6391,6 +6444,7 @@
 				blocks: editorState.blocks.map( function( block ) {
 					return {
 						content: block.content || '',
+						hidden: !! block.hidden,
 					};
 				} ),
 				layoutMode: pageSettings.layoutMode,
@@ -6631,8 +6685,12 @@
 		var item;
 		var button;
 		var label;
+		var actions;
+		var visibilityButton;
 		var deleteButton;
 		var activeLabel;
+		var isHidden;
+		var visibilityLabel;
 
 		if ( ! structureList || ! structureEmpty ) {
 			return;
@@ -6662,9 +6720,17 @@
 
 		for ( index = 0; index < editorState.blocks.length; index++ ) {
 			block = editorState.blocks[ index ];
+			isHidden = !! block.hidden;
+			visibilityLabel = isHidden
+				? ( i18n.showBlock || 'Показать блок' )
+				: ( i18n.hideBlock || 'Скрыть блок' );
 
 			item = document.createElement( 'li' );
 			item.className = 'art-editor-screen__structure-item';
+
+			if ( isHidden ) {
+				item.classList.add( 'is-hidden' );
+			}
 
 			if ( isAnchorBlock( block ) ) {
 				item.classList.add( 'art-editor-screen__structure-item--anchor' );
@@ -6685,6 +6751,17 @@
 				button.classList.add( 'is-active' );
 			}
 
+			actions = document.createElement( 'div' );
+			actions.className = 'art-editor-screen__structure-actions';
+
+			visibilityButton = document.createElement( 'button' );
+			visibilityButton.type = 'button';
+			visibilityButton.className = 'art-editor-screen__structure-visibility';
+			visibilityButton.setAttribute( 'aria-label', visibilityLabel );
+			visibilityButton.setAttribute( 'aria-pressed', isHidden ? 'true' : 'false' );
+			visibilityButton.title = visibilityLabel;
+			visibilityButton.innerHTML = getStructureVisibilityIcon( isHidden );
+
 			deleteButton = document.createElement( 'button' );
 			deleteButton.type = 'button';
 			deleteButton.className = 'art-editor-screen__structure-delete';
@@ -6692,10 +6769,12 @@
 			deleteButton.title = i18n.deleteBlock || 'Удалить блок';
 			deleteButton.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>';
 
-			bindStructureItem( item, button, label, deleteButton, block );
+			bindStructureItem( item, button, label, visibilityButton, deleteButton, block );
 
+			actions.appendChild( visibilityButton );
+			actions.appendChild( deleteButton );
 			item.appendChild( button );
-			item.appendChild( deleteButton );
+			item.appendChild( actions );
 			structureList.appendChild( item );
 		}
 	}
@@ -6819,6 +6898,7 @@
 			title: getAnchorBlockTitle( '' ),
 			titleLocked: true,
 			content: '',
+			hidden: false,
 		};
 
 		pushHistory();
@@ -6862,6 +6942,7 @@
 			title: ( i18n.emptyBlock || 'Пустой HTML-блок' ) + ' ' + ( index + 1 ),
 			titleLocked: false,
 			content: '',
+			hidden: false,
 		};
 
 		pushHistory();

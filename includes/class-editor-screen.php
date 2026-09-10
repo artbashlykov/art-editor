@@ -321,6 +321,8 @@ class Art_Editor_Editor_Screen {
 				'emptyBlock'        => __( 'Пустой HTML-блок', 'art-editor' ),
 				'htmlBlock'         => __( 'HTML-блок', 'art-editor' ),
 				'deleteBlock'       => __( 'Удалить блок', 'art-editor' ),
+				'hideBlock'         => __( 'Скрыть блок', 'art-editor' ),
+				'showBlock'         => __( 'Показать блок', 'art-editor' ),
 				'undo'              => __( 'Отменить', 'art-editor' ),
 				'redo'              => __( 'Повторить', 'art-editor' ),
 				'pageSettings'      => __( 'Настройки страницы', 'art-editor' ),
