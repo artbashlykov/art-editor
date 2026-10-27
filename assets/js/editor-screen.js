@@ -411,6 +411,7 @@
 		var statusInput = document.getElementById( 'art-editor-page-status' );
 		var layoutInput = document.getElementById( 'art-editor-layout-mode' );
 		var styleInput = document.getElementById( 'art-editor-style-mode' );
+		var passQueryInput = document.getElementById( 'art-editor-pass-query-params' );
 
 		return {
 			title: titleInput ? titleInput.value : ( config.postTitle || '' ),
@@ -418,6 +419,7 @@
 			status: statusInput ? statusInput.value : ( config.postStatus || 'draft' ),
 			layoutMode: layoutInput ? layoutInput.value : ( config.layoutMode || 'canvas' ),
 			styleMode: styleInput ? styleInput.value : ( config.styleMode || 'editor' ),
+			passQueryParams: passQueryInput ? !! passQueryInput.checked : !! config.passQueryParams,
 		};
 	}
 
@@ -551,6 +553,7 @@
 			slug: pageSettings.slug,
 			layoutMode: pageSettings.layoutMode,
 			styleMode: pageSettings.styleMode,
+			passQueryParams: !! pageSettings.passQueryParams,
 		};
 
 		if ( settings.includeStatus ) {
@@ -591,6 +594,10 @@
 
 				if ( data && data.styleMode ) {
 					config.styleMode = data.styleMode;
+				}
+
+				if ( data && 'boolean' === typeof data.passQueryParams ) {
+					config.passQueryParams = data.passQueryParams;
 				}
 
 				applyPermalinkSettings( data );
@@ -7602,12 +7609,14 @@
 		var statusInput = document.getElementById( 'art-editor-page-status' );
 		var layoutInput = document.getElementById( 'art-editor-layout-mode' );
 		var styleInput = document.getElementById( 'art-editor-style-mode' );
+		var passQueryInput = document.getElementById( 'art-editor-pass-query-params' );
 		var pageSettings = {
 			title: config.postTitle || '',
 			slug: config.postSlug || '',
 			status: config.postStatus || 'draft',
 			layoutMode: config.layoutMode || 'canvas',
 			styleMode: config.styleMode || 'editor',
+			passQueryParams: !! config.passQueryParams,
 		};
 		var statusTimer = null;
 		var titleTimer = null;
@@ -7643,6 +7652,9 @@
 			statusInput.value = pageSettings.status || 'draft';
 			layoutInput.value = pageSettings.layoutMode || 'canvas';
 			styleInput.value = pageSettings.styleMode || 'editor';
+			if ( passQueryInput ) {
+				passQueryInput.checked = !! pageSettings.passQueryParams;
+			}
 			updatePermalinkHint( pageSettings.status );
 		}
 
@@ -7671,6 +7683,11 @@
 				config.styleMode = data.styleMode;
 			}
 
+			if ( data && 'boolean' === typeof data.passQueryParams ) {
+				pageSettings.passQueryParams = data.passQueryParams;
+				config.passQueryParams = data.passQueryParams;
+			}
+
 			applyPermalinkSettings( data );
 			syncSettingsInputs();
 			updateDocumentSaveUi( pageSettings.status );
@@ -7684,6 +7701,7 @@
 			pageSettings.status = config.postStatus || pageSettings.status;
 			pageSettings.layoutMode = nextSettings.layoutMode;
 			pageSettings.styleMode = nextSettings.styleMode;
+			pageSettings.passQueryParams = !! nextSettings.passQueryParams;
 
 			return savePageSettings( pageSettings, { includeStatus: false } )
 				.then( function( data ) {
@@ -7700,6 +7718,7 @@
 					pageSettings.status = config.postStatus || 'draft';
 					pageSettings.layoutMode = config.layoutMode || 'canvas';
 					pageSettings.styleMode = config.styleMode || 'editor';
+					pageSettings.passQueryParams = !! config.passQueryParams;
 					syncSettingsInputs();
 					updateDocumentSaveUi( pageSettings.status );
 					setSettingsStatus( i18n.settingsSaveError || 'Settings save error', true );
@@ -7779,6 +7798,14 @@
 			pageSettings.styleMode = styleInput.value;
 			persistPageSettings();
 		} );
+
+		if ( passQueryInput ) {
+			passQueryInput.addEventListener( 'change', function() {
+				pageSettings.passQueryParams = !! passQueryInput.checked;
+				scheduleUnsavedIndicatorUpdate();
+				persistPageSettings();
+			} );
+		}
 
 		syncSettingsInputs();
 	}

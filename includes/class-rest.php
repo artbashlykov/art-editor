@@ -228,8 +228,19 @@ class Art_Editor_Rest {
 		$title       = array_key_exists( 'title', $payload ) ? (string) $payload['title'] : null;
 		$status      = isset( $payload['status'] ) ? sanitize_key( $payload['status'] ) : null;
 		$slug        = array_key_exists( 'slug', $payload ) ? (string) $payload['slug'] : null;
+		$pass_query  = array_key_exists( 'passQueryParams', $payload )
+			? Art_Editor_Post_Meta::sanitize_pass_query_params( $payload['passQueryParams'] )
+			: null;
 
-		$result = Art_Editor_Post_Meta::save_page_settings( $post_id, $layout_mode, $style_mode, $title, $status, $slug );
+		$result = Art_Editor_Post_Meta::save_page_settings(
+			$post_id,
+			$layout_mode,
+			$style_mode,
+			$title,
+			$status,
+			$slug,
+			$pass_query
+		);
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -256,6 +267,7 @@ class Art_Editor_Rest {
 				'previewUrl'      => Art_Editor_Editor_Screen::get_preview_url( $post ),
 				'layoutMode'      => Art_Editor_Post_Meta::get_layout_mode( $post_id ),
 				'styleMode'       => Art_Editor_Post_Meta::get_style_mode( $post_id ),
+				'passQueryParams' => Art_Editor_Post_Meta::get_pass_query_params( $post_id ),
 			)
 		);
 	}

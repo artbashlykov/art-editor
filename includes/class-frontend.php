@@ -28,6 +28,7 @@ class Art_Editor_Frontend {
 		add_filter( 'elementor/frontend/print_google_fonts', array( __CLASS__, 'maybe_disable_elementor_google_fonts' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_block_stylesheets' ), 15 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_canvas_assets' ), 20 );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_pass_query_params_script' ), 22 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_enqueue_partner_assets' ), 25 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_styles' ), 1000 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'maybe_dequeue_foreign_styles' ), 9999 );
@@ -230,6 +231,39 @@ class Art_Editor_Frontend {
 			ART_EDITOR_PLUGIN_URL . 'assets/css/canvas.css',
 			array( 'admin-bar' ),
 			ART_EDITOR_VERSION . '.' . (string) filemtime( ART_EDITOR_PLUGIN_DIR . 'assets/css/canvas.css' )
+		);
+	}
+
+	/**
+	 * Append current URL query params to landing links when enabled in page settings.
+	 */
+	public static function maybe_enqueue_pass_query_params_script() {
+		if ( is_admin() || wp_doing_ajax() || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
+			return;
+		}
+
+		$post_id = self::get_current_post_id();
+
+		if ( $post_id <= 0 || ! Art_Editor_Post_Meta::should_apply_frontend_settings( $post_id ) ) {
+			return;
+		}
+
+		if ( ! Art_Editor_Post_Meta::get_pass_query_params( $post_id ) ) {
+			return;
+		}
+
+		$script_path = ART_EDITOR_PLUGIN_DIR . 'assets/js/pass-query-params.js';
+
+		if ( ! file_exists( $script_path ) ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'art-editor-pass-query-params',
+			ART_EDITOR_PLUGIN_URL . 'assets/js/pass-query-params.js',
+			array(),
+			ART_EDITOR_VERSION . '.' . (string) filemtime( $script_path ),
+			true
 		);
 	}
 

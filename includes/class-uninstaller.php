@@ -24,6 +24,7 @@ class Art_Editor_Uninstaller {
 		'_art_editor_edit_mode',
 		'_art_editor_layout_mode',
 		'_art_editor_style_mode',
+		'_art_editor_pass_query_params',
 		'_art_editor_embedded_blocks',
 	);
 

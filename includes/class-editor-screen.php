@@ -285,6 +285,7 @@ class Art_Editor_Editor_Screen {
 			'htmlBlocks'       => Art_Editor_Content::get_html_blocks_from_post( $post ),
 			'layoutMode'       => Art_Editor_Post_Meta::get_layout_mode( $post->ID ),
 			'styleMode'        => Art_Editor_Post_Meta::get_style_mode( $post->ID ),
+			'passQueryParams'  => Art_Editor_Post_Meta::get_pass_query_params( $post->ID ),
 			'siteIconHead'     => self::get_site_icon_head_markup(),
 			'nonce'            => wp_create_nonce( 'wp_rest' ),
 			'statusLabels'     => $status_labels,

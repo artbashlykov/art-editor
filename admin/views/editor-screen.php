@@ -26,6 +26,7 @@ $art_editor_settings_status       = $post->post_status;
 $art_editor_settings_title_value  = $post->post_title;
 $art_editor_settings_layout_mode  = Art_Editor_Post_Meta::get_layout_mode( $post->ID );
 $art_editor_settings_style_mode   = Art_Editor_Post_Meta::get_style_mode( $post->ID );
+$art_editor_settings_pass_query   = Art_Editor_Post_Meta::get_pass_query_params( $post->ID );
 $art_editor_settings_statuses     = Art_Editor_Editor_Screen::get_available_post_statuses( $post );
 $art_editor_permalink_settings    = Art_Editor_Editor_Screen::get_permalink_settings_data( $post );
 $art_editor_settings_slug_value   = $art_editor_permalink_settings['slug'];
@@ -346,6 +347,21 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 									<?php echo esc_html__( 'Стили редактора', 'art-editor' ); ?>
 								</option>
 							</select>
+						</div>
+						<div class="art-editor-screen__settings-field art-editor-screen__settings-field--checkbox">
+							<label class="art-editor-screen__settings-checkbox" for="art-editor-pass-query-params">
+								<input
+									type="checkbox"
+									class="art-editor-screen__settings-checkbox-input"
+									id="art-editor-pass-query-params"
+									name="art-editor-pass-query-params"
+									value="1"
+									<?php checked( $art_editor_settings_pass_query ); ?>
+								/>
+								<span class="art-editor-screen__settings-checkbox-label">
+									<?php echo esc_html__( 'Передавать параметры из адреса (?...) во все ссылки', 'art-editor' ); ?>
+								</span>
+							</label>
 						</div>
 					</div>
 					<p class="art-editor-screen__settings-status" id="art-editor-settings-status" hidden></p>

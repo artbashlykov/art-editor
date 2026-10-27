@@ -12,9 +12,10 @@ defined( 'ABSPATH' ) || exit;
  */
 class Art_Editor_Post_Meta {
 
-	const META_EDIT_MODE   = '_art_editor_edit_mode';
-	const META_LAYOUT_MODE = '_art_editor_layout_mode';
-	const META_STYLE_MODE  = '_art_editor_style_mode';
+	const META_EDIT_MODE         = '_art_editor_edit_mode';
+	const META_LAYOUT_MODE       = '_art_editor_layout_mode';
+	const META_STYLE_MODE        = '_art_editor_style_mode';
+	const META_PASS_QUERY_PARAMS = '_art_editor_pass_query_params';
 
 	const EDIT_MODE_BUILDER = 'builder';
 	const LAYOUT_THEME      = 'theme';
@@ -81,9 +82,20 @@ class Art_Editor_Post_Meta {
 			'auth_callback'     => array( __CLASS__, 'meta_auth_callback' ),
 		);
 
+		$pass_query_args = array(
+			'type'              => 'boolean',
+			'description'       => __( 'Передавать query-параметры из адреса во все ссылки лендинга.', 'art-editor' ),
+			'single'            => true,
+			'default'           => false,
+			'sanitize_callback' => array( __CLASS__, 'sanitize_pass_query_params' ),
+			'show_in_rest'      => true,
+			'auth_callback'     => array( __CLASS__, 'meta_auth_callback' ),
+		);
+
 		register_post_meta( '', self::META_EDIT_MODE, $edit_mode_args );
 		register_post_meta( '', self::META_LAYOUT_MODE, $layout_args );
 		register_post_meta( '', self::META_STYLE_MODE, $style_args );
+		register_post_meta( '', self::META_PASS_QUERY_PARAMS, $pass_query_args );
 	}
 
 	/**
@@ -134,6 +146,36 @@ class Art_Editor_Post_Meta {
 		$value = sanitize_key( $value );
 
 		return in_array( $value, array( self::STYLE_THEME, self::STYLE_EDITOR ), true ) ? $value : self::STYLE_THEME;
+	}
+
+	/**
+	 * Sanitize pass-query-params flag.
+	 *
+	 * @param mixed $value Raw value.
+	 * @return bool
+	 */
+	public static function sanitize_pass_query_params( $value ) {
+		return rest_sanitize_boolean( $value );
+	}
+
+	/**
+	 * Whether the landing should append the current URL query to links.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 */
+	public static function get_pass_query_params( $post_id ) {
+		$post_id = (int) $post_id;
+
+		if ( $post_id <= 0 ) {
+			return false;
+		}
+
+		if ( ! metadata_exists( 'post', $post_id, self::META_PASS_QUERY_PARAMS ) ) {
+			return false;
+		}
+
+		return (bool) get_post_meta( $post_id, self::META_PASS_QUERY_PARAMS, true );
 	}
 
 	/**
@@ -298,15 +340,16 @@ class Art_Editor_Post_Meta {
 	/**
 	 * Persist layout and style modes for a post.
 	 *
-	 * @param int         $post_id      Post ID.
-	 * @param string      $layout_mode  Layout mode.
-	 * @param string      $style_mode   Style mode.
-	 * @param string|null $title        Optional post title.
-	 * @param string|null $status       Optional post status.
-	 * @param string|null $slug         Optional post slug. Null means do not change.
+	 * @param int         $post_id           Post ID.
+	 * @param string      $layout_mode       Layout mode.
+	 * @param string      $style_mode        Style mode.
+	 * @param string|null $title             Optional post title.
+	 * @param string|null $status            Optional post status.
+	 * @param string|null $slug              Optional post slug. Null means do not change.
+	 * @param bool|null   $pass_query_params Optional query-pass flag. Null means do not change.
 	 * @return true|WP_Error
 	 */
-	public static function save_page_settings( $post_id, $layout_mode, $style_mode, $title = null, $status = null, $slug = null ) {
+	public static function save_page_settings( $post_id, $layout_mode, $style_mode, $title = null, $status = null, $slug = null, $pass_query_params = null ) {
 		$post_id = (int) $post_id;
 
 		if ( $post_id <= 0 ) {
@@ -325,6 +368,14 @@ class Art_Editor_Post_Meta {
 
 		update_post_meta( $post_id, self::META_LAYOUT_MODE, self::sanitize_layout_mode( $layout_mode ) );
 		update_post_meta( $post_id, self::META_STYLE_MODE, self::sanitize_style_mode( $style_mode ) );
+
+		if ( null !== $pass_query_params ) {
+			update_post_meta(
+				$post_id,
+				self::META_PASS_QUERY_PARAMS,
+				self::sanitize_pass_query_params( $pass_query_params ) ? 1 : 0
+			);
+		}
 
 		$update_args = array(
 			'ID' => $post_id,

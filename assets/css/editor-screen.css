@@ -1416,6 +1416,31 @@ body.art-editor-screen {
 	min-width: 0;
 }
 
+.art-editor-screen__settings-field--checkbox {
+	grid-column: 1 / -1;
+	margin-top: 4px;
+}
+
+.art-editor-screen__settings-checkbox {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 0;
+	color: #1d2327;
+	font-size: 13px;
+	line-height: 1.4;
+	cursor: pointer;
+}
+
+.art-editor-screen__settings-checkbox-input {
+	flex: 0 0 auto;
+	margin: 2px 0 0;
+}
+
+.art-editor-screen__settings-checkbox-label {
+	min-width: 0;
+}
+
 .art-editor-screen__settings-label {
 	color: #646970;
 	font-size: 12px;
