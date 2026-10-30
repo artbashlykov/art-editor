@@ -3420,6 +3420,26 @@
 		updateSaveStateUi();
 	}
 
+	function syncSaveActionButtonsEnabled() {
+		var saveButton = document.getElementById( 'art-editor-save-button' );
+		var publishButton = document.getElementById( 'art-editor-publish-button' );
+
+		if ( isEditingBlocked() ) {
+			return;
+		}
+
+		// Heal stuck disabled state left by save-lock snapshot races.
+		if ( saveButton ) {
+			saveButton.disabled = false;
+			delete saveButton.dataset.artEditorSaveDisabled;
+		}
+
+		if ( publishButton ) {
+			publishButton.disabled = false;
+			delete publishButton.dataset.artEditorSaveDisabled;
+		}
+	}
+
 	function updateSaveStateUi() {
 		var indicator = document.getElementById( 'art-editor-unsaved-indicator' );
 		var saveButton = document.getElementById( 'art-editor-save-button' );
@@ -3432,6 +3452,8 @@
 		if ( saveButton ) {
 			saveButton.classList.toggle( 'art-editor-screen__save-button--idle', ! dirty && ! isSaveInFlight() );
 		}
+
+		syncSaveActionButtonsEnabled();
 	}
 
 	function scheduleUnsavedIndicatorUpdate() {
@@ -3556,6 +3578,7 @@
 	function endSaving() {
 		persistenceState.saveInFlight = Math.max( 0, persistenceState.saveInFlight - 1 );
 		updateEditorSaveLock();
+		syncSaveActionButtonsEnabled();
 		updateSaveStateUi();
 	}
 
@@ -7383,10 +7406,18 @@
 		function setActionButtonsDisabled( disabled ) {
 			if ( saveButton ) {
 				saveButton.disabled = disabled;
+
+				if ( ! disabled ) {
+					delete saveButton.dataset.artEditorSaveDisabled;
+				}
 			}
 
 			if ( publishButton ) {
 				publishButton.disabled = disabled;
+
+				if ( ! disabled ) {
+					delete publishButton.dataset.artEditorSaveDisabled;
+				}
 			}
 		}
 
@@ -7397,7 +7428,9 @@
 					activeButton.textContent = defaultLabel;
 				}
 
-				setActionButtonsDisabled( false );
+				if ( ! isEditingBlocked() ) {
+					setActionButtonsDisabled( false );
+				}
 			}, 1800 );
 		}
 
@@ -7508,7 +7541,8 @@
 		}
 
 		function runSaveAction( activeButton, labels, targetStatus ) {
-			setActionButtonsDisabled( true );
+			// Do not pre-disable here: beginSaving() snapshots disabled state.
+			// Pre-disabling made endSaving() restore buttons as disabled until the label timer.
 			activeButton.textContent = labels.saving;
 
 			return saveDocument( targetStatus )
@@ -7703,7 +7737,10 @@
 			pageSettings.styleMode = nextSettings.styleMode;
 			pageSettings.passQueryParams = !! nextSettings.passQueryParams;
 
-			return savePageSettings( pageSettings, { includeStatus: false } )
+			return savePageSettings( pageSettings, {
+				includeStatus: false,
+				manageSaveLock: false,
+			} )
 				.then( function( data ) {
 					applyPageSettingsResponse( data );
 					setSettingsStatus( i18n.saved || 'Saved', false );
