@@ -51,6 +51,7 @@ class Art_Editor_Plugin {
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-landing-post-type.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-post-meta.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-content.php';
+		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-site-chrome.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-preview.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-settings.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-rest.php';
@@ -61,6 +62,7 @@ class Art_Editor_Plugin {
 		require_once ART_EDITOR_PLUGIN_DIR . 'includes/class-updater.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-menu.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-settings.php';
+		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-site-chrome.php';
 		require_once ART_EDITOR_PLUGIN_DIR . 'admin/class-admin-list-table.php';
 	}
 
@@ -70,6 +72,7 @@ class Art_Editor_Plugin {
 	public function run() {
 		Art_Editor_Landing_Post_Type::init();
 		Art_Editor_Post_Meta::init();
+		Art_Editor_Site_Chrome::init();
 		Art_Editor_Settings::init();
 		Art_Editor_Rest::init();
 		Art_Editor_Block_Editor::init();
@@ -95,6 +98,7 @@ class Art_Editor_Plugin {
 		Art_Editor_Updater::init();
 		Art_Editor_Admin_Menu::init();
 		Art_Editor_Admin_Settings::init();
+		Art_Editor_Admin_Site_Chrome::init();
 		Art_Editor_Admin_List_Table::init();
 	}
 }

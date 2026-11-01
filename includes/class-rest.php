@@ -232,6 +232,11 @@ class Art_Editor_Rest {
 			? Art_Editor_Post_Meta::sanitize_pass_query_params( $payload['passQueryParams'] )
 			: null;
 
+		if ( Art_Editor_Site_Chrome::is_service_post( $post_id ) ) {
+			$status = 'private';
+			$slug   = Art_Editor_Site_Chrome::POST_SLUG;
+		}
+
 		$result = Art_Editor_Post_Meta::save_page_settings(
 			$post_id,
 			$layout_mode,

@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.65
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,6 +15,8 @@ ART Editor extends the standard `core/html` block with a toolbar entry labeled "
 
 Planned features include a full-screen HTML editing workspace and a canvas layout mode that renders singular content without the theme header and footer.
 
+Themes can consume site-wide header/footer HTML via `art_editor_get_site_header()` and `art_editor_get_site_footer()` (managed under ART Editor → Header & Footer). Canvas templates do not inject this chrome.
+
 == Installation ==
 
 1. Upload the `art-editor` folder to `/wp-content/plugins/`.
@@ -22,6 +24,10 @@ Planned features include a full-screen HTML editing workspace and a canvas layou
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.3.0 =
+* Site chrome: admin screen «Шапка и подвал» with enable toggles; one service landing with locked Header/Footer HTML blocks.
+* Public theme API: `art_editor_get_site_header()` / `art_editor_get_site_footer()` (null when disabled or empty). Canvas templates stay chrome-free.
 
 = 0.2.65 =
 * «Сохранить» / «Опубликовать» больше не залипают недоступными при «Несохранено»: убрана гонка disabled при сохранении, кнопки снова включаются после save-lock.

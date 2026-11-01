@@ -57,6 +57,12 @@ class Art_Editor_Content {
 				$item['anchorId'] = $anchor_id;
 			}
 
+			$chrome_role = self::get_chrome_role_from_block( $block );
+
+			if ( '' !== $chrome_role ) {
+				$item['chromeRole'] = $chrome_role;
+			}
+
 			$items[] = $item;
 
 			++$index;
@@ -95,6 +101,22 @@ class Art_Editor_Content {
 		}
 
 		return trim( $block['attrs']['artEditorTitle'] );
+	}
+
+	/**
+	 * Read site-chrome role from block attributes.
+	 *
+	 * @param array $block Parsed block.
+	 * @return string header|footer|''
+	 */
+	public static function get_chrome_role_from_block( $block ) {
+		if ( empty( $block['attrs']['artEditorChromeRole'] ) || ! is_string( $block['attrs']['artEditorChromeRole'] ) ) {
+			return '';
+		}
+
+		$role = sanitize_key( $block['attrs']['artEditorChromeRole'] );
+
+		return in_array( $role, array( 'header', 'footer' ), true ) ? $role : '';
 	}
 
 	/**
@@ -265,6 +287,11 @@ class Art_Editor_Content {
 
 		$sanitized_blocks = self::sanitize_blocks_payload( $blocks );
 
+		if ( class_exists( 'Art_Editor_Site_Chrome', false ) && Art_Editor_Site_Chrome::is_service_post( $post_id ) ) {
+			$sanitized_blocks = Art_Editor_Site_Chrome::normalize_chrome_blocks_payload( $sanitized_blocks );
+			$status             = 'private';
+		}
+
 		if ( Art_Editor_Post_Meta::is_built_with_art_editor( $post_id ) ) {
 			$new_content = self::serialize_html_block_items( $sanitized_blocks );
 		} else {
@@ -337,6 +364,12 @@ class Art_Editor_Content {
 				$entry['anchorId'] = $anchor_id;
 			}
 
+			$chrome_role = isset( $block['chromeRole'] ) ? sanitize_key( (string) $block['chromeRole'] ) : '';
+
+			if ( in_array( $chrome_role, array( 'header', 'footer' ), true ) ) {
+				$entry['chromeRole'] = $chrome_role;
+			}
+
 			$sanitized[] = $entry;
 		}
 
@@ -364,7 +397,8 @@ class Art_Editor_Content {
 						$blocks[ $index ]['title'],
 						$blocks[ $index ]['type'],
 						isset( $blocks[ $index ]['anchorId'] ) ? $blocks[ $index ]['anchorId'] : '',
-						! empty( $blocks[ $index ]['hidden'] )
+						! empty( $blocks[ $index ]['hidden'] ),
+						isset( $blocks[ $index ]['chromeRole'] ) ? (string) $blocks[ $index ]['chromeRole'] : ''
 					);
 					++$index;
 				}
@@ -384,7 +418,8 @@ class Art_Editor_Content {
 				$blocks[ $index ]['title'],
 				$blocks[ $index ]['type'],
 				isset( $blocks[ $index ]['anchorId'] ) ? $blocks[ $index ]['anchorId'] : '',
-				! empty( $blocks[ $index ]['hidden'] )
+				! empty( $blocks[ $index ]['hidden'] ),
+				isset( $blocks[ $index ]['chromeRole'] ) ? (string) $blocks[ $index ]['chromeRole'] : ''
 			);
 			++$index;
 		}
@@ -395,19 +430,21 @@ class Art_Editor_Content {
 	/**
 	 * Build a parsed core/html block array.
 	 *
-	 * @param string $content HTML content.
-	 * @param string $title   Optional custom sidebar title.
-	 * @param string $type    Block type (html|anchor).
-	 * @param string $anchor_id Anchor id for anchor blocks.
-	 * @param bool   $hidden  Whether the block is hidden from preview/frontend.
+	 * @param string $content     HTML content.
+	 * @param string $title       Optional custom sidebar title.
+	 * @param string $type        Block type (html|anchor).
+	 * @param string $anchor_id   Anchor id for anchor blocks.
+	 * @param bool   $hidden      Whether the block is hidden from preview/frontend.
+	 * @param string $chrome_role Optional site-chrome role (header|footer).
 	 * @return array
 	 */
-	public static function make_html_block( $content, $title = '', $type = 'html', $anchor_id = '', $hidden = false ) {
-		$content   = (string) $content;
-		$title     = trim( (string) $title );
-		$type      = sanitize_key( (string) $type );
-		$anchor_id = self::sanitize_anchor_id( $anchor_id );
-		$attrs     = array();
+	public static function make_html_block( $content, $title = '', $type = 'html', $anchor_id = '', $hidden = false, $chrome_role = '' ) {
+		$content     = (string) $content;
+		$title       = trim( (string) $title );
+		$type        = sanitize_key( (string) $type );
+		$anchor_id   = self::sanitize_anchor_id( $anchor_id );
+		$chrome_role = sanitize_key( (string) $chrome_role );
+		$attrs       = array();
 
 		if ( '' !== $title ) {
 			$attrs['artEditorTitle'] = $title;
@@ -415,6 +452,10 @@ class Art_Editor_Content {
 
 		if ( $hidden ) {
 			$attrs['artEditorHidden'] = 1;
+		}
+
+		if ( in_array( $chrome_role, array( 'header', 'footer' ), true ) ) {
+			$attrs['artEditorChromeRole'] = $chrome_role;
 		}
 
 		if ( 'anchor' === $type ) {
@@ -739,7 +780,8 @@ class Art_Editor_Content {
 				isset( $item['title'] ) ? (string) $item['title'] : '',
 				isset( $item['type'] ) ? (string) $item['type'] : 'html',
 				isset( $item['anchorId'] ) ? (string) $item['anchorId'] : '',
-				! empty( $item['hidden'] )
+				! empty( $item['hidden'] ),
+				isset( $item['chromeRole'] ) ? (string) $item['chromeRole'] : ''
 			);
 		}
 

@@ -26,6 +26,8 @@ class Art_Editor_Uninstaller {
 		'_art_editor_style_mode',
 		'_art_editor_pass_query_params',
 		'_art_editor_embedded_blocks',
+		'_art_editor_hidden_flags',
+		'_art_editor_site_chrome',
 	);
 
 	/**
@@ -65,9 +67,13 @@ class Art_Editor_Uninstaller {
 			)
 		);
 
+		$GLOBALS['art_editor_allow_chrome_delete'] = true;
+
 		foreach ( $post_ids as $post_id ) {
 			wp_delete_post( (int) $post_id, true );
 		}
+
+		unset( $GLOBALS['art_editor_allow_chrome_delete'] );
 	}
 
 	/**

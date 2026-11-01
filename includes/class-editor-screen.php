@@ -65,6 +65,10 @@ class Art_Editor_Editor_Screen {
 	 * @return string
 	 */
 	public static function get_lock_go_back_url( $post ) {
+		if ( $post instanceof WP_Post && Art_Editor_Site_Chrome::is_service_post( (int) $post->ID ) ) {
+			return Art_Editor_Admin_Site_Chrome::get_page_url();
+		}
+
 		$sendback = wp_get_referer();
 
 		if ( ! $sendback || false !== strpos( $sendback, 'post.php' ) || false !== strpos( $sendback, 'post-new.php' ) ) {
@@ -266,13 +270,17 @@ class Art_Editor_Editor_Screen {
 
 		$permalink_data = self::get_permalink_settings_data( $post );
 		$post_lock      = is_array( self::$post_lock ) ? self::$post_lock : array( 'isLocked' => false );
+		$is_site_chrome = Art_Editor_Site_Chrome::is_service_post( (int) $post->ID );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only editor deep-link.
+		$zone_param     = isset( $_GET['art_editor_zone'] ) ? sanitize_key( wp_unslash( $_GET['art_editor_zone'] ) ) : '';
+		$site_chrome_zone = $is_site_chrome ? Art_Editor_Site_Chrome::sanitize_zone( $zone_param ) : '';
 
 		return array(
 			'postId'           => (int) $post->ID,
 			'postType'         => $post->post_type,
 			'postTitle'        => $post->post_title,
 			'postStatus'       => 'auto-draft' === $post->post_status ? 'draft' : $post->post_status,
-			'canPublish'       => current_user_can( 'publish_post', $post->ID ),
+			'canPublish'       => $is_site_chrome ? false : current_user_can( 'publish_post', $post->ID ),
 			'postSlug'         => $permalink_data['slug'],
 			'permalink'        => esc_url_raw( $permalink_data['permalink'] ),
 			'permalinkPrefix'  => $permalink_data['permalinkPrefix'],
@@ -286,6 +294,8 @@ class Art_Editor_Editor_Screen {
 			'layoutMode'       => Art_Editor_Post_Meta::get_layout_mode( $post->ID ),
 			'styleMode'        => Art_Editor_Post_Meta::get_style_mode( $post->ID ),
 			'passQueryParams'  => Art_Editor_Post_Meta::get_pass_query_params( $post->ID ),
+			'siteChrome'       => $is_site_chrome,
+			'siteChromeZone'   => $site_chrome_zone,
 			'siteIconHead'     => self::get_site_icon_head_markup(),
 			'nonce'            => wp_create_nonce( 'wp_rest' ),
 			'statusLabels'     => $status_labels,

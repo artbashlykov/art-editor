@@ -85,3 +85,28 @@
 .art-editor-settings-row__field .description {
 	margin: 10px 0 0;
 }
+
+.art-editor-site-chrome-intro {
+	max-width: 960px;
+	margin: 0 0 10px;
+}
+
+.art-editor-site-chrome-grid {
+	display: grid;
+	grid-template-columns: repeat( auto-fit, minmax( 280px, 1fr ) );
+	gap: 16px;
+	max-width: 960px;
+}
+
+.art-editor-site-chrome-card {
+	margin-top: 0;
+}
+
+.art-editor-site-chrome-card__actions {
+	margin: 16px 0 0;
+}
+
+.art-editor-site-chrome-submit {
+	max-width: 960px;
+	margin: 16px 0 0;
+}

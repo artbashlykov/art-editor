@@ -2,6 +2,9 @@
 /**
  * Canvas page template for ART Editor posts.
  *
+ * Site chrome (header/footer API) is intentionally not injected here —
+ * Theme owns global chrome on normal templates; canvas stays chrome-free.
+ *
  * @package Art_Editor
  */
 

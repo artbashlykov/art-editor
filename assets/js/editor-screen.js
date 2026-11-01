@@ -3,6 +3,7 @@
 
 	var config = window.artEditorScreenConfig || {};
 	var i18n = config.i18n || {};
+	var isSiteChrome = !! config.siteChrome;
 
 	var editorState = {
 		blocks: Array.isArray( config.htmlBlocks ) ? config.htmlBlocks.slice() : [],
@@ -358,6 +359,13 @@
 		block.titleLocked = !! block.titleLocked;
 		block.title = block.title || getBlockTitle( block.content, index );
 
+		if ( block.chromeRole === 'header' || block.chromeRole === 'footer' ) {
+			block.chromeRole = block.chromeRole;
+			block.titleLocked = true;
+		} else {
+			delete block.chromeRole;
+		}
+
 		return block;
 	}
 
@@ -385,6 +393,10 @@
 			payload.anchorId = block.anchorId || '';
 		}
 
+		if ( block.chromeRole === 'header' || block.chromeRole === 'footer' ) {
+			payload.chromeRole = block.chromeRole;
+		}
+
 		return payload;
 	}
 
@@ -400,6 +412,10 @@
 
 		if ( isAnchorBlock( block ) ) {
 			snapshot.anchorId = block.anchorId || '';
+		}
+
+		if ( block.chromeRole === 'header' || block.chromeRole === 'footer' ) {
+			snapshot.chromeRole = block.chromeRole;
 		}
 
 		return snapshot;
@@ -3049,7 +3065,7 @@
 		var targetIndex;
 		var movedBlock;
 
-		if ( isSaving() ) {
+		if ( isSiteChrome || isSaving() ) {
 			return;
 		}
 
@@ -3078,7 +3094,7 @@
 		var index;
 		var nextIndex;
 
-		if ( isSaving() ) {
+		if ( isSiteChrome || isSaving() ) {
 			return;
 		}
 
@@ -3145,10 +3161,10 @@
 	}
 
 	function bindStructureItem( item, button, label, visibilityButton, deleteButton, block ) {
-		item.draggable = true;
+		item.draggable = ! isSiteChrome;
 
 		item.addEventListener( 'dragstart', function( event ) {
-			if ( isSaving() || editorState.renamingBlockId ) {
+			if ( isSiteChrome || isSaving() || editorState.renamingBlockId ) {
 				event.preventDefault();
 				return;
 			}
@@ -3208,11 +3224,19 @@
 		} );
 
 		button.addEventListener( 'dblclick', function( event ) {
+			if ( isSiteChrome || block.titleLocked ) {
+				return;
+			}
+
 			event.preventDefault();
 			startBlockRename( block.id, label );
 		} );
 
 		label.addEventListener( 'dblclick', function( event ) {
+			if ( isSiteChrome || block.titleLocked ) {
+				return;
+			}
+
 			event.preventDefault();
 			event.stopPropagation();
 			startBlockRename( block.id, label );
@@ -3734,6 +3758,10 @@
 
 			if ( isAnchorBlock( nextBlock ) ) {
 				nextBlock.anchorId = block.anchorId || '';
+			}
+
+			if ( block.chromeRole === 'header' || block.chromeRole === 'footer' ) {
+				nextBlock.chromeRole = block.chromeRole;
 			}
 
 			return nextBlock;
@@ -6816,9 +6844,17 @@
 			deleteButton.title = i18n.deleteBlock || 'Удалить блок';
 			deleteButton.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>';
 
+			if ( isSiteChrome ) {
+				deleteButton.hidden = true;
+				deleteButton.disabled = true;
+			}
+
 			bindStructureItem( item, button, label, visibilityButton, deleteButton, block );
 
-			actions.appendChild( deleteButton );
+			if ( ! isSiteChrome ) {
+				actions.appendChild( deleteButton );
+			}
+
 			item.appendChild( visibilityButton );
 			item.appendChild( button );
 			item.appendChild( actions );
@@ -6932,7 +6968,7 @@
 	function createAnchorBlock() {
 		var block;
 
-		if ( isSaving() ) {
+		if ( isSiteChrome || isSaving() ) {
 			return;
 		}
 
@@ -6969,7 +7005,7 @@
 		var index = editorState.blocks.length;
 		var block;
 
-		if ( isSaving() ) {
+		if ( isSiteChrome || isSaving() ) {
 			return;
 		}
 
@@ -7031,13 +7067,33 @@
 
 	function initStructure() {
 		var index;
+		var zoneBlock;
+		var sidebarFooter;
 
-		if ( createAnchorButton ) {
-			createAnchorButton.addEventListener( 'click', createAnchorBlock );
-		}
+		if ( isSiteChrome ) {
+			if ( createAnchorButton ) {
+				createAnchorButton.hidden = true;
+				createAnchorButton.disabled = true;
+			}
 
-		if ( createHtmlButton ) {
-			createHtmlButton.addEventListener( 'click', createHtmlBlock );
+			if ( createHtmlButton ) {
+				createHtmlButton.hidden = true;
+				createHtmlButton.disabled = true;
+			}
+
+			sidebarFooter = document.querySelector( '.art-editor-screen__sidebar-footer' );
+
+			if ( sidebarFooter ) {
+				sidebarFooter.hidden = true;
+			}
+		} else {
+			if ( createAnchorButton ) {
+				createAnchorButton.addEventListener( 'click', createAnchorBlock );
+			}
+
+			if ( createHtmlButton ) {
+				createHtmlButton.addEventListener( 'click', createHtmlBlock );
+			}
 		}
 
 		initAnchorEditor();
@@ -7050,6 +7106,25 @@
 
 		if ( editorState.blocks.length ) {
 			editorState.selectedId = editorState.blocks[ 0 ].id;
+
+			if ( isSiteChrome && config.siteChromeZone ) {
+				zoneBlock = null;
+
+				for ( index = 0; index < editorState.blocks.length; index++ ) {
+					if ( editorState.blocks[ index ].chromeRole === config.siteChromeZone ) {
+						zoneBlock = editorState.blocks[ index ];
+						break;
+					}
+				}
+
+				if ( ! zoneBlock && 'footer' === config.siteChromeZone && editorState.blocks[ 1 ] ) {
+					zoneBlock = editorState.blocks[ 1 ];
+				}
+
+				if ( zoneBlock ) {
+					editorState.selectedId = zoneBlock.id;
+				}
+			}
 		}
 
 		renderStructure();

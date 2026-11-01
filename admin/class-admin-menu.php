@@ -56,6 +56,15 @@ class Art_Editor_Admin_Menu {
 
 		add_submenu_page(
 			self::MENU_SLUG,
+			__( 'Шапка и подвал', 'art-editor' ),
+			__( 'Шапка и подвал', 'art-editor' ),
+			'manage_options',
+			Art_Editor_Admin_Site_Chrome::PAGE_SLUG,
+			array( 'Art_Editor_Admin_Site_Chrome', 'render_page' )
+		);
+
+		add_submenu_page(
+			self::MENU_SLUG,
 			__( 'Настройки', 'art-editor' ),
 			__( 'Настройки', 'art-editor' ),
 			'manage_options',
@@ -111,6 +120,10 @@ class Art_Editor_Admin_Menu {
 			return Art_Editor_Admin_Settings::PAGE_SETTINGS;
 		}
 
+		if ( Art_Editor_Admin_Site_Chrome::PAGE_SLUG === $page ) {
+			return Art_Editor_Admin_Site_Chrome::PAGE_SLUG;
+		}
+
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 
 		if ( $screen && Art_Editor_Landing_Post_Type::POST_TYPE === $screen->post_type ) {
@@ -129,7 +142,7 @@ class Art_Editor_Admin_Menu {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Admin menu highlight only.
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
-		if ( Art_Editor_Admin_Settings::PAGE_SETTINGS === $page ) {
+		if ( Art_Editor_Admin_Settings::PAGE_SETTINGS === $page || Art_Editor_Admin_Site_Chrome::PAGE_SLUG === $page ) {
 			return true;
 		}
 
