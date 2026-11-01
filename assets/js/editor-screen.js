@@ -7068,25 +7068,8 @@
 	function initStructure() {
 		var index;
 		var zoneBlock;
-		var sidebarFooter;
 
-		if ( isSiteChrome ) {
-			if ( createAnchorButton ) {
-				createAnchorButton.hidden = true;
-				createAnchorButton.disabled = true;
-			}
-
-			if ( createHtmlButton ) {
-				createHtmlButton.hidden = true;
-				createHtmlButton.disabled = true;
-			}
-
-			sidebarFooter = document.querySelector( '.art-editor-screen__sidebar-footer' );
-
-			if ( sidebarFooter ) {
-				sidebarFooter.hidden = true;
-			}
-		} else {
+		if ( ! isSiteChrome ) {
 			if ( createAnchorButton ) {
 				createAnchorButton.addEventListener( 'click', createAnchorBlock );
 			}

@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  */
 
 ?>
-<div class="wrap art-editor-admin">
+<div class="wrap art-editor-admin art-editor-site-chrome">
 	<h1><?php echo esc_html__( 'Шапка и подвал', 'art-editor' ); ?></h1>
 
 	<?php if ( ! empty( $show_notice ) ) : ?>
@@ -32,57 +32,77 @@ defined( 'ABSPATH' ) || exit;
 		<?php wp_nonce_field( Art_Editor_Admin_Site_Chrome::NONCE_ACTION ); ?>
 
 		<div class="art-editor-site-chrome-grid">
-			<div class="art-editor-panel art-editor-site-chrome-card">
-				<h2 class="art-editor-panel__title"><?php echo esc_html__( 'Шапка', 'art-editor' ); ?></h2>
-				<p><?php echo esc_html__( 'HTML шапки сайта. Редактируется в АРТ Редакторе.', 'art-editor' ); ?></p>
+			<article class="art-editor-site-chrome-card">
+				<div class="art-editor-site-chrome-card__head">
+					<span class="art-editor-site-chrome-card__badge"><?php echo esc_html__( 'Зона сайта', 'art-editor' ); ?></span>
+					<h2 class="art-editor-site-chrome-card__title"><?php echo esc_html__( 'Шапка', 'art-editor' ); ?></h2>
+					<p class="art-editor-site-chrome-card__text">
+						<?php echo esc_html__( 'HTML шапки сайта. Редактируется в АРТ Редакторе.', 'art-editor' ); ?>
+					</p>
+				</div>
 
-				<label class="art-editor-settings-checklist__label" for="art-editor-header-enabled">
+				<label class="art-editor-site-chrome-switch" for="art-editor-header-enabled">
 					<input
 						type="checkbox"
-						class="art-editor-settings-checklist__input"
+						class="art-editor-site-chrome-switch__input"
 						id="art-editor-header-enabled"
 						name="art_editor_header_enabled"
 						value="1"
 						<?php checked( ! empty( $settings['header_enabled'] ) ); ?>
 					/>
-					<span><?php echo esc_html__( 'Показывать на сайте', 'art-editor' ); ?></span>
+					<span class="art-editor-site-chrome-switch__control" aria-hidden="true"></span>
+					<span class="art-editor-site-chrome-switch__copy">
+						<span class="art-editor-site-chrome-switch__label"><?php echo esc_html__( 'Показывать на сайте', 'art-editor' ); ?></span>
+						<span class="art-editor-site-chrome-switch__state art-editor-site-chrome-switch__state--off"><?php echo esc_html__( 'Выключено', 'art-editor' ); ?></span>
+						<span class="art-editor-site-chrome-switch__state art-editor-site-chrome-switch__state--on"><?php echo esc_html__( 'Включено', 'art-editor' ); ?></span>
+					</span>
 				</label>
 
-				<p class="art-editor-site-chrome-card__actions">
-					<a class="button button-secondary" href="<?php echo esc_url( $header_url ); ?>">
+				<div class="art-editor-site-chrome-card__actions">
+					<a class="art-editor-site-chrome-card__edit" href="<?php echo esc_url( $header_url ); ?>">
 						<?php echo esc_html__( 'Редактировать', 'art-editor' ); ?>
 					</a>
-				</p>
-			</div>
+				</div>
+			</article>
 
-			<div class="art-editor-panel art-editor-site-chrome-card">
-				<h2 class="art-editor-panel__title"><?php echo esc_html__( 'Подвал', 'art-editor' ); ?></h2>
-				<p><?php echo esc_html__( 'HTML подвала сайта. Редактируется в АРТ Редакторе.', 'art-editor' ); ?></p>
+			<article class="art-editor-site-chrome-card">
+				<div class="art-editor-site-chrome-card__head">
+					<span class="art-editor-site-chrome-card__badge"><?php echo esc_html__( 'Зона сайта', 'art-editor' ); ?></span>
+					<h2 class="art-editor-site-chrome-card__title"><?php echo esc_html__( 'Подвал', 'art-editor' ); ?></h2>
+					<p class="art-editor-site-chrome-card__text">
+						<?php echo esc_html__( 'HTML подвала сайта. Редактируется в АРТ Редакторе.', 'art-editor' ); ?>
+					</p>
+				</div>
 
-				<label class="art-editor-settings-checklist__label" for="art-editor-footer-enabled">
+				<label class="art-editor-site-chrome-switch" for="art-editor-footer-enabled">
 					<input
 						type="checkbox"
-						class="art-editor-settings-checklist__input"
+						class="art-editor-site-chrome-switch__input"
 						id="art-editor-footer-enabled"
 						name="art_editor_footer_enabled"
 						value="1"
 						<?php checked( ! empty( $settings['footer_enabled'] ) ); ?>
 					/>
-					<span><?php echo esc_html__( 'Показывать на сайте', 'art-editor' ); ?></span>
+					<span class="art-editor-site-chrome-switch__control" aria-hidden="true"></span>
+					<span class="art-editor-site-chrome-switch__copy">
+						<span class="art-editor-site-chrome-switch__label"><?php echo esc_html__( 'Показывать на сайте', 'art-editor' ); ?></span>
+						<span class="art-editor-site-chrome-switch__state art-editor-site-chrome-switch__state--off"><?php echo esc_html__( 'Выключено', 'art-editor' ); ?></span>
+						<span class="art-editor-site-chrome-switch__state art-editor-site-chrome-switch__state--on"><?php echo esc_html__( 'Включено', 'art-editor' ); ?></span>
+					</span>
 				</label>
 
-				<p class="art-editor-site-chrome-card__actions">
-					<a class="button button-secondary" href="<?php echo esc_url( $footer_url ); ?>">
+				<div class="art-editor-site-chrome-card__actions">
+					<a class="art-editor-site-chrome-card__edit" href="<?php echo esc_url( $footer_url ); ?>">
 						<?php echo esc_html__( 'Редактировать', 'art-editor' ); ?>
 					</a>
-				</p>
-			</div>
+				</div>
+			</article>
 		</div>
 
-		<p class="art-editor-site-chrome-submit">
-			<button type="submit" class="button button-primary" name="art_editor_site_chrome_save" value="1">
+		<div class="art-editor-site-chrome-submit">
+			<button type="submit" class="art-editor-site-chrome-submit__button" name="art_editor_site_chrome_save" value="1">
 				<?php echo esc_html__( 'Сохранить', 'art-editor' ); ?>
 			</button>
-		</p>
+		</div>
 	</form>
 </div>

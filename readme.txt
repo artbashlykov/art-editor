@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,10 @@ Themes can consume site-wide header/footer HTML via `art_editor_get_site_header(
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.3.1 =
+* Hub «Шапка и подвал»: обновлённый UI переключателей.
+* Экран редактирования chrome: скрыты настройки страницы, статус и кнопки создания блоков; выход ведёт в хаб.
 
 = 0.3.0 =
 * Site chrome: admin screen «Шапка и подвал» with enable toggles; one service landing with locked Header/Footer HTML blocks.

@@ -509,6 +509,10 @@ class Art_Editor_Editor_Screen {
 	 * @return string
 	 */
 	public static function get_exit_url( $post ) {
+		if ( $post instanceof WP_Post && Art_Editor_Site_Chrome::is_service_post( (int) $post->ID ) ) {
+			return Art_Editor_Admin_Site_Chrome::get_page_url();
+		}
+
 		$exit_url = get_edit_post_link( $post->ID, 'raw' );
 
 		if ( ! $exit_url ) {

@@ -15,6 +15,7 @@ if ( ! $post instanceof WP_Post ) {
 	wp_die( esc_html__( 'Запись не найдена.', 'art-editor' ) );
 }
 
+$art_editor_is_site_chrome = Art_Editor_Site_Chrome::is_service_post( (int) $post->ID );
 $art_editor_document_title = Art_Editor_Editor_Screen::get_document_title( $post );
 $art_editor_status_label   = Art_Editor_Editor_Screen::get_post_status_label( $post );
 $art_editor_page_title     = sprintf(
@@ -32,7 +33,7 @@ $art_editor_permalink_settings    = Art_Editor_Editor_Screen::get_permalink_sett
 $art_editor_settings_slug_value   = $art_editor_permalink_settings['slug'];
 $art_editor_settings_permalink_prefix = $art_editor_permalink_settings['permalinkPrefix'];
 $art_editor_settings_show_slug_hint = in_array( $art_editor_settings_status, array( 'publish', 'private' ), true );
-$art_editor_can_publish           = current_user_can( 'publish_post', $post->ID );
+$art_editor_can_publish           = $art_editor_is_site_chrome ? false : current_user_can( 'publish_post', $post->ID );
 $art_editor_show_publish_button   = $art_editor_can_publish && ! in_array( $art_editor_settings_status, array( 'publish', 'private' ), true );
 
 if ( 'auto-draft' === $art_editor_settings_status ) {
@@ -122,31 +123,35 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 			</a>
 		</div>
 		<div class="art-editor-screen__header-center">
-			<button
-				type="button"
-				class="art-editor-screen__header-settings-button"
-				id="art-editor-settings-toggle"
-				aria-expanded="false"
-				aria-controls="art-editor-settings-panel"
-				title="<?php echo esc_attr__( 'Настройки страницы', 'art-editor' ); ?>"
-			>
-				<span class="screen-reader-text"><?php echo esc_html__( 'Открыть настройки страницы', 'art-editor' ); ?></span>
-				<svg class="art-editor-screen__header-settings-button-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-					<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"></path>
-					<path d="M19.4 15a7.97 7.97 0 0 0 .1-1 7.97 7.97 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8.1 8.1 0 0 0-1.7-1L15 2h-6l-.3 3a8.1 8.1 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.97 7.97 0 0 0-.1 1c0 .34.03.67.1 1l-2 1.5 2 3.5 2.4-1c.52.43 1.1.78 1.7 1L9 22h6l.3-3c.6-.22 1.18-.57 1.7-1l2.4 1 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
-				</svg>
-			</button>
+			<?php if ( ! $art_editor_is_site_chrome ) : ?>
+				<button
+					type="button"
+					class="art-editor-screen__header-settings-button"
+					id="art-editor-settings-toggle"
+					aria-expanded="false"
+					aria-controls="art-editor-settings-panel"
+					title="<?php echo esc_attr__( 'Настройки страницы', 'art-editor' ); ?>"
+				>
+					<span class="screen-reader-text"><?php echo esc_html__( 'Открыть настройки страницы', 'art-editor' ); ?></span>
+					<svg class="art-editor-screen__header-settings-button-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+						<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"></path>
+						<path d="M19.4 15a7.97 7.97 0 0 0 .1-1 7.97 7.97 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8.1 8.1 0 0 0-1.7-1L15 2h-6l-.3 3a8.1 8.1 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.97 7.97 0 0 0-.1 1c0 .34.03.67.1 1l-2 1.5 2 3.5 2.4-1c.52.43 1.1.78 1.7 1L9 22h6l.3-3c.6-.22 1.18-.57 1.7-1l2.4 1 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+					</svg>
+				</button>
+			<?php endif; ?>
 			<span class="art-editor-screen__document-title" id="art-editor-document-title">
 				<?php echo esc_html( $art_editor_document_title ); ?>
 			</span>
-			<span class="art-editor-screen__document-status" id="art-editor-document-status">
-				<?php
-				printf(
-					'(%s)',
-					esc_html( $art_editor_status_label )
-				);
-				?>
-			</span>
+			<?php if ( ! $art_editor_is_site_chrome ) : ?>
+				<span class="art-editor-screen__document-status" id="art-editor-document-status">
+					<?php
+					printf(
+						'(%s)',
+						esc_html( $art_editor_status_label )
+					);
+					?>
+				</span>
+			<?php endif; ?>
 			<span class="art-editor-screen__unsaved-indicator" id="art-editor-unsaved-indicator" hidden>
 				<span class="art-editor-screen__unsaved-indicator-dot" aria-hidden="true">●</span>
 				<span class="art-editor-screen__unsaved-indicator-text">
@@ -222,19 +227,28 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 				</div>
 				<div class="art-editor-screen__structure" id="art-editor-structure">
 					<p class="art-editor-screen__structure-empty" id="art-editor-structure-empty">
-						<?php echo esc_html__( 'HTML-блоки не найдены. Создайте первый блок.', 'art-editor' ); ?>
+						<?php
+						echo esc_html(
+							$art_editor_is_site_chrome
+								? __( 'Блоки шапки и подвала не найдены.', 'art-editor' )
+								: __( 'HTML-блоки не найдены. Создайте первый блок.', 'art-editor' )
+						);
+						?>
 					</p>
 					<ul class="art-editor-screen__structure-list" id="art-editor-structure-list"></ul>
 				</div>
-				<div class="art-editor-screen__sidebar-footer">
-					<button type="button" class="art-editor-screen__sidebar-button art-editor-screen__sidebar-button--secondary" id="art-editor-create-anchor">
-						<?php echo esc_html__( 'Добавить якорь', 'art-editor' ); ?>
-					</button>
-					<button type="button" class="art-editor-screen__sidebar-button" id="art-editor-create-html">
-						<?php echo esc_html__( 'Создать HTML', 'art-editor' ); ?>
-					</button>
-				</div>
+				<?php if ( ! $art_editor_is_site_chrome ) : ?>
+					<div class="art-editor-screen__sidebar-footer">
+						<button type="button" class="art-editor-screen__sidebar-button art-editor-screen__sidebar-button--secondary" id="art-editor-create-anchor">
+							<?php echo esc_html__( 'Добавить якорь', 'art-editor' ); ?>
+						</button>
+						<button type="button" class="art-editor-screen__sidebar-button" id="art-editor-create-html">
+							<?php echo esc_html__( 'Создать HTML', 'art-editor' ); ?>
+						</button>
+					</div>
+				<?php endif; ?>
 			</div>
+			<?php if ( ! $art_editor_is_site_chrome ) : ?>
 			<div class="art-editor-screen__sidebar-view art-editor-screen__sidebar-settings" id="art-editor-settings-panel" hidden>
 				<div class="art-editor-screen__sidebar-section art-editor-screen__sidebar-section--settings">
 					<div class="art-editor-screen__sidebar-heading">
@@ -367,6 +381,7 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					<p class="art-editor-screen__settings-status" id="art-editor-settings-status" hidden></p>
 				</div>
 			</div>
+			<?php endif; ?>
 			<div class="art-editor-screen__sidebar-view art-editor-screen__sidebar-element-editor" id="art-editor-element-panel" hidden>
 				<div class="art-editor-screen__sidebar-section art-editor-screen__sidebar-section--element-editor">
 					<div class="art-editor-screen__sidebar-heading">
