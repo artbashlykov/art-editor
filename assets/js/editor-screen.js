@@ -4438,7 +4438,7 @@
 			return shellPath.concat( path );
 		}
 
-		if ( 'canvas' === layoutMode ) {
+		if ( 'canvas' === layoutMode || 'canvas_chrome' === layoutMode ) {
 			return [
 				{ tag: 'DIV', index: 0 },
 				{ tag: 'DIV', index: 0 },

@@ -347,6 +347,9 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 								<option value="canvas" <?php selected( $art_editor_settings_layout_mode, 'canvas' ); ?>>
 									<?php echo esc_html__( 'Без шапки и подвала', 'art-editor' ); ?>
 								</option>
+								<option value="canvas_chrome" <?php selected( $art_editor_settings_layout_mode, 'canvas_chrome' ); ?>>
+									<?php echo esc_html__( 'Editor: шапка + подвал', 'art-editor' ); ?>
+								</option>
 							</select>
 						</div>
 						<div class="art-editor-screen__settings-field art-editor-screen__settings-field--inline">

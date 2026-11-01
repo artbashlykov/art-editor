@@ -35,6 +35,22 @@ body.art-editor-template-canvas {
 	padding: 0;
 }
 
+.art-editor-canvas__header,
+.art-editor-canvas__footer {
+	margin: 0;
+	padding: 0;
+}
+
+.art-editor-canvas__header > :first-child,
+.art-editor-canvas__footer > :first-child {
+	margin-block-start: 0;
+}
+
+.art-editor-canvas__header > :last-child,
+.art-editor-canvas__footer > :last-child {
+	margin-block-end: 0;
+}
+
 .art-editor-canvas__content {
 	margin: 0;
 	padding: 0;

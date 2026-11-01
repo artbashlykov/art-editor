@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
 	<?php endif; ?>
 
 	<p class="art-editor-site-chrome-intro">
-		<?php echo esc_html__( 'Общая шапка и подвал сайта для темы (ART Theme). На canvas-лендингах Editor они не подставляются — это решает тема.', 'art-editor' ); ?>
+		<?php echo esc_html__( 'Общая шапка и подвал сайта. Тема (ART Theme) подставляет их при «Наследовать тему». На canvas без chrome — нет. Режим «Editor: шапка + подвал» показывает их на лендинге без оболочки темы.', 'art-editor' ); ?>
 	</p>
 
 	<form method="post" action="" class="art-editor-site-chrome-form">

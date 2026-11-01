@@ -492,6 +492,7 @@ class Art_Editor_Preview {
 			'block_link_navigation' => false,
 		);
 		$options  = wp_parse_args( $options, $defaults );
+		$options['layout_mode'] = Art_Editor_Post_Meta::sanitize_layout_mode( $options['layout_mode'] );
 		$blocks   = is_array( $blocks ) ? $blocks : array();
 		$body     = '';
 		$index    = 0;
@@ -502,8 +503,8 @@ class Art_Editor_Preview {
 			++$index;
 		}
 
-		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
-			$body = '<div class="art-editor-canvas"><div class="art-editor-canvas__content">' . $body . '</div></div>';
+		if ( Art_Editor_Post_Meta::is_standalone_canvas_layout( $options['layout_mode'] ) ) {
+			$body = Art_Editor_Frontend::wrap_canvas_shell( $body, $options['layout_mode'] );
 		}
 
 		$block_links = ! empty( $options['block_link_navigation'] );
@@ -534,10 +535,11 @@ class Art_Editor_Preview {
 			'block_index' => 0,
 		);
 		$options  = wp_parse_args( $options, $defaults );
+		$options['layout_mode'] = Art_Editor_Post_Meta::sanitize_layout_mode( $options['layout_mode'] );
 		$body     = self::scope_block_html( do_shortcode( (string) $html ), (int) $options['block_index'] );
 
-		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
-			$body = '<div class="art-editor-canvas"><div class="art-editor-canvas__content">' . $body . '</div></div>';
+		if ( Art_Editor_Post_Meta::is_standalone_canvas_layout( $options['layout_mode'] ) ) {
+			$body = Art_Editor_Frontend::wrap_canvas_shell( $body, $options['layout_mode'] );
 		}
 
 		return self::wrap_document_body(
@@ -569,6 +571,7 @@ class Art_Editor_Preview {
 			'html_blocks'              => array(),
 		);
 		$options  = wp_parse_args( $options, $defaults );
+		$options['layout_mode'] = Art_Editor_Post_Meta::sanitize_layout_mode( $options['layout_mode'] );
 
 		$head_parts   = array();
 		$head_parts[] = '<meta charset="utf-8">';
@@ -612,8 +615,12 @@ class Art_Editor_Preview {
 
 		$head_parts[] = '<style id="art-editor-preview-base">' . self::get_base_styles() . '</style>';
 
-		if ( Art_Editor_Post_Meta::LAYOUT_CANVAS === $options['layout_mode'] ) {
+		if ( Art_Editor_Post_Meta::is_standalone_canvas_layout( $options['layout_mode'] ) ) {
 			$head_parts[] = '<style id="art-editor-preview-canvas">' . self::get_canvas_styles() . '</style>';
+		}
+
+		if ( Art_Editor_Post_Meta::layout_injects_site_chrome( $options['layout_mode'] ) ) {
+			$head_parts[] = '<style id="art-editor-preview-chrome-lock">[data-art-editor-chrome]{pointer-events:none;user-select:none;}</style>';
 		}
 
 		if ( ! empty( $options['block_link_navigation'] ) ) {

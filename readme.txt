@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,7 +15,7 @@ ART Editor extends the standard `core/html` block with a toolbar entry labeled "
 
 Planned features include a full-screen HTML editing workspace and a canvas layout mode that renders singular content without the theme header and footer.
 
-Themes can consume site-wide header/footer HTML via `art_editor_get_site_header()` and `art_editor_get_site_footer()` (managed under ART Editor → Header & Footer). Canvas templates do not inject this chrome.
+Themes can consume site-wide header/footer HTML via `art_editor_get_site_header()` and `art_editor_get_site_footer()` (managed under ART Editor → Header & Footer). Plain canvas stays chrome-free; layout `canvas_chrome` injects enabled site header/footer without the theme shell.
 
 == Installation ==
 
@@ -24,6 +24,9 @@ Themes can consume site-wide header/footer HTML via `art_editor_get_site_header(
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.3.2 =
+* New page layout «Editor: шапка + подвал» (`canvas_chrome`): standalone canvas with site chrome from the hub; existing `theme` / `canvas` unchanged.
 
 = 0.3.1 =
 * Hub «Шапка и подвал»: обновлённый UI переключателей.

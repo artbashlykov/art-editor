@@ -18,18 +18,56 @@ class Art_Editor_Post_Meta {
 	const META_PASS_QUERY_PARAMS = '_art_editor_pass_query_params';
 
 	const EDIT_MODE_BUILDER = 'builder';
-	const LAYOUT_THEME      = 'theme';
-	const LAYOUT_CANVAS     = 'canvas';
-	const STYLE_THEME       = 'theme';
-	const STYLE_EDITOR      = 'editor';
+	const LAYOUT_THEME         = 'theme';
+	const LAYOUT_CANVAS        = 'canvas';
+	const LAYOUT_CANVAS_CHROME = 'canvas_chrome';
+	const STYLE_THEME          = 'theme';
+	const STYLE_EDITOR         = 'editor';
+
+	/**
+	 * Allowed layout mode values (order = UI order).
+	 *
+	 * @return string[]
+	 */
+	public static function get_layout_modes() {
+		return array(
+			self::LAYOUT_THEME,
+			self::LAYOUT_CANVAS,
+			self::LAYOUT_CANVAS_CHROME,
+		);
+	}
 
 	/**
 	 * Default layout mode for posts managed by ART Editor.
+	 *
+	 * Unchanged for upgrades: existing posts keep stored meta; new Editor posts still default to canvas.
 	 *
 	 * @return string
 	 */
 	public static function get_default_layout_mode() {
 		return self::LAYOUT_CANVAS;
+	}
+
+	/**
+	 * Whether the layout uses the standalone canvas template (no theme shell).
+	 *
+	 * @param string $mode Layout mode.
+	 * @return bool
+	 */
+	public static function is_standalone_canvas_layout( $mode ) {
+		$mode = self::sanitize_layout_mode( $mode );
+
+		return self::LAYOUT_CANVAS === $mode || self::LAYOUT_CANVAS_CHROME === $mode;
+	}
+
+	/**
+	 * Whether standalone canvas should inject ART Editor site header/footer.
+	 *
+	 * @param string $mode Layout mode.
+	 * @return bool
+	 */
+	public static function layout_injects_site_chrome( $mode ) {
+		return self::LAYOUT_CANVAS_CHROME === self::sanitize_layout_mode( $mode );
 	}
 
 	/**
@@ -133,7 +171,7 @@ class Art_Editor_Post_Meta {
 	public static function sanitize_layout_mode( $value ) {
 		$value = sanitize_key( $value );
 
-		return in_array( $value, array( self::LAYOUT_THEME, self::LAYOUT_CANVAS ), true ) ? $value : self::LAYOUT_THEME;
+		return in_array( $value, self::get_layout_modes(), true ) ? $value : self::LAYOUT_THEME;
 	}
 
 	/**

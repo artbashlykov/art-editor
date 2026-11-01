@@ -44,6 +44,9 @@ class Art_Editor_Frontend {
 	/**
 	 * Whether the current singular request should use the canvas template.
 	 *
+	 * True for both chrome-free canvas and canvas + Editor site chrome.
+	 * Posts still on `theme` are untouched.
+	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
 	 */
@@ -58,7 +61,64 @@ class Art_Editor_Frontend {
 			return false;
 		}
 
-		return Art_Editor_Post_Meta::LAYOUT_CANVAS === Art_Editor_Post_Meta::get_layout_mode( $post_id );
+		return Art_Editor_Post_Meta::is_standalone_canvas_layout(
+			Art_Editor_Post_Meta::get_layout_mode( $post_id )
+		);
+	}
+
+	/**
+	 * Whether the current canvas view should print site header/footer from ART Editor.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 */
+	public static function should_inject_canvas_site_chrome( $post_id ) {
+		$post_id = (int) $post_id;
+
+		if ( $post_id <= 0 || ! self::should_use_canvas_template( $post_id ) ) {
+			return false;
+		}
+
+		return Art_Editor_Post_Meta::layout_injects_site_chrome(
+			Art_Editor_Post_Meta::get_layout_mode( $post_id )
+		);
+	}
+
+	/**
+	 * Wrap landing HTML in the standalone canvas shell (optional site chrome).
+	 *
+	 * @param string $inner_html Content HTML (already escaped/trusted as for the_content).
+	 * @param string $layout_mode Layout mode.
+	 * @return string
+	 */
+	public static function wrap_canvas_shell( $inner_html, $layout_mode ) {
+		$layout_mode = Art_Editor_Post_Meta::sanitize_layout_mode( $layout_mode );
+
+		if ( ! Art_Editor_Post_Meta::is_standalone_canvas_layout( $layout_mode ) ) {
+			return (string) $inner_html;
+		}
+
+		$header_html = '';
+		$footer_html = '';
+
+		if ( Art_Editor_Post_Meta::layout_injects_site_chrome( $layout_mode ) ) {
+			$header = function_exists( 'art_editor_get_site_header' ) ? art_editor_get_site_header() : null;
+			$footer = function_exists( 'art_editor_get_site_footer' ) ? art_editor_get_site_footer() : null;
+
+			if ( is_array( $header ) && ! empty( $header['html'] ) ) {
+				$header_html = '<div class="art-editor-canvas__header" data-art-editor-chrome="header">' . $header['html'] . '</div>';
+			}
+
+			if ( is_array( $footer ) && ! empty( $footer['html'] ) ) {
+				$footer_html = '<div class="art-editor-canvas__footer" data-art-editor-chrome="footer">' . $footer['html'] . '</div>';
+			}
+		}
+
+		return '<div class="art-editor-canvas">' .
+			$header_html .
+			'<div class="art-editor-canvas__content">' . (string) $inner_html . '</div>' .
+			$footer_html .
+			'</div>';
 	}
 
 	/**
@@ -121,6 +181,10 @@ class Art_Editor_Frontend {
 
 		if ( $post_id > 0 && self::should_use_canvas_template( $post_id ) ) {
 			$classes[] = 'art-editor-template-canvas';
+
+			if ( self::should_inject_canvas_site_chrome( $post_id ) ) {
+				$classes[] = 'art-editor-template-canvas-chrome';
+			}
 		}
 
 		return $classes;
