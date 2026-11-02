@@ -7923,12 +7923,15 @@
 
 		layoutInput.addEventListener( 'change', function() {
 			pageSettings.layoutMode = layoutInput.value;
-			persistPageSettings();
+			// Do not autosave: mark dirty so «Сохранить» lights up; main Save persists settings.
+			scheduleUnsavedIndicatorUpdate();
+			refreshPreviewForDeviceMode();
 		} );
 
 		styleInput.addEventListener( 'change', function() {
 			pageSettings.styleMode = styleInput.value;
-			persistPageSettings();
+			scheduleUnsavedIndicatorUpdate();
+			refreshPreviewForDeviceMode();
 		} );
 
 		if ( passQueryInput ) {
