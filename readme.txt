@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.3.2
+Stable tag: 0.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ Themes can consume site-wide header/footer HTML via `art_editor_get_site_header(
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.3.3 =
+* Хаб «Шапка и подвал»: автосохранение при переключении ползунка, кнопка «Сохранить» убрана.
 
 = 0.3.2 =
 * New page layout «Editor: шапка + подвал» (`canvas_chrome`): standalone canvas with site chrome from the hub; existing `theme` / `canvas` unchanged.

@@ -21,6 +21,32 @@ class Art_Editor_Admin_Site_Chrome {
 	 */
 	public static function init() {
 		add_action( 'admin_init', array( __CLASS__, 'handle_save' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+	}
+
+	/**
+	 * Hub script: autosave toggles without a Save button.
+	 *
+	 * @param string $hook Current admin page hook.
+	 */
+	public static function enqueue_assets( $hook ) {
+		if ( 'art-editor_page_' . self::PAGE_SLUG !== $hook ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$script_path = ART_EDITOR_PLUGIN_DIR . 'assets/js/site-chrome-hub.js';
+
+		wp_enqueue_script(
+			'art-editor-site-chrome-hub',
+			ART_EDITOR_PLUGIN_URL . 'assets/js/site-chrome-hub.js',
+			array(),
+			file_exists( $script_path ) ? (string) filemtime( $script_path ) : ART_EDITOR_VERSION,
+			true
+		);
 	}
 
 	/**

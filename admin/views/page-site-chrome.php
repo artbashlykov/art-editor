@@ -28,8 +28,9 @@ defined( 'ABSPATH' ) || exit;
 		<?php echo esc_html__( 'Общая шапка и подвал сайта. Тема (ART Theme) подставляет их при «Наследовать тему». На canvas без chrome — нет. Режим «Editor: шапка + подвал» показывает их на лендинге без оболочки темы.', 'art-editor' ); ?>
 	</p>
 
-	<form method="post" action="" class="art-editor-site-chrome-form">
+	<form method="post" action="" class="art-editor-site-chrome-form" id="art-editor-site-chrome-form">
 		<?php wp_nonce_field( Art_Editor_Admin_Site_Chrome::NONCE_ACTION ); ?>
+		<input type="hidden" name="art_editor_site_chrome_save" value="1" />
 
 		<div class="art-editor-site-chrome-grid">
 			<article class="art-editor-site-chrome-card">
@@ -97,12 +98,6 @@ defined( 'ABSPATH' ) || exit;
 					</a>
 				</div>
 			</article>
-		</div>
-
-		<div class="art-editor-site-chrome-submit">
-			<button type="submit" class="art-editor-site-chrome-submit__button" name="art_editor_site_chrome_save" value="1">
-				<?php echo esc_html__( 'Сохранить', 'art-editor' ); ?>
-			</button>
 		</div>
 	</form>
 </div>

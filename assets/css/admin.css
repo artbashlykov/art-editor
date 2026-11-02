@@ -273,40 +273,8 @@
 	box-shadow: 0 0 0 2px rgba( 230, 106, 21, 0.2 );
 }
 
-.art-editor-site-chrome-submit {
-	max-width: 920px;
-	margin: 20px 0 0;
-}
-
-.art-editor-site-chrome-submit__button {
-	appearance: none;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 42px;
-	padding: 0 20px;
-	border: 0;
-	border-radius: 999px;
-	background: var( --art-editor-color-primary, #e66a15 );
-	color: var( --art-editor-color-primary-text, #fff );
-	font-size: 14px;
-	font-weight: 600;
-	line-height: 1;
-	cursor: pointer;
-	transition: background-color 0.15s ease, transform 0.15s ease;
-}
-
-.art-editor-site-chrome-submit__button:hover,
-.art-editor-site-chrome-submit__button:focus {
-	background: var( --art-editor-color-primary-hover, #cf5e12 );
-	color: #fff;
-}
-
-.art-editor-site-chrome-submit__button:focus {
-	outline: none;
-	box-shadow: 0 0 0 3px rgba( 230, 106, 21, 0.25 );
-}
-
-.art-editor-site-chrome-submit__button:active {
-	transform: translateY( 1px );
+.art-editor-site-chrome-form.is-saving {
+	opacity: 0.72;
+	pointer-events: none;
+	cursor: wait;
 }
