@@ -525,6 +525,10 @@ class Art_Editor_Preview {
 	/**
 	 * Build a scoped iframe document for the editor "Edit" tab (single block).
 	 *
+	 * Site chrome (header/footer) is never injected here — only in full-page
+	 * «Просмотр» via build_document() and on the front end. Edit tab shows the
+	 * block alone so inspect/editing paths stay stable.
+	 *
 	 * @param string $html    Block HTML.
 	 * @param array  $options Preview options.
 	 * @return string
@@ -538,14 +542,18 @@ class Art_Editor_Preview {
 		$options['layout_mode'] = Art_Editor_Post_Meta::sanitize_layout_mode( $options['layout_mode'] );
 		$body     = self::scope_block_html( do_shortcode( (string) $html ), (int) $options['block_index'] );
 
+		// Canvas shell without site chrome, even when page layout is canvas_chrome.
 		if ( Art_Editor_Post_Meta::is_standalone_canvas_layout( $options['layout_mode'] ) ) {
-			$body = Art_Editor_Frontend::wrap_canvas_shell( $body, $options['layout_mode'] );
+			$body = Art_Editor_Frontend::wrap_canvas_shell( $body, Art_Editor_Post_Meta::LAYOUT_CANVAS );
 		}
 
 		return self::wrap_document_body(
 			$body,
 			array(
-				'layout_mode'              => $options['layout_mode'],
+				// Use chrome-free canvas for document chrome CSS/guards in this tab.
+				'layout_mode'              => Art_Editor_Post_Meta::is_standalone_canvas_layout( $options['layout_mode'] )
+					? Art_Editor_Post_Meta::LAYOUT_CANVAS
+					: $options['layout_mode'],
 				'block_link_navigation'    => true,
 				// Edit tab: block all <a> navigation so inspect/select stays reliable.
 				'allow_in_page_hash_links' => false,

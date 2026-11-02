@@ -207,6 +207,29 @@
 		setPreviewLoadingVisible( target, false );
 	}
 
+	/**
+	 * Drop stale edit-preview iframe content and cancel in-flight edit requests.
+	 *
+	 * Needed when leaving «Редактирование» or changing blocks while on «Код»/«Просмотр»,
+	 * otherwise the previous block flashes when opening Edit again.
+	 */
+	function invalidateEditPreview() {
+		previewRestoreGeneration += 1;
+		previewRequestGeneration += 1;
+		pendingElementSelectionPath = null;
+		pendingElementSelectionGeneration = 0;
+		pendingEditPreviewScroll = null;
+
+		if ( previewLoadingWait.edit ) {
+			previewLoadingWait.edit = 0;
+			setPreviewLoadingVisible( 'edit', false );
+		}
+
+		if ( previewFrame ) {
+			previewFrame.srcdoc = '';
+		}
+	}
+
 	function assignPreviewFrameDocument( target, frame, html, generation ) {
 		var loadHandler;
 		var timeoutId;
@@ -6398,6 +6421,11 @@
 		var pageSettings = getPageSettingsFromDom();
 
 		if ( showLoading ) {
+			// Clear previous block immediately so it cannot flash under the loader.
+			if ( previewFrame ) {
+				previewFrame.srcdoc = '';
+			}
+
 			beginPreviewLoading( 'edit', requestGeneration );
 		}
 
@@ -6722,6 +6750,7 @@
 		updateCanvasModeForBlock( block );
 
 		if ( isAnchorBlock( block ) ) {
+			invalidateEditPreview();
 			syncAnchorEditorFromBlock( block );
 			setCodeEditorEnabled( false );
 			updatePagePreview( previewOptions );
@@ -6740,9 +6769,14 @@
 		if ( 'edit' === activeTab ) {
 			updatePreview( previewOptions );
 			suppressNextEditPreviewRefresh = true;
-		} else if ( 'view' === activeTab ) {
-			updatePagePreview( previewOptions );
-			suppressNextViewPreviewRefresh = true;
+		} else {
+			// Stale edit iframe must not survive block switches on Code/View tabs.
+			invalidateEditPreview();
+
+			if ( 'view' === activeTab ) {
+				updatePagePreview( previewOptions );
+				suppressNextViewPreviewRefresh = true;
+			}
 		}
 	}
 
@@ -7330,6 +7364,7 @@
 				commitCodeToSelectedBlock();
 
 				if ( isAnchorBlock( selectedBlock ) ) {
+					invalidateEditPreview();
 					syncAnchorEditorFromBlock( selectedBlock );
 
 					if ( ! suppressNextViewPreviewRefresh ) {
@@ -7365,6 +7400,8 @@
 			}
 
 			if ( 'edit' !== tabName ) {
+				invalidateEditPreview();
+
 				if ( elementEditorController ) {
 					elementEditorController.closePanel();
 				}

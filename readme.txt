@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.3.3
+Stable tag: 0.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,13 @@ Themes can consume site-wide header/footer HTML via `art_editor_get_site_header(
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.3.5 =
+* Вкладка «Редактирование»: при смене блока через «Код» больше не мелькает превью предыдущего блока; iframe сбрасывается при уходе с вкладки.
+* Вкладка «Редактирование»: общая шапка/подвал не показываются у отдельного блока (только в «Просмотр» и на сайте).
+
+= 0.3.4 =
+* Вкладка «Редактирование»: общая шапка/подвал больше не показываются у отдельного блока (только в «Просмотр» и на сайте).
 
 = 0.3.3 =
 * Хаб «Шапка и подвал»: автосохранение при переключении ползунка, кнопка «Сохранить» убрана.
