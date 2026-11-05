@@ -290,10 +290,12 @@ class Art_Editor_Frontend {
 			return;
 		}
 
+		// No dependency on admin-bar: that forced admin-bar.css + dashicons for all
+		// visitors. Core still loads them when the bar is shown for logged-in users.
 		wp_enqueue_style(
 			'art-editor-canvas',
 			ART_EDITOR_PLUGIN_URL . 'assets/css/canvas.css',
-			array( 'admin-bar' ),
+			array(),
 			ART_EDITOR_VERSION . '.' . (string) filemtime( ART_EDITOR_PLUGIN_DIR . 'assets/css/canvas.css' )
 		);
 	}

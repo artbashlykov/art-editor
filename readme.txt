@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.3.6
+Stable tag: 0.3.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,9 @@ Themes can consume site-wide header/footer HTML via `art_editor_get_site_header(
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.3.7 =
+* Canvas: убрана зависимость стилей от admin-bar — гости больше не грузят admin-bar.css / dashicons зря.
 
 = 0.3.6 =
 * Настройки страницы: смена шаблона/стилей помечает документ несохранённым (кнопка «Сохранить»), без тихого автосохранения.
