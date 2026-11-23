@@ -121,6 +121,20 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 					?>
 				</div>
 			</a>
+			<button
+				type="button"
+				class="art-editor-screen__header-structure-button"
+				id="art-editor-structure-toggle"
+				aria-expanded="false"
+				aria-controls="art-editor-sidebar-left"
+				aria-label="<?php echo esc_attr__( 'Структура', 'art-editor' ); ?>"
+				title="<?php echo esc_attr__( 'Структура', 'art-editor' ); ?>"
+			>
+				<span class="screen-reader-text"><?php echo esc_html__( 'Структура', 'art-editor' ); ?></span>
+				<svg class="art-editor-screen__header-structure-button-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+					<path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+				</svg>
+			</button>
 		</div>
 		<div class="art-editor-screen__header-center">
 			<?php if ( ! $art_editor_is_site_chrome ) : ?>
@@ -217,8 +231,17 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 			<?php endif; ?>
 		</div>
 	</header>
-	<main class="art-editor-screen__workspace">
-		<aside class="art-editor-screen__sidebar art-editor-screen__sidebar--left">
+	<button
+		type="button"
+		class="art-editor-screen__mobile-drawer-backdrop"
+		id="art-editor-mobile-drawer-backdrop"
+		tabindex="-1"
+		aria-label="<?php echo esc_attr__( 'Закрыть структуру', 'art-editor' ); ?>"
+		hidden
+	></button>
+	<main class="art-editor-screen__workspace" id="art-editor-workspace">
+		<div class="art-editor-screen__sidebar-rail" id="art-editor-sidebar-rail">
+		<aside class="art-editor-screen__sidebar art-editor-screen__sidebar--left" id="art-editor-sidebar-left">
 			<div class="art-editor-screen__sidebar-view" id="art-editor-structure-view">
 				<div class="art-editor-screen__sidebar-section art-editor-screen__sidebar-section--structure">
 					<div class="art-editor-screen__sidebar-heading">
@@ -803,6 +826,23 @@ if ( 'auto-draft' === $art_editor_settings_status ) {
 				</div>
 			</div>
 		</aside>
+		<button
+			type="button"
+			class="art-editor-screen__sidebar-collapse"
+			id="art-editor-sidebar-collapse"
+			aria-expanded="true"
+			aria-controls="art-editor-sidebar-left"
+			aria-label="<?php echo esc_attr__( 'Свернуть структуру', 'art-editor' ); ?>"
+			title="<?php echo esc_attr__( 'Свернуть структуру', 'art-editor' ); ?>"
+		>
+			<svg class="art-editor-screen__sidebar-collapse-svg art-editor-screen__sidebar-collapse-svg--collapse" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false">
+				<path d="M8.5 3.5 5 7l3.5 3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+			</svg>
+			<svg class="art-editor-screen__sidebar-collapse-svg art-editor-screen__sidebar-collapse-svg--expand" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false" hidden>
+				<path d="M5.5 3.5 9 7l-3.5 3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+			</svg>
+		</button>
+		</div>
 		<section class="art-editor-screen__canvas" id="art-editor-canvas">
 			<div class="art-editor-screen__canvas-toolbar">
 				<div class="art-editor-screen__canvas-tabs" role="tablist" aria-label="<?php echo esc_attr__( 'Режим центральной области', 'art-editor' ); ?>">

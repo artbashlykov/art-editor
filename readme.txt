@@ -3,7 +3,7 @@ Contributors: artbashlykov
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.3.7
+Stable tag: 0.3.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,18 @@ Themes can consume site-wide header/footer HTML via `art_editor_get_site_header(
 3. Edit a page, post, or supported custom post type in Gutenberg.
 
 == Changelog ==
+
+= 0.3.11 =
+* Мобильная панель вкладок Код/Редактирование/Просмотр: увеличена высота (удобнее нажимать).
+
+= 0.3.10 =
+* На телефоне (≤782px) скрыт переключатель ПК/моб в превью; всегда режим ПК.
+
+= 0.3.9 =
+* Мобильная оболочка (≤782px): компактная шапка, canvas на весь экран, «Структура» как overlay, старт с вкладки «Редактирование».
+
+= 0.3.8 =
+* Структура: круглая стрелка на правом краю — плавно сворачивает/разворачивает левую панель (состояние в localStorage).
 
 = 0.3.7 =
 * Canvas: убрана зависимость стилей от admin-bar — гости больше не грузят admin-bar.css / dashicons зря.

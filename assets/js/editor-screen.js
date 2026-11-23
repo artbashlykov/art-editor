@@ -61,6 +61,8 @@
 
 	var elementEditorController = null;
 	var activateCanvasTab = null;
+	var mobileShellApi = null;
+	var MOBILE_SHELL_MQ = '(max-width: 782px)';
 	var pendingElementSelectionPath = null;
 	var pendingElementSelectionGeneration = 0;
 	var pendingEditPreviewScroll = null;
@@ -2256,6 +2258,10 @@
 			structureView.hidden = true;
 			updateElementSummary( locator );
 			syncElementControls( locator );
+
+			if ( mobileShellApi && mobileShellApi.isNarrow() ) {
+				mobileShellApi.openDrawer();
+			}
 		}
 
 		function closePanel() {
@@ -3243,6 +3249,10 @@
 
 			if ( blockId ) {
 				selectBlock( blockId );
+
+				if ( mobileShellApi && mobileShellApi.isNarrow() ) {
+					mobileShellApi.closeDrawer();
+				}
 			}
 		} );
 
@@ -7099,6 +7109,217 @@
 		} );
 	}
 
+	function initMobileShell() {
+		var mediaQuery = window.matchMedia( MOBILE_SHELL_MQ );
+		var structureToggle = document.getElementById( 'art-editor-structure-toggle' );
+		var backdrop = document.getElementById( 'art-editor-mobile-drawer-backdrop' );
+		var structureView = document.getElementById( 'art-editor-structure-view' );
+		var settingsPanel = document.getElementById( 'art-editor-settings-panel' );
+		var settingsToggle = document.getElementById( 'art-editor-settings-toggle' );
+		var elementPanel = document.getElementById( 'art-editor-element-panel' );
+		var drawerOpen = false;
+		var defaultEditApplied = false;
+
+		function isNarrow() {
+			return !! mediaQuery.matches;
+		}
+
+		function syncStructureToggle( isOpen ) {
+			if ( ! structureToggle ) {
+				return;
+			}
+
+			structureToggle.classList.toggle( 'is-active', !! isOpen );
+			structureToggle.setAttribute( 'aria-expanded', isOpen ? 'true' : 'false' );
+		}
+
+		function setDrawerOpen( isOpen ) {
+			drawerOpen = !! isOpen && isNarrow();
+			document.body.classList.toggle( 'art-editor-screen--mobile-drawer-open', drawerOpen );
+
+			if ( backdrop ) {
+				if ( drawerOpen ) {
+					backdrop.removeAttribute( 'hidden' );
+				} else {
+					backdrop.setAttribute( 'hidden', 'hidden' );
+				}
+			}
+
+			syncStructureToggle( drawerOpen );
+		}
+
+		function openDrawer() {
+			if ( ! isNarrow() ) {
+				return;
+			}
+
+			setDrawerOpen( true );
+		}
+
+		function closeDrawer() {
+			setDrawerOpen( false );
+		}
+
+		function showStructureInDrawer() {
+			if ( settingsPanel && ! settingsPanel.hidden ) {
+				settingsPanel.hidden = true;
+
+				if ( settingsToggle ) {
+					settingsToggle.setAttribute( 'aria-expanded', 'false' );
+					settingsToggle.classList.remove( 'is-active' );
+				}
+			}
+
+			if ( typeof clearSelectedElementLocator === 'function' ) {
+				clearSelectedElementLocator();
+			} else if ( elementEditorController ) {
+				elementEditorController.closePanel();
+			} else if ( elementPanel ) {
+				elementPanel.hidden = true;
+			}
+
+			if ( structureView ) {
+				structureView.hidden = false;
+			}
+		}
+
+		function toggleDrawer() {
+			if ( ! isNarrow() ) {
+				return;
+			}
+
+			if ( drawerOpen ) {
+				closeDrawer();
+				return;
+			}
+
+			showStructureInDrawer();
+			openDrawer();
+		}
+
+		function applyDefaultEditTab() {
+			if ( defaultEditApplied || ! isNarrow() || typeof activateCanvasTab !== 'function' ) {
+				return;
+			}
+
+			defaultEditApplied = true;
+
+			if ( 'edit' !== getActiveCanvasTabName() ) {
+				activateCanvasTab( 'edit' );
+			}
+		}
+
+		function onViewportChange() {
+			if ( ! isNarrow() ) {
+				closeDrawer();
+				return;
+			}
+
+			applyDefaultEditTab();
+		}
+
+		mobileShellApi = {
+			isNarrow: isNarrow,
+			openDrawer: openDrawer,
+			closeDrawer: closeDrawer,
+			toggleDrawer: toggleDrawer,
+		};
+
+		if ( structureToggle ) {
+			structureToggle.addEventListener( 'click', function() {
+				if ( isSaving() ) {
+					return;
+				}
+
+				toggleDrawer();
+			} );
+		}
+
+		if ( backdrop ) {
+			backdrop.addEventListener( 'click', function() {
+				closeDrawer();
+			} );
+		}
+
+		document.addEventListener( 'keydown', function( event ) {
+			if ( 'Escape' !== event.key || ! drawerOpen || ! isNarrow() ) {
+				return;
+			}
+
+			closeDrawer();
+		} );
+
+		if ( mediaQuery.addEventListener ) {
+			mediaQuery.addEventListener( 'change', onViewportChange );
+		} else if ( mediaQuery.addListener ) {
+			mediaQuery.addListener( onViewportChange );
+		}
+
+		onViewportChange();
+	}
+
+	function initSidebarCollapse() {
+		var workspace = document.getElementById( 'art-editor-workspace' );
+		var toggle = document.getElementById( 'art-editor-sidebar-collapse' );
+		var collapseIcon;
+		var expandIcon;
+		var storageKey = 'art-editor-sidebar-collapsed';
+		var collapsed = false;
+
+		if ( ! workspace || ! toggle ) {
+			return;
+		}
+
+		collapseIcon = toggle.querySelector( '.art-editor-screen__sidebar-collapse-svg--collapse' );
+		expandIcon = toggle.querySelector( '.art-editor-screen__sidebar-collapse-svg--expand' );
+
+		function applySidebarCollapsed( isCollapsed ) {
+			var label = isCollapsed
+				? ( i18n.expandStructure || 'Развернуть структуру' )
+				: ( i18n.collapseStructure || 'Свернуть структуру' );
+
+			collapsed = !! isCollapsed;
+			workspace.classList.toggle( 'is-sidebar-collapsed', collapsed );
+			toggle.setAttribute( 'aria-expanded', collapsed ? 'false' : 'true' );
+			toggle.setAttribute( 'aria-label', label );
+			toggle.setAttribute( 'title', label );
+
+			if ( collapseIcon ) {
+				if ( collapsed ) {
+					collapseIcon.setAttribute( 'hidden', 'hidden' );
+				} else {
+					collapseIcon.removeAttribute( 'hidden' );
+				}
+			}
+
+			if ( expandIcon ) {
+				if ( collapsed ) {
+					expandIcon.removeAttribute( 'hidden' );
+				} else {
+					expandIcon.setAttribute( 'hidden', 'hidden' );
+				}
+			}
+
+			try {
+				window.localStorage.setItem( storageKey, collapsed ? '1' : '0' );
+			} catch ( error ) {
+				// Ignore private-mode / quota errors.
+			}
+		}
+
+		try {
+			collapsed = window.localStorage.getItem( storageKey ) === '1';
+		} catch ( error ) {
+			collapsed = false;
+		}
+
+		applySidebarCollapsed( collapsed );
+
+		toggle.addEventListener( 'click', function() {
+			applySidebarCollapsed( ! collapsed );
+		} );
+	}
+
 	function initStructure() {
 		var index;
 		var zoneBlock;
@@ -7206,6 +7427,12 @@
 
 		function setDeviceMode( deviceMode ) {
 			var isMobile = 'mobile' === deviceMode;
+
+			// On a real phone viewport the desktop/mobile preview switch is hidden —
+			// keep full-width (desktop) canvas preview.
+			if ( window.matchMedia( MOBILE_SHELL_MQ ).matches ) {
+				isMobile = false;
+			}
 
 			editorUiState.deviceMode = isMobile ? 'mobile' : 'desktop';
 
@@ -7315,12 +7542,40 @@
 		editorUiState.mobileFrameWidth = devicePreviewLimits.mobileWidthDefault;
 		applyDeviceMode();
 
+		if ( window.matchMedia ) {
+			( function() {
+				var mediaQuery = window.matchMedia( MOBILE_SHELL_MQ );
+
+				function forceDesktopOnNarrow() {
+					if ( mediaQuery.matches && 'mobile' === editorUiState.deviceMode ) {
+						setDeviceMode( 'desktop' );
+					}
+				}
+
+				if ( mediaQuery.addEventListener ) {
+					mediaQuery.addEventListener( 'change', forceDesktopOnNarrow );
+				} else if ( mediaQuery.addListener ) {
+					mediaQuery.addListener( forceDesktopOnNarrow );
+				}
+
+				forceDesktopOnNarrow();
+			}() );
+		}
+
 		return {
 			setDeviceMode: setDeviceMode,
 			syncMobileFrameWidth: syncMobileFrameWidth,
 			updateVisibility: function( tabName ) {
 				var selectedBlock = getBlockById( editorState.selectedId );
 				var showToggle = ( 'edit' === tabName || 'view' === tabName ) && ! isAnchorBlock( selectedBlock );
+
+				if ( window.matchMedia( MOBILE_SHELL_MQ ).matches ) {
+					showToggle = false;
+
+					if ( 'mobile' === editorUiState.deviceMode ) {
+						setDeviceMode( 'desktop' );
+					}
+				}
 
 				deviceToggle.hidden = ! showToggle;
 			},
@@ -7885,6 +8140,14 @@
 			} else {
 				structureView.hidden = false;
 			}
+
+			if ( mobileShellApi && mobileShellApi.isNarrow() ) {
+				if ( shouldOpen ) {
+					mobileShellApi.openDrawer();
+				} else if ( ! elementPanel || elementPanel.hidden ) {
+					mobileShellApi.closeDrawer();
+				}
+			}
 		}
 
 		settingsToggle.addEventListener( 'click', function() {
@@ -8141,10 +8404,12 @@
 
 	initCodeEditor();
 	initStructure();
+	initSidebarCollapse();
 	initHistoryControls();
 	initVisualTextEditBridge();
 	elementEditorController = initElementEditorPanel();
 	initCanvasTabs();
+	initMobileShell();
 	initPreviewLoadingUi();
 	initPreviewStatusBanner();
 	initSaveAndPreview();
